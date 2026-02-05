@@ -1,0 +1,61 @@
+/* Estilos para el componente WorkSheets */
+
+/* Canvas de firma */
+.signature-canvas {
+  background-color: #ffffff;
+  cursor: crosshair;
+  transition: border-color 0.3s ease;
+}
+
+.signature-canvas:hover {
+  border-color: #0d6efd !important;
+}
+
+/* Responsive signature canvas */
+@media (max-width: 768px) {
+  .signature-canvas {
+    height: 150px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .signature-canvas {
+    height: 120px !important;
+  }
+}
+
+/* Mejorar contraste en modo táctil */
+@media (hover: none) and (pointer: coarse) {
+  .signature-canvas {
+    border-color: #0d6efd !important;
+    border-width: 3px !important;
+  }
+}
+
+/* Animación para el contenedor de firma */
+.signature-container {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilo para campos requeridos */
+.form-label .text-danger {
+  font-weight: bold;
+}
+
+/* Mejorar visibilidad del botón limpiar */
+.btn-outline-secondary:hover {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: #fff;
+}

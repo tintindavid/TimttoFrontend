@@ -1,0 +1,17 @@
+.sidebar {
+  width: 260px;
+  background: #ffffff;
+  border-right: 1px solid #eaeaea;
+  padding: 12px;
+  overflow: auto;
+}
+
+.sidebar .nav-link{ color: var(--tt-text); }
+
+.sidebar .menu-item{ display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; border-radius:6px }
+.sidebar .menu-item .icon{ width:22px; font-size:1.05rem }
+
+.submenu{ display:none }
+.submenu.open{ display:block }
+
+.nav-link.small{ color:var(--tt-text-muted); }

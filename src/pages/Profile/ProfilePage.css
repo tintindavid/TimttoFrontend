@@ -1,0 +1,125 @@
+.profile-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-weight: 600;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+}
+
+/* Profile Card */
+.profile-card {
+  border: none;
+  border-radius: 12px;
+}
+
+.profile-photo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.profile-photo {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  border: 4px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profile-photo-placeholder {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Profile Details */
+.profile-details {
+  border: none;
+  border-radius: 12px;
+}
+
+.info-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.info-value {
+  font-size: 1rem;
+  color: #2c3e50;
+  font-weight: 500;
+  margin-left: 1.75rem;
+}
+
+/* Signature Preview */
+.signature-preview {
+  border: none;
+  border-radius: 12px;
+}
+
+.signature-image-container {
+  background: #f8f9fa;
+  padding: 2rem;
+  border-radius: 8px;
+  display: inline-block;
+  border: 2px dashed #dee2e6;
+}
+
+.signature-preview-image {
+  max-width: 300px;
+  max-height: 150px;
+  height: auto;
+  display: block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-photo,
+  .profile-photo-placeholder {
+    width: 120px;
+    height: 120px;
+  }
+
+  .profile-photo-placeholder svg {
+    font-size: 50px !important;
+  }
+
+  .info-value {
+    font-size: 0.9rem;
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+
+  .info-label {
+    font-size: 0.8rem;
+  }
+
+  .signature-preview-image {
+    max-width: 100%;
+  }
+}

@@ -1,0 +1,59 @@
+/* Estilos para la página de vista de reporte */
+.view-report-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Estilos de impresión */
+@media print {
+  .view-report-page {
+    max-width: 100%;
+  }
+
+  /* Ocultar botones al imprimir */
+  button,
+  .btn {
+    display: none !important;
+  }
+
+  /* Ajustar colores para impresión */
+  .bg-info,
+  .bg-primary,
+  .bg-success,
+  .bg-warning,
+  .bg-secondary,
+  .bg-dark {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Evitar saltos de página dentro de cards */
+  .card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Márgenes de página */
+  @page {
+    margin: 1cm;
+  }
+}
+
+/* Mejorar legibilidad en pantalla */
+.view-report-page .card {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.view-report-page .card-header {
+  font-weight: 600;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.view-report-page .list-group-item {
+  transition: background-color 0.2s;
+}
+
+.view-report-page .list-group-item:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
