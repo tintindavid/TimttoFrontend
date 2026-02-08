@@ -514,12 +514,13 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
     const tieneDiagnostico = (editedReporte.diagnostico?.trim().length || 0) > 15;
     const tieneAccionTomada = (editedReporte.accionTomada?.trim().length || 0) > 15;
 
+
     //devolver true si el tipoMtto es Preventivo y tiene actividades completadas
     if (editedReporte.tipoMtto === 'Preventivo' || editedReporte.tipoMtto === 'Predictivo' || editedReporte.tipoMtto === 'Instalación') {
       return tieneActividadesCompletadas;
     }
     // Para otros tipos de mantenimiento, requerir observaciones, falla reportada, diagnóstico y acción tomada obligatoria todas deben estar completas
-    return tieneObservaciones && tieneFallaReportada && tieneDiagnostico && tieneAccionTomada;
+    return  tieneFallaReportada && tieneDiagnostico && tieneAccionTomada;
   };
 
   //Render del componente reporte detalle
