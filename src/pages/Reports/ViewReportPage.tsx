@@ -21,6 +21,15 @@ const ViewReportPage: React.FC = () => {
   const reporte = reporteData?.data;
   const repuestos = repuestosData?.data || [];
 
+  console.log('Reporte data:', reporte);
+  // Debug: verificar estadoOperativo
+  useEffect(() => {
+    if (reporte) {
+      console.log('Reporte estadoOperativo:', reporte.estadoOperativo);
+      console.log('Reporte completo:', reporte);
+    }
+  }, [reporte]);
+
   useEffect(() => {
     if (reporte?.actividadesRealizadas) {
       const completadas = reporte.actividadesRealizadas.length;
@@ -90,6 +99,42 @@ const ViewReportPage: React.FC = () => {
               </div>
             </Col>
             <Col md={6}>
+              {/* Estado Operativo Destacado - SIEMPRE VISIBLE */}
+              <div className="mb-4 p-3 rounded" style={{
+                backgroundColor: 
+                  reporte.estadoOperativo === 'Operativo' ? '#d4edda' :
+                  reporte.estadoOperativo === 'En Mantenimiento' ? '#fff3cd' :
+                  reporte.estadoOperativo === 'Fuera de Servicio' ? '#f8d7da' :
+                  reporte.estadoOperativo === 'Dado de Baja' ? '#e2e3e5' :
+                  '#f8f9fa',
+                border: '2px solid ' + (
+                  reporte.estadoOperativo === 'Operativo' ? '#28a745' :
+                  reporte.estadoOperativo === 'En Mantenimiento' ? '#ffc107' :
+                  reporte.estadoOperativo === 'Fuera de Servicio' ? '#dc3545' :
+                  reporte.estadoOperativo === 'Dado de Baja' ? '#6c757d' :
+                  '#dee2e6'
+                )
+              }}>
+                <div className="text-center">
+                  <small className="text-muted d-block mb-1">Estado Final del Equipo</small>
+                  <h4 className="mb-0" style={{
+                    color: 
+                      reporte.estadoOperativo === 'Operativo' ? '#155724' :
+                      reporte.estadoOperativo === 'En Mantenimiento' ? '#856404' :
+                      reporte.estadoOperativo === 'Fuera de Servicio' ? '#721c24' :
+                      reporte.estadoOperativo === 'Dado de Baja' ? '#383d41' :
+                      '#6c757d',
+                    fontWeight: 'bold'
+                  }}>
+                    {reporte.estadoOperativo === 'Operativo' ? '✅' :
+                     reporte.estadoOperativo === 'En Mantenimiento' ? '🔧' :
+                     reporte.estadoOperativo === 'Fuera de Servicio' ? '⚠️' :
+                     reporte.estadoOperativo === 'Dado de Baja' ? '🔴' :
+                     '❓'}
+                    {' '}{reporte.estadoOperativo || 'No especificado'}
+                  </h4>
+                </div>
+              </div>
               {reporte.ResponsableMtto && (
                 <div className="mb-3">
                   <strong>Responsable:</strong>{' '}
@@ -225,9 +270,33 @@ const ViewReportPage: React.FC = () => {
       {/* Observaciones */}
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-secondary text-white">
-          <h5 className="mb-0">📝 Observaciones</h5>
+          <h5 className="mb-0">📝 Observaciones y Diagnóstico</h5>
         </Card.Header>
         <Card.Body>
+          {reporte.fallaReportada && (
+            <div className="mb-3">
+              <strong className="d-block mb-2">🔴 Falla Reportada:</strong>
+              <p className="text-muted mb-0 p-3 bg-light rounded border-start border-danger border-3">
+                {reporte.fallaReportada}
+              </p>
+            </div>
+          )}
+          {reporte.diagnostico && (
+            <div className="mb-3">
+              <strong className="d-block mb-2">🔍 Diagnóstico:</strong>
+              <p className="text-muted mb-0 p-3 bg-light rounded border-start border-info border-3">
+                {reporte.diagnostico}
+              </p>
+            </div>
+          )}
+          {reporte.accionTomada && (
+            <div className="mb-3">
+              <strong className="d-block mb-2">🔧 Acción Tomada:</strong>
+              <p className="text-muted mb-0 p-3 bg-light rounded border-start border-success border-3">
+                {reporte.accionTomada}
+              </p>
+            </div>
+          )}
           {reporte.causaEncontrada && (
             <div className="mb-3">
               <strong className="d-block mb-2">Causa Encontrada:</strong>
@@ -240,13 +309,21 @@ const ViewReportPage: React.FC = () => {
               <p className="text-muted mb-0 p-3 bg-light rounded">{reporte.motivoFueraServicio}</p>
             </div>
           )}
-          {reporte.observaciones && (
+          {reporte.observacion && (
             <div className="mb-3">
               <strong className="d-block mb-2">Observaciones Generales:</strong>
-              <p className="text-muted mb-0 p-3 bg-light rounded">{reporte.observaciones}</p>
+              <p className="text-muted mb-0 p-3 bg-light rounded">{reporte.observacion}</p>
             </div>
           )}
-          {!reporte.causaEncontrada && !reporte.motivoFueraServicio && !reporte.observaciones && (
+          {reporte.observacionEstadoFinal && (
+            <div className="mb-3">
+              <strong className="d-block mb-2">Observación Estado Final:</strong>
+              <p className="text-muted mb-0 p-3 bg-warning bg-opacity-10 rounded border-start border-warning border-3">
+                {reporte.observacionEstadoFinal}
+              </p>
+            </div>
+          )}
+          {!reporte.fallaReportada && !reporte.diagnostico && !reporte.accionTomada && !reporte.causaEncontrada && !reporte.motivoFueraServicio && !reporte.observacion && !reporte.observacionEstadoFinal && (
             <Alert variant="info" className="mb-0">
               No se registraron observaciones
             </Alert>

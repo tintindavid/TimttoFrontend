@@ -1,6 +1,7 @@
 import { api } from './api';
 import { Repuesto, CreateRepuestoSolicitudDto, InstalarRepuestoDto } from '@/types/repuesto.types';
 import { ApiResponse } from '@/types/api.types';
+import { es } from 'date-fns/locale';
 
 export const repuestoService = {
   // Obtener repuestos por reporte
@@ -33,7 +34,7 @@ export const repuestoService = {
       EquipoId: equipoId,
       ReporteSolicitudId: reporteId,
       FechaSolicitud: new Date(),
-      EstadoSolicitud: 'Solicitado'
+      EstadoSolicitud: data.EstadoSolicitud || 'Solicitado'  
     };
     const response = await api.post<ApiResponse<Repuesto>>('/repuestos', repuestoData);
     return response.data;

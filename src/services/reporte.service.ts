@@ -151,31 +151,11 @@ export const reporteService = {
     datosRecepcion?: { recibe: string; cargo: string; firma: string; responsable: string; cargoResponsable?: string; fullName?: string; firmaResponsableFile?: string; clienteId?: string }
   ) => {
 
-    console.log('creando hoja de trabajo con:',
-      { 
-        otId,
-        reports: equiposIds,
-        numeroHoja: `HT-${new Date().getFullYear()}-${Date.now()}`,
-        estado: 'Borrador',
-        fechaCreacion: new Date().toISOString(),
-        ...(datosRecepcion && {
-          recibidoPor: datosRecepcion.recibe,
-          cargoRecibido: datosRecepcion.cargo,
-          firmaRecepcion: datosRecepcion.firma,
-          responsable: datosRecepcion.responsable,
-          cargoResponsable: datosRecepcion.cargoResponsable,
-          fullNameResponsable: datosRecepcion.fullName,
-          firmaResponsableFile: datosRecepcion.firmaResponsableFile,
-          clienteId: datosRecepcion.clienteId
-        })
-      }
-    )
     const response = await api.post<ApiResponse<any>>(
       `/worksheets`,
       { 
         otId,
         reports: equiposIds,
-        numeroHoja: `HT-${new Date().getFullYear()}-${Date.now()}`,
         estado: 'Borrador',
         fechaCreacion: new Date().toISOString(),
         ...(datosRecepcion && {

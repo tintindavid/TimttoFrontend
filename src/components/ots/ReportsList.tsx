@@ -64,6 +64,7 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, sh
             <Table hover className="mb-0">
               <thead className="table-light">
                 <tr>
+                  <th>Reporte</th>
                   <th>Equipo</th>
                   <th>Ubicación</th>
                   <th>Estado</th>
@@ -73,6 +74,7 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, sh
               <tbody>
                 {reportes.map((reporte) => (
                   <tr key={reporte._id}>
+                    <td>{reporte.consecutivo}</td>
                     <td>
                       <div>
                         <div className="fw-bold">{reporte.equipoSnapshot.ItemText}</div>

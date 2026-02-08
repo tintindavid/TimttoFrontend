@@ -79,6 +79,8 @@ export const InstalarRepuestoDirectoModal: React.FC<InstalarRepuestoDirectoModal
       const repuestoData: CreateRepuestoSolicitudDto = {
         ...data,
         ResponsableSolicitud: userId,
+        EstadoSolicitud: 'Instalado', // Marcar como instalado directamente
+        FechaInstalacion: new Date(), // Fecha de instalación actual
       };
 
       await createRepuestoMutation.mutateAsync({

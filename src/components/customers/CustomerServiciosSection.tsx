@@ -1,16 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
-  Card, Button, Table, Badge, Modal, Form, Row, Col, 
-  Spinner, Alert, Dropdown 
+  Card, Button, Table, Badge, Spinner, Alert, Dropdown 
 } from 'react-bootstrap';
 import { 
   useServiciosByCustomer, 
-  useCreateServicio, 
-  useUpdateServicio, 
   useDeleteServicio 
 } from '@/hooks/useServicios';
-import { Servicio, CreateServicioDto, UpdateServicioDto } from '@/types/servicio.types';
+import { Servicio } from '@/types/servicio.types';
 import ConfirmModal from '@/components/common/ConfirmModal';
+import ServicioFormModal from './ServicioFormModal';
 
 interface CustomerServiciosSectionProps {
   customerId: string;
@@ -30,15 +28,7 @@ const CustomerServiciosSection: React.FC<CustomerServiciosSectionProps> = ({ cus
     refetchOnWindowFocus: false
   });
 
-  const createMutation = useCreateServicio();
-  const updateMutation = useUpdateServicio();
   const deleteMutation = useDeleteServicio();
-
-  const [formData, setFormData] = useState({
-    nombre: '',
-    observacion: '',
-    Status: 'Active'
-  });
 
   // Datos memoizados
   const servicios = useMemo(() => data?.data || [], [data?.data]);
@@ -51,51 +41,19 @@ const CustomerServiciosSection: React.FC<CustomerServiciosSectionProps> = ({ cus
   }, [servicios]);
 
   // Event handlers optimizados
-  const resetForm = useCallback(() => {
-    setFormData({
-      nombre: '',
-      observacion: '',
-      Status: 'Active'
-    });
+  const openCreateModal = useCallback(() => {
     setEditingServicio(null);
+    setShowModal(true);
   }, []);
 
-  const openCreateModal = useCallback(() => {
-    resetForm();
-    setShowModal(true);
-  }, [resetForm]);
-
   const openEditModal = (servicio: Servicio) => {
-    setFormData({
-      nombre: servicio.nombre || '',
-      observacion: servicio.observacion || '',
-      Status: servicio.Status || 'Active'
-    });
     setEditingServicio(servicio);
     setShowModal(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      if (editingServicio) {
-        await updateMutation.mutateAsync({
-          id: editingServicio._id!,
-          data: formData as UpdateServicioDto
-        });
-      } else {
-        await createMutation.mutateAsync({
-          ...formData,
-          Cliente: customerId
-        } as CreateServicioDto);
-      }
-      setShowModal(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
+  const handleFormSuccess = useCallback(() => {
+    // El modal se cierra automáticamente y React Query invalida el cache
+  }, []);
 
   const handleDelete = async () => {
     if (!servicioToDelete) return;
@@ -209,77 +167,13 @@ const CustomerServiciosSection: React.FC<CustomerServiciosSectionProps> = ({ cus
       )}
 
       {/* Modal Crear/Editar Servicio */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {editingServicio ? 'Editar Servicio' : 'Crear Nuevo Servicio'}
-          </Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSubmit}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Nombre del Servicio *</Form.Label>
-              <Form.Control
-                type="text"
-                value={formData.nombre}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  nombre: e.target.value 
-                }))}
-                placeholder="Ej: Mantenimiento Preventivo, Calibración..."
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Estado</Form.Label>
-              <Form.Select
-                value={formData.Status}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  Status: e.target.value 
-                }))}
-              >
-                <option value="Active">Activo</option>
-                <option value="Inactive">Inactivo</option>
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Observación</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={formData.observacion}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  observacion: e.target.value 
-                }))}
-                placeholder="Detalles adicionales sobre el servicio..."
-              />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowModal(false)}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant="primary" 
-              type="submit"
-              disabled={createMutation.isLoading || updateMutation.isLoading}
-            >
-              {createMutation.isLoading || updateMutation.isLoading ? (
-                <Spinner animation="border" size="sm" />
-              ) : (
-                editingServicio ? 'Actualizar' : 'Crear'
-              )}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      <ServicioFormModal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        customerId={customerId}
+        editingServicio={editingServicio}
+        onSuccess={handleFormSuccess}
+      />
 
       {/* Modal Confirmar Eliminación */}
       <ConfirmModal

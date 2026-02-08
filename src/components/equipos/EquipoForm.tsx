@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Card, Form, Button, Row, Col, Spinner, Alert 
+  Card, Form, Button, Row, Col, Spinner, Alert, Modal 
 } from 'react-bootstrap';
 import { useItems } from '@/hooks/useItems';
 import { useCreateEquipoItem } from '@/hooks/useEquipoItems';
+import { useSedesByCustomer } from '@/hooks/useSedes';
+import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { Sede } from '@/types/sede.types';
 import { Servicio } from '@/types/servicio.types';
 import { CreateEquipoItemDto } from '@/types/equipoItem.types';
+import SedeFormModal from '@/components/customers/SedeFormModal';
+import ServicioFormModal from '@/components/customers/ServicioFormModal';
+import ItemFormModal from '@/components/items/ItemFormModal';
+import Swal from 'sweetalert2';
 
 interface EquipoFormProps {
   customerId: string;
@@ -28,6 +34,18 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
   });
 
   const createMutation = useCreateEquipoItem();
+  
+  // Refetch sedes, servicios e items
+  const { refetch: refetchSedes } = useSedesByCustomer(customerId);
+  const { refetch: refetchServicios } = useServiciosByCustomer(customerId);
+  const { refetch: refetchItems } = useItems({ limit: 100 });
+  
+  // Estados para modales
+  const [showSedeModal, setShowSedeModal] = useState(false);
+  const [showServicioModal, setShowServicioModal] = useState(false);
+  const [showItemModal, setShowItemModal] = useState(false);
+
+  
   const [formData, setFormData] = useState({
     ClienteId: customerId,
     item: '',
@@ -158,10 +176,18 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                     <Form.Label>Servicio *</Form.Label>
                     <Form.Select
                       value={formData.Servicio}
-                      onChange={(e) => handleInputChange('Servicio', e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value === 'CREATE_NEW') {
+                          setShowServicioModal(true);
+                          e.target.value = '';
+                        } else {
+                          handleInputChange('Servicio', e.target.value);
+                        }
+                      }}
                       required
                     >
                       <option value="">Seleccionar servicio...</option>
+                      <option value="CREATE_NEW" style={{ color: '#0d6efd', fontWeight: 'bold' }}>+ Crear Nuevo Servicio</option>
                       {servicios.map((servicio) => (
                         <option key={servicio._id} value={servicio._id}>
                           {servicio.nombre}
@@ -175,10 +201,18 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                     <Form.Label>Sede *</Form.Label>
                     <Form.Select
                       value={formData.SedeId}
-                      onChange={(e) => handleInputChange('SedeId', e.target.value)}
+                      onChange={(e) => {
+                        if (e.target.value === 'CREATE_NEW') {
+                          setShowSedeModal(true);
+                          e.target.value = '';
+                        } else {
+                          handleInputChange('SedeId', e.target.value);
+                        }
+                      }}
                       required
                     >
                       <option value="">Seleccionar sede...</option>
+                      <option value="CREATE_NEW" style={{ color: '#0d6efd', fontWeight: 'bold' }}>+ Crear Nueva Sede</option>
                       {sedes.map((sede) => (
                         <option key={sede._id} value={sede._id}>
                           {sede.nombreSede}
@@ -216,9 +250,17 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                 ) : (
                   <Form.Select
                     value={formData.ItemId}
-                    onChange={(e) => handleInputChange('ItemId', e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value === 'CREATE_NEW') {
+                        setShowItemModal(true);
+                        e.target.value = '';
+                      } else {
+                        handleInputChange('ItemId', e.target.value);
+                      }
+                    }}
                   >
                     <option value="">Sin item relacionado</option>
+                    <option value="CREATE_NEW" style={{ color: '#0d6efd', fontWeight: 'bold' }}>+ Crear Nuevo Item</option>
                     {items.map((item) => (
                       <option key={item._id} value={item._id}>
                         {item.Nombre}
@@ -334,8 +376,59 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
           </div>
         </Form>
       </Card.Body>
+
+      {/* Modal para Crear Sede */}
+      <SedeFormModal
+        show={showSedeModal}
+        onHide={() => setShowSedeModal(false)}
+        customerId={customerId}
+        onSuccess={async () => {
+          await refetchSedes();
+          await Swal.fire({
+            icon: 'success',
+            title: '¡Sede creada!',
+            text: 'La sede se ha creado correctamente',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }}
+      />
+
+      {/* Modal para Crear Servicio */}
+      <ServicioFormModal
+        show={showServicioModal}
+        onHide={() => setShowServicioModal(false)}
+        customerId={customerId}
+        onSuccess={async () => {
+          await refetchServicios();
+          await Swal.fire({
+            icon: 'success',
+            title: '¡Servicio creado!',
+            text: 'El servicio se ha creado correctamente',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }}
+      />
+
+      {/* Modal para Crear Item */}
+      <ItemFormModal 
+        show={showItemModal}
+        onHide={() => setShowItemModal(false)}
+        onSuccess={async () => {
+          await refetchItems();
+          await Swal.fire({
+            icon: 'success',
+            title: '¡Item creado!',
+            text: 'El item se ha creado correctamente',
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }}
+      />
     </Card>
   );
 };
 
 export default EquipoForm;
+

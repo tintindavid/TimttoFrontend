@@ -45,6 +45,9 @@ export interface CreateRepuestoSolicitudDto {
   PrecioRepuesto?: number;
   Prioridad?: string;
   ResponsableSolicitud: string;
+  EstadoSolicitud?: string;
+  FechaInstalacion?: Date;
+
 }
 
 export interface InstalarRepuestoDto {

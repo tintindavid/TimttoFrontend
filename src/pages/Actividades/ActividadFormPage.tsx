@@ -1,33 +1,55 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Container, Card, Form, Button, Spinner, Alert } from 'react-bootstrap';
-import { useCreateActividad } from '@/hooks/useActividades';
-import { CreateActividadDto } from '@/types/actividad.types';
-import { useNavigate } from 'react-router-dom';
+import { useCreateActividad, useActividad, useUpdateActividad } from '@/hooks/useActividades';
+import { CreateActividadDto, UpdateActividadDto } from '@/types/actividad.types';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const ActividadFormPage: React.FC = () => {
-  const { register, handleSubmit, formState } = useForm<CreateActividadDto>({ defaultValues: { Nombre: '', Descripcion: '', EsObligatoria: false } });
+  const { id } = useParams<{ id: string }>();
+  const { register, handleSubmit, formState, reset } = useForm<CreateActividadDto | UpdateActividadDto>({ defaultValues: { Nombre: '', Descripcion: '', EsObligatoria: false } });
   const create = useCreateActividad();
+  const update = useUpdateActividad();
   const navigate = useNavigate();
 
-  const onSubmit = async (values: CreateActividadDto) => {
+  const { data: actividadResp, isLoading: isLoadingActividad } = useActividad(id);
+
+  const onSubmit = async (values: CreateActividadDto | UpdateActividadDto) => {
     try {
-        console.log('Creating actividad with values:', values);
-      await create.mutateAsync(values);
+      if (id) {
+        await update.mutateAsync({ id, payload: values as UpdateActividadDto });
+      } else {
+        await create.mutateAsync(values as CreateActividadDto);
+      }
       navigate('/actividades');
     } catch (err) {
       // TODO: show toast
     }
   };
 
-  if (create.isLoading) return <div className="d-flex justify-content-center my-4"><Spinner animation="border" /></div>;
+  useEffect(() => {
+    if (actividadResp?.data) {
+      // actividadResp follows ApiResponse<ActividadMtto>
+      const actividad = actividadResp.data as any;
+      reset({
+        Nombre: actividad.Nombre || '',
+        Descripcion: actividad.Descripcion || '',
+        EsObligatoria: !!actividad.EsObligatoria,
+      });
+    }
+  }, [actividadResp, reset]);
+
+  if (isLoadingActividad) return <div className="d-flex justify-content-center my-4"><Spinner animation="border" /></div>;
+
+  const title = id ? 'Editar Actividad' : 'Crear Actividad';
+  const submitting = formState.isSubmitting || create.isLoading || update.isLoading;
 
   return (
     <Container>
-      <h1>Crear Actividad</h1>
-      <p className="text-muted">Crear una nueva actividad de mantenimiento</p>
+      <h1>{title}</h1>
+      <p className="text-muted">{id ? 'Editar actividad existente' : 'Crear una nueva actividad de mantenimiento'}</p>
 
-      {create.isError && <Alert variant="danger">Error creando la actividad.</Alert>}
+      {(create.isError || update.isError) && <Alert variant="danger">Error al guardar la actividad.</Alert>}
 
       <Card className="tt-card">
         <Card.Body>
@@ -47,7 +69,7 @@ const ActividadFormPage: React.FC = () => {
             </Form.Group>
 
             <div className="d-flex">
-              <Button type="submit" variant="primary" disabled={formState.isSubmitting}>Crear</Button>
+              <Button type="submit" variant="primary" disabled={submitting}>{id ? 'Guardar cambios' : 'Crear'}</Button>
               <Button variant="secondary" className="ms-2" onClick={() => navigate(-1)}>Cancelar</Button>
             </div>
           </Form>

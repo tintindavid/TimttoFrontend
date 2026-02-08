@@ -2,6 +2,7 @@
 export interface Reporte {
   _id?: string;
   OtId?: string;
+  consecutivo?: string; // Nuevo campo para mostrar número de reporte o estado como 'Cerrado'
   numeroHoja: string; // Puede ser 'Cerrado' para reportes cerrados
   observacionEstadoFinal?: string;
   ResponsableMtto: {
@@ -42,13 +43,17 @@ export interface Reporte {
   fechaMtto?: string;
   responsableProcesado?: string;
   actividadesRealizadas?: ActividadRealizada[];
+  hojaDeTrabajo: string; // Nuevo campo para mostrar número de hoja de trabajo o estado como 'Cerrado'
   evidencias?: Evidencia[];
   repuestos?: RepuestoReporte[];
+  fallaReportada?: string;
+  diagnostico?: string;
+  accionTomada?: string;
   causaEncontrada?: string;
   motivoFueraServicio?: string;
   fechaCancelacion?: string;
   motivoCancelacion?: string;
-  observaciones?: string;
+  observacion?: string;
   createdAt?: string;
   updatedAt?: string;
   estadoOperativo?: 'Operativo' | 'En Mantenimiento' | 'Fuera de Servicio' |'Dado de Baja';
@@ -56,6 +61,7 @@ export interface Reporte {
     _id: string;
     Consecutivo: string;
   };
+  tipoMtto?:String;
 }
 
 export interface ActividadRealizada {

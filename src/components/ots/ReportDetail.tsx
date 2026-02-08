@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { 
   Card, Row, Col, Form, Button, Badge, Alert, 
   ProgressBar, Tab, Tabs, ListGroup, Modal 
@@ -14,6 +14,7 @@ import { SolicitarRepuestoModal } from '@/components/repuestos/SolicitarRepuesto
 import { InstalarRepuestoModal } from '@/components/repuestos/InstalarRepuestoModal';
 import { InstalarRepuestoDirectoModal } from '@/components/repuestos/InstalarRepuestoDirectoModal';
 import EditEquipoModal from './EditEquipoModal';
+import Swal from 'sweetalert2';
 
 interface ReportDetailProps {
   reporte: Reporte;
@@ -32,15 +33,23 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
 }) => {
   const [editedReporte, setEditedReporte] = useState<Reporte>({
     ...reporte,
-    actividadesRealizadas: reporte.actividadesRealizadas || []
+    actividadesRealizadas: reporte.actividadesRealizadas || [],
+    estadoOperativo: reporte.estadoOperativo || 'Operativo',
   });
 
-  console.log('Edited reporte state:', editedReporte);
+  // Sincronizar el estado interno cuando cambia la prop reporte (por ejemplo, después de editar el equipo)
+  useEffect(() => {
+    setEditedReporte({
+      ...reporte,
+      actividadesRealizadas: reporte.actividadesRealizadas || [],
+      estadoOperativo: reporte.estadoOperativo || 'Operativo',
+    });
+  }, [reporte]);
 
+  console.log('editedReporte: ', editedReporte)
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('equipment');
-  const [estadoOperativo, setEstadoOperativo] = useState<string>(editedReporte.estadoOperativo || 'Operativo');
   const [observacionEstadoFinal, setObservacionEstadoFinal] = useState<string>(editedReporte.observacionEstadoFinal || '');
   
   // Estados para modales de repuestos
@@ -50,17 +59,15 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [repuestoToInstall, setRepuestoToInstall] = useState<Repuesto | null>(null);
   const [repuestoToEdit, setRepuestoToEdit] = useState<Repuesto | null>(null);
-  
   // Estado para modal de edición de equipo
   const [showEditEquipoModal, setShowEditEquipoModal] = useState(false);
-  
   // Estados para modal de cancelación
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
-  
   // Estado para observaciones temporales de actividades pendientes
   const [observacionesActividades, setObservacionesActividades] = useState<Record<string, string>>({});
-  
+  // Estado para spinner de procesamiento
+  const [isProcessing, setIsProcessing] = useState(false);
   // Estado para fecha de procesado
   const [fechaProcesado, setFechaProcesado] = useState<string>(() => {
     // Inicializar con fecha válida por defecto
@@ -76,14 +83,11 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   });
 
   const estadoOptions = ['Operativo', 'En mantenimiento', 'Fuera de servicio'];
-
   // Hooks para autenticación
   const { user, token } = useAuth();
-  
   // Obtener protocolo del equipo
   const protocoloId = editedReporte?.Equipo?.ItemId?.ProtocoloId || 'PROTO-001'; // Valor temporal para testing
   const { data: protocolo, isLoading: loadingProtocol } = useProtocol(protocoloId);
-
 
   // Obtener repuestos del equipo y del reporte
   const { data: repuestosEquipo, isLoading: loadingRepuestosEquipo } = useRepuestosByEquipo(editedReporte.Equipo?._id || '', 'Solicitado');
@@ -161,14 +165,6 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
     };
   }, [protocolo, editedReporte?.actividadesRealizadas]);
 
-  console.log('DEBUG Actividades:', {
-    actividadesCompletadas,
-    totalActividades,
-    progresoActividades,
-    actividadesRealizadas: editedReporte?.actividadesRealizadas,
-    protocoloActividades: protocolo?.data?.actividadesMtto
-  });
-
   // Handlers
   const handleEquipmentChange = useCallback((field: string, value: string) => {
     setEditedReporte(prev => ({
@@ -236,9 +232,12 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   }, [observacionesActividades]);
 
   const handleSave = () => {
+
+    
     onSave(editedReporte);
     setIsEditing(false);
-  };
+  }; // aqui finaliza handle save
+
 
   // Funciones para manejar repuestos
   const handleSolicitarRepuesto = () => {
@@ -292,26 +291,20 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
     setShowEditarModal(false);
     setRepuestoToEdit(null);
   };
-
   // Handlers para edición de equipo
   const handleOpenEditEquipoModal = () => {
     setShowEditEquipoModal(true);
   };
-
   const handleCloseEditEquipoModal = () => {
     setShowEditEquipoModal(false);
   };
-
   const handleEquipoUpdateSuccess = () => {
-    // Refrescar datos si se proporciona el callback
+    // Refrescar datos del OtDetailPage para actualizar el reporte
     if (onRefreshData) {
       onRefreshData();
     }
-    alert('Equipo actualizado exitosamente');
   };
-
   const handleMarkAsProcessed = async () => {
-
     // Función para extraer userId del token JWT como fallback
     const getUserIdFromToken = (token: string): string | null => {
       try {
@@ -325,18 +318,28 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
     const userId = user?._id || (token ? getUserIdFromToken(token) : null);
   
     if (!userId) {
-      alert('Error: Usuario no autenticado. No se puede procesar el reporte.');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error de Autenticación',
+        text: 'Usuario no autenticado. No se puede procesar el reporte.',
+        confirmButtonColor: '#d33'
+      });
       return;
     }
 
     // Validar observación obligatoria para ciertos estados
     if (
-      (estadoOperativo === 'En Mantenimiento' || 
-       estadoOperativo === 'Fuera de Servicio' || 
-       estadoOperativo === 'Dado de Baja') && 
+      (editedReporte.estadoOperativo === 'En Mantenimiento' || 
+       editedReporte.estadoOperativo === 'Fuera de Servicio' || 
+       editedReporte.estadoOperativo === 'Dado de Baja') && 
       !observacionEstadoFinal.trim()
     ) {
-      alert('Debe proporcionar una observación sobre el estado final del equipo.');
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Observación Requerida',
+        text: 'Debe proporcionar una observación sobre el estado final del equipo.',
+        confirmButtonColor: '#f0ad4e'
+      });
       return;
     }
 
@@ -370,7 +373,12 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       fechaMttoISO = fechaCompleta.toISOString();
     } catch (error) {
       console.error('Error construyendo fecha:', error);
-      alert('Error: Fecha de procesado no válida. Seleccione una fecha correcta.');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error en Fecha',
+        text: 'Fecha de procesado no válida. Seleccione una fecha correcta.',
+        confirmButtonColor: '#d33'
+      });
       return;
     }
     
@@ -380,7 +388,6 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       fechaProcesado: fechaMttoISO,
       fechaMtto: fechaMttoISO, // Fecha de mantenimiento
       observacionEstadoFinal: observacionEstadoFinal.trim(),
-      estadoOperativo: estadoOperativo ? estadoOperativo as "Operativo" | "En Mantenimiento" | "Fuera de Servicio" | "Dado de Baja" : 'Operativo',
       ResponsableMtto: {
         firstName: user?.firstName || 'Desconocido',
         lastName: user?.lastName || 'Usuario',
@@ -395,30 +402,53 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
         totalActividades,
         porcentajeCompletado: Math.round(progresoActividades),
         cantidadRepuestos: repuestosCombinados.length,
-        observaciones: editedReporte.observaciones?.trim() || '',
+        observacion: editedReporte.observacion?.trim() || '',
         causaEncontrada: editedReporte.causaEncontrada?.trim() || '',
         motivoFueraServicio: editedReporte.motivoFueraServicio?.trim() || ''
       }
     };
     
+    // Activar spinner
+    setIsProcessing(true);
+    setShowConfirmModal(false);
     
     try {
       // Llamar a la función de procesamiento
-      const result =  onMarkAsProcessed(reporteProcesado);
+      await onMarkAsProcessed(reporteProcesado);
+      
       // Refrescar datos del OtDetailPage si se proporciona el callback
       if (onRefreshData) {
         console.log('actualizando');
         onRefreshData();
       }
 
+      // Mostrar alerta de éxito
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Reporte Procesado!',
+        text: 'El reporte se ha procesado exitosamente.',
+        confirmButtonColor: '#28a745',
+        timer: 2000,
+        showConfirmButton: false
+      });
       
-      setShowConfirmModal(false);
+      // Ejecutar onBack para volver
+      onBack();
     } catch (error) {
       console.error('Error al procesar reporte:', error);
-      alert('Error al procesar el reporte. Inténtelo de nuevo.');
+      
+      // Mostrar alerta de error
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al Procesar',
+        text: 'No se pudo procesar el reporte. Inténtelo de nuevo.',
+        confirmButtonColor: '#d33'
+      });
+    } finally {
+      // Desactivar spinner
+      setIsProcessing(false);
     }
   };
-
   const handleOpenViewReport = () => {
     const reporteId = editedReporte._id;
     if (reporteId) {
@@ -426,7 +456,6 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       window.open(`/reports/${reporteId}/view`, '_blank');
     }
   };
-
   const handleCancelReport = async () => {
     if (!motivoCancelacion.trim()) {
       alert('Debe indicar el motivo de la cancelación');
@@ -451,7 +480,6 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
         estado: 'Cancelado' as const,
         motivoCancelacion: motivoCancelacion.trim(),
         fechaCancelacion: new Date().toISOString(),
-        estadoOperativo: estadoOperativo as "Operativo" | "En Mantenimiento" | "Fuera de Servicio" | "Dado de Baja",
         ResponsableMtto: {
           firstName: user?.firstName || 'Desconocido',
           lastName: user?.lastName || 'Usuario',
@@ -481,13 +509,135 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   const canMarkAsProcessed = () => {
     // Validaciones para marcar como procesado
     const tieneActividadesCompletadas = actividadesCompletadas > 0;
-    const tieneObservaciones = (editedReporte.observaciones?.trim().length || 0) > 0;
-    return tieneActividadesCompletadas || tieneObservaciones;
+    const tieneObservaciones = (editedReporte.observacion?.trim().length || 0) > 20;
+    const tieneFallaReportada = (editedReporte.fallaReportada?.trim().length || 0) > 15;
+    const tieneDiagnostico = (editedReporte.diagnostico?.trim().length || 0) > 15;
+    const tieneAccionTomada = (editedReporte.accionTomada?.trim().length || 0) > 15;
+
+    //devolver true si el tipoMtto es Preventivo y tiene actividades completadas
+    if (editedReporte.tipoMtto === 'Preventivo' || editedReporte.tipoMtto === 'Predictivo' || editedReporte.tipoMtto === 'Instalación') {
+      return tieneActividadesCompletadas;
+    }
+    // Para otros tipos de mantenimiento, requerir observaciones, falla reportada, diagnóstico y acción tomada obligatoria todas deben estar completas
+    return tieneObservaciones && tieneFallaReportada && tieneDiagnostico && tieneAccionTomada;
   };
 
   //Render del componente reporte detalle
   return (
-    <div className="mt-4">
+    <div className="mt-4" style={{ position: 'relative' }}>
+      {/* Overlay de spinner cuando está procesando */}
+      {isProcessing && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999
+          }}
+        >
+          <div className="spinner-border text-light" role="status" style={{ width: '4rem', height: '4rem' }}>
+            <span className="visually-hidden">Procesando...</span>
+          </div>
+          <div className="text-light mt-3 fs-5">
+            Procesando reporte, por favor espere...
+          </div>
+        </div>
+      )}
+      
+      {/* Sección de Información General del Reporte */}
+      <Row className="mb-4 g-3">
+        <Col md={4}>
+          <Card className="h-100 border-0 shadow-sm">
+            <Card.Body className="text-center">
+              <div className="text-muted mb-2">
+                <small className="text-uppercase fw-semibold">Consecutivo</small>
+              </div>
+              <div className="display-6 fw-bold text-primary">
+                {editedReporte.consecutivo || 'N/A'}
+              </div>
+              <div className="text-muted mt-1">
+                <small>ID: {editedReporte._id?.slice(-8) || 'N/A'}</small>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+        
+        <Col md={4}>
+          <Card className="h-100 border-0 shadow-sm">
+            <Card.Body className="text-center">
+              <div className="text-muted mb-2">
+                <small className="text-uppercase fw-semibold">Estado del Reporte</small>
+              </div>
+              <div className="mt-2">
+                <Badge 
+                  bg={
+                    editedReporte.estado === 'Cerrado' ? 'success' :
+                    editedReporte.estado === 'Procesado' ? 'info' :
+                    editedReporte.estado === 'Cancelado' ? 'danger' :
+                    'warning'
+                  }
+                  className="fs-4 py-2 px-3"
+                  style={{ minWidth: '120px' }}
+                >
+                  {editedReporte.estado}
+                </Badge>
+              </div>
+              {editedReporte.fechaProcesado && (
+                <div className="text-muted mt-2">
+                  <small>
+                    Procesado: {new Date(editedReporte.fechaProcesado).toLocaleDateString('es-ES')}
+                  </small>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+        
+        <Col md={4}>
+          <Card 
+            className="h-100 border-0 shadow-sm"
+            style={{
+              backgroundColor: 
+                editedReporte.estadoOperativo === 'Operativo' ? '#d4edda' :
+                editedReporte.estadoOperativo === 'En Mantenimiento' ? '#fff3cd' :
+                editedReporte.estadoOperativo === 'Fuera de Servicio' ? '#f8d7da' :
+                editedReporte.estadoOperativo === 'Dado de Baja' ? '#e2e3e5' :
+                '#f8f9fa'
+            }}
+          >
+            <Card.Body className="text-center">
+              <div className="text-muted mb-2">
+                <small className="text-uppercase fw-semibold">Estado Operativo</small>
+              </div>
+              <div className="fs-4 fw-bold mt-2" style={{ 
+                color: 
+                  editedReporte.estadoOperativo === 'Operativo' ? '#155724' :
+                  editedReporte.estadoOperativo === 'En Mantenimiento' ? '#856404' :
+                  editedReporte.estadoOperativo === 'Fuera de Servicio' ? '#721c24' :
+                  editedReporte.estadoOperativo === 'Dado de Baja' ? '#383d41' :
+                  '#495057'
+              }}>
+                {editedReporte.estadoOperativo === 'Operativo' && '✅'}
+                {editedReporte.estadoOperativo === 'En Mantenimiento' && '🔧'}
+                {editedReporte.estadoOperativo === 'Fuera de Servicio' && '⚠️'}
+                {editedReporte.estadoOperativo === 'Dado de Baja' && '🔴'}
+                {!editedReporte.estadoOperativo && '❓'}
+                <div className="mt-1">
+                  {editedReporte.estadoOperativo || 'No especificado'}
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+      
       {/* Header del Reporte */}
       <Card className="mb-4 border-info">
         <Card.Header className="bg-info text-white d-flex justify-content-between align-items-center">
@@ -500,6 +650,12 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             </small>
           </div>
           <div className="d-flex gap-2">
+          {/*Mostrar un badge con el tipoMtto en grande */}
+          {editedReporte.tipoMtto && (
+            <Badge bg="primary" className="me-2 fs-6">
+              {editedReporte.tipoMtto}
+            </Badge>
+          )}
             {editedReporte.estado==='Cerrado' || editedReporte.estado==='Cancelado' ? (
               <Button 
                 variant="outline-light" 
@@ -511,8 +667,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               </Button>
               )
             : null}
-            <Badge bg={editedReporte.procesado ? 'success' : 'warning'}>
-              {editedReporte.procesado ? 'Procesado' : 'En Trabajo'}
+            <Badge bg={editedReporte.fechaProcesado ? 'success' : 'warning'}>
+              {editedReporte.estado}
             </Badge>
           </div>
         </Card.Header>
@@ -534,28 +690,27 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             </Col>
             <Col md={4} className="text-end">
               <div className="d-flex gap-2 justify-content-end">
+                {editedReporte.estado === "Pendiente" && (
                 <Button   // Boton para cancelar el reporte
                   variant="outline-danger"
                   size="sm"
                   onClick={() => setShowCancelModal(true)}
-                  disabled={editedReporte.procesado || editedReporte.estado === 'Cancelado' || editedReporte.estado === 'Cerrado'}
                 >
-                  <>
-                    <FaTimes className="me-1" />
-                    Cancelar
-                  </>
+                  <FaTimes className="me-1" />
+                  Cancelar
                 </Button>
+                )}
 
-                {!editedReporte.procesado && (
+                {editedReporte.fechaProcesado && (
                   <>
                     <Button 
-                      variant={isEditing ? "success" : "outline-primary"} 
+                      variant="success" 
                       size="sm"
-                      onClick={isEditing ? handleSave : () => setIsEditing(true)}
+                      onClick= {handleSave}
                     >
-                      {isEditing ? <><FaSave className="me-1" />Guardar</> : <><FaEdit className="me-1" />Editar</>}
-                    </Button>
-                    
+                      <FaSave className="me-1" />Guardar Cambios</Button>
+                   </> 
+                  )}
                     {!(editedReporte.estado === 'Cancelado' || editedReporte.estado === 'Cerrado') && (
                     <Button 
                       variant="primary" 
@@ -566,11 +721,60 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                       Marcar Procesado
                     </Button>
                     )}
-                  </>
-                )}
               </div>
             </Col>
           </Row>
+          
+          {/*Formulario para otros tipo de mantenimiento */}
+          {editedReporte.tipoMtto !=='Preventivo'&& 
+            <Row>  {/*Falla reportada */}
+              <Form.Group className="mt-2">
+              <Form.Label className="mt-2">Falla reportada * </Form.Label>
+                <Form.Control as="textarea"
+                  rows={3}
+                  placeholder="Falla reportada, causa encontrada, etc..." 
+                  value={editedReporte.fallaReportada || ''}
+                  onChange={(e) => handleObservacionChange('fallaReportada', e.target.value)}
+                  className="mt-2"
+                />
+                {/*Si el tipoMtto es Correctivo o Diagnóstico Mostrar en rojo si editedReporte.fallaReportada existe*/}
+                <span className="text-danger mt-1"> { (editedReporte?.fallaReportada?.trim().length || 0) < 15 &&  <small>*Indique la falla reportada para este servicio (min 15 caracteres).</small>} </span>
+              </Form.Group>
+              <Form.Group className="mt-2">
+                <Form.Label>Diagnostico *</Form.Label>
+                <Form.Control as="textarea"
+                  rows={3}
+                  placeholder="Causa encontrada, motivo fuera de servicio, etc..."
+                  value={editedReporte.diagnostico || ''}
+                  onChange={(e) => handleObservacionChange('diagnostico', e.target.value)}
+                  className="mt-2"
+                />
+                <span className="text-danger mt-1"> { (editedReporte?.diagnostico?.trim().length || 0) < 15 && <small>*Indique el diagnóstico para este servicio (min 15 caracteres).</small>} </span>
+              </Form.Group>
+              <Form.Group className="mt-2">
+                <Form.Label>Acción tomada *</Form.Label>
+                <Form.Control as="textarea"
+                  rows={3}
+                  placeholder="Acción tomada, recomendaciones, etc..."
+                  value={editedReporte.accionTomada || ''}
+                  onChange={(e) => handleObservacionChange('accionTomada', e.target.value)} 
+                  className="mt-2"
+                />
+                <span className="text-danger mt-1"> { (editedReporte?.accionTomada?.trim().length || 0) < 15 && <small>*Indique la acción tomada para este servicio (min 15 caracteres).</small>} </span>
+              </Form.Group>
+            </Row>
+          } 
+          {/*observacion General */}
+          <Form.Group>
+            <Form.Label>Observación General / Recomendación</Form.Label>
+            <Form.Control as="textarea"
+              rows={3}
+              placeholder="Observaciones generales, recomendaciones, etc..."
+              value={editedReporte.observacion || ''}
+              onChange={(e) => handleObservacionChange('observacion', e.target.value)}
+              className="mt-2"
+            />
+          </Form.Group>
         </Card.Body>
       </Card>
       {/* Tabs de Trabajo */}
@@ -640,8 +844,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                       <Row>
                         {editedReporte?.equipoSnapshot?.Ubicacion && (
                           <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Ubicación</small>
-                            <div>{editedReporte?.equipoSnapshot?.Ubicacion}</div>
+                            <small className="text-muted d-block">Servicio</small>
+                            <div>{editedReporte?.equipoSnapshot?.Servicio}</div>
                           </Col>
                         )}
                         {editedReporte.equipoSnapshot.Sede && typeof editedReporte.equipoSnapshot.Sede === 'object' && (
@@ -652,7 +856,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                         )}
                         {editedReporte.equipoSnapshot.Ubicacion && (
                           <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Área</small>
+                            <small className="text-muted d-block">Ubicación</small>
                             <div>{editedReporte.equipoSnapshot.Ubicacion}</div>
                           </Col>
                         )}
@@ -1116,43 +1320,6 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             </Card.Body>
           </Card>
         </Tab>
-
-        {/* Tab 5: Observaciones */}
-        <Tab eventKey="observations" title="📝 Observaciones">
-          <Card className="mt-3">
-            <Card.Body>
-              <Row>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Causa Encontrada</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      placeholder="Describa la causa del problema encontrado..."
-                      value={editedReporte.causaEncontrada || ''}
-                      onChange={(e) => handleObservacionChange('causaEncontrada', e.target.value)}
-                      disabled={editedReporte.procesado}
-                    />
-                  </Form.Group>
-                </Col>
-                
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Observaciones Generales</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={6}
-                      placeholder="Observaciones adicionales sobre el mantenimiento realizado..."
-                      value={editedReporte.observaciones || ''}
-                      onChange={(e) => handleObservacionChange('observaciones', e.target.value)}
-                      disabled={editedReporte.procesado}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-        </Tab>
       </Tabs>
 
       {/* Modal de Confirmación */}
@@ -1176,8 +1343,11 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             <Form.Group className="mb-3">
               <Form.Label>Estado Final</Form.Label>
               <Form.Select
-                value={estadoOperativo}
-                onChange={(e) => setEstadoOperativo(e.target.value)}
+                value={editedReporte.estadoOperativo}
+                onChange={(e) => setEditedReporte(prev => ({
+                  ...prev,
+                  estadoOperativo: e.target.value as "Operativo" | "En Mantenimiento" | "Fuera de Servicio" | "Dado de Baja"
+                }))}
               >
                 <option value="Operativo">Operativo</option>
                 <option value="En Mantenimiento">En mantenimiento</option>
@@ -1198,7 +1368,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               </Form.Text>
             </Form.Group>
             {/* Indicar observacion obligatoria si estadooperativo es "En mantenimiento","Fuera de Servicio" o "Dado de Baja" */}
-            {(estadoOperativo === 'En Mantenimiento' || estadoOperativo === 'Fuera de Servicio' || estadoOperativo === 'Dado de Baja') && (
+            {(editedReporte.estadoOperativo === 'En Mantenimiento' || editedReporte.estadoOperativo === 'Fuera de Servicio' || editedReporte.estadoOperativo === 'Dado de Baja') && (
               <Form.Group className="mb-3">
                 <Form.Label className="fw-bold">
                   Observación sobre el estado final *
@@ -1242,9 +1412,9 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             variant="primary" 
             onClick={handleMarkAsProcessed}
             disabled={
-              (estadoOperativo === 'En Mantenimiento' || 
-               estadoOperativo === 'Fuera de Servicio' || 
-               estadoOperativo === 'Dado de Baja') && 
+              (editedReporte.estadoOperativo === 'En Mantenimiento' || 
+               editedReporte.estadoOperativo === 'Fuera de Servicio' || 
+               editedReporte.estadoOperativo === 'Dado de Baja') && 
               !observacionEstadoFinal.trim()
             }
           >
@@ -1280,8 +1450,11 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             <Form.Group className="mb-3">
               <Form.Label>Estado Final</Form.Label>
               <Form.Select
-                value={estadoOperativo}
-                onChange={(e) => setEstadoOperativo(e.target.value)}
+                value={editedReporte.estadoOperativo}
+                onChange={(e) => setEditedReporte(prev => ({
+                  ...prev,
+                  estadoOperativo: e.target.value as "Operativo" | "En Mantenimiento" | "Fuera de Servicio" | "Dado de Baja"
+                }))}
               >
                 <option value="Operativo">Operativo</option>
                 <option value="En Mantenimiento">En mantenimiento</option>

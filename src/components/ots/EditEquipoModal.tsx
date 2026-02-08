@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Spinner, Card } from 'react-bootstrap';
 import { FaEdit, FaSave } from 'react-icons/fa';
+import Swal from 'sweetalert2';
 import { equipoItemService } from '@/services/equipoItem.service';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
@@ -71,8 +72,6 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
         mesesMtto: equipoData?.data.mesesMtto || [],
     });
 
-
-    console.log('formData:', formData);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -106,6 +105,16 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
     try {
       await equipoItemService.updateSnapshot(equipo._id, formData);
       
+      // Mostrar alerta de éxito
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Equipo Actualizado!',
+        text: 'La información del equipo se ha actualizado exitosamente.',
+        confirmButtonColor: '#28a745',
+        timer: 2000,
+        showConfirmButton: false
+      });
+      
       if (onSuccess) {
         onSuccess();
       }
@@ -113,6 +122,15 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
       onHide();
     } catch (err: any) {
       console.error('Error al actualizar equipo:', err);
+      
+      // Mostrar alerta de error
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al Actualizar',
+        text: err.response?.data?.message || 'No se pudo actualizar el equipo. Inténtelo de nuevo.',
+        confirmButtonColor: '#d33'
+      });
+      
       setError(err.response?.data?.message || 'Error al actualizar el equipo. Inténtelo de nuevo.');
     } finally {
       setUpdating(false);

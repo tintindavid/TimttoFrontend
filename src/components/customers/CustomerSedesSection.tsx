@@ -1,16 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
-  Card, Button, Table, Badge, Modal, Form, Row, Col, 
-  Spinner, Alert, Dropdown 
+  Card, Button, Table, Badge, Spinner, Alert, Dropdown 
 } from 'react-bootstrap';
 import { 
   useSedesByCustomer, 
-  useCreateSede, 
-  useUpdateSede, 
   useDeleteSede 
 } from '@/hooks/useSedes';
-import { Sede, CreateSedeDto, UpdateSedeDto } from '@/types/sede.types';
+import { Sede } from '@/types/sede.types';
 import ConfirmModal from '@/components/common/ConfirmModal';
+import SedeFormModal from './SedeFormModal';
 
 interface CustomerSedesSectionProps {
   customerId: string;
@@ -30,77 +28,25 @@ const CustomerSedesSection: React.FC<CustomerSedesSectionProps> = ({ customerId 
   const { data, isLoading, error } = useSedesByCustomer(customerId, {}, queryOptions);
 
   console.log('Sedes data:', error);
-  const createMutation = useCreateSede();
-  const updateMutation = useUpdateSede();
   const deleteMutation = useDeleteSede();
-
-  const [formData, setFormData] = useState({
-    nombreSede: '',
-    contact: '',
-    departamento: '',
-    telefono: '',
-    ciudad: '',
-    direccion: '',
-    Status: 'Active'
-  });
 
   // Datos memoizados para evitar re-renders innecesarios
   const sedes = useMemo(() => data?.data || [], [data?.data]);
 
   // Funciones memoizadas para evitar re-creación en cada render
-  const resetForm = useCallback(() => {
-    setFormData({
-      nombreSede: '',
-      contact: '',
-      departamento: '',
-      telefono: '',
-      ciudad: '',
-      direccion: '',
-      Status: 'Active'
-    });
+  const openCreateModal = useCallback(() => {
     setEditingSede(null);
+    setShowModal(true);
   }, []);
 
-  const openCreateModal = useCallback(() => {
-    resetForm();
-    setShowModal(true);
-  }, [resetForm]);
-
   const openEditModal = useCallback((sede: Sede) => {
-    setFormData({
-      nombreSede: sede.nombreSede || '',
-      contact: sede.contact || '',
-      departamento: sede.departamento || '',
-      telefono: sede.telefono || '',
-      ciudad: sede.ciudad || '',
-      direccion: sede.direccion || '',
-      Status: sede.Status || 'Active'
-    });
     setEditingSede(sede);
     setShowModal(true);
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      if (editingSede) {
-        await updateMutation.mutateAsync({
-          id: editingSede._id!,
-          data: formData as UpdateSedeDto
-        });
-      } else {
-        await createMutation.mutateAsync({
-          ...formData,
-          Cliente: customerId
-        } as CreateSedeDto);
-      }
-      setShowModal(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  }, [editingSede, updateMutation, createMutation, customerId, formData, resetForm]);
+  const handleFormSuccess = useCallback(() => {
+    // El modal se cierra automáticamente y React Query invalida el cache
+  }, []);
 
   const handleDelete = useCallback(async () => {
     if (!sedeToDelete) return;
@@ -169,7 +115,6 @@ const CustomerSedesSection: React.FC<CustomerSedesSectionProps> = ({ customerId 
                 <th>Ciudad</th>
                 <th>Departamento</th>
                 <th>Teléfono</th>
-                <th>Estado</th>
                 <th className="text-center" style={{ width: 120 }}>Acciones</th>
               </tr>
             </thead>
@@ -189,11 +134,6 @@ const CustomerSedesSection: React.FC<CustomerSedesSectionProps> = ({ customerId 
                   <td>{sede.ciudad || 'N/A'}</td>
                   <td>{sede.departamento || 'N/A'}</td>
                   <td>{sede.telefono || 'N/A'}</td>
-                  <td>
-                    <Badge bg={sede.Status === 'Active' ? 'success' : 'secondary'}>
-                      {sede.Status || 'N/A'}
-                    </Badge>
-                  </td>
                   <td>
                     <Dropdown align="end">
                       <Dropdown.Toggle variant="outline-secondary" size="sm">
@@ -221,128 +161,13 @@ const CustomerSedesSection: React.FC<CustomerSedesSectionProps> = ({ customerId 
       )}
 
       {/* Modal Crear/Editar Sede */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {editingSede ? 'Editar Sede' : 'Crear Nueva Sede'}
-          </Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleSubmit}>
-          <Modal.Body>
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Nombre de la Sede *</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.nombreSede}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      nombreSede: e.target.value 
-                    }))}
-                    required
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Ciudad</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.ciudad}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      ciudad: e.target.value 
-                    }))}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Departamento</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.departamento}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      departamento: e.target.value 
-                    }))}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>Contacto</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.contact}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      contact: e.target.value 
-                    }))}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Teléfono</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      telefono: e.target.value 
-                    }))}
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Estado</Form.Label>
-                  <Form.Select
-                    value={formData.Status}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      Status: e.target.value 
-                    }))}
-                  >
-                    <option value="Active">Activo</option>
-                    <option value="Inactive">Inactivo</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Dirección</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={2}
-                value={formData.direccion}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  direccion: e.target.value 
-                }))}
-              />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowModal(false)}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              variant="primary" 
-              type="submit"
-              disabled={createMutation.isLoading || updateMutation.isLoading}
-            >
-              {createMutation.isLoading || updateMutation.isLoading ? (
-                <Spinner animation="border" size="sm" />
-              ) : (
-                editingSede ? 'Actualizar' : 'Crear'
-              )}
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
+      <SedeFormModal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        customerId={customerId}
+        editingSede={editingSede}
+        onSuccess={handleFormSuccess}
+      />
 
       {/* Modal Confirmar Eliminación */}
       <ConfirmModal

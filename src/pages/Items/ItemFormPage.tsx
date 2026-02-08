@@ -16,6 +16,7 @@ const ItemFormPage: React.FC = () => {
 
   const { register, handleSubmit, reset } = useForm<any>({ defaultValues: { Nombre: '', Observacion: '', ProtocoloId: '' } });
 
+  console.log('isEdit:', isEdit);
   useEffect(() => {
     if (itemData?.data) reset(itemData.data);
   }, [itemData, reset]);

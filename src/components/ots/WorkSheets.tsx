@@ -37,6 +37,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [selectedSheet, setSelectedSheet] = useState<SheetWork | null>(null);
   const [selectedEquipos, setSelectedEquipos] = useState<string[]>([]);
   const [firmaCliente, setFirmaCliente] = useState('');
+  const [loadingPdfSheets, setLoadingPdfSheets] = useState<Record<string, boolean>>({});
   
   console.log('selected HT: ', selectedSheet);
   // Estados para firma al crear hoja
@@ -50,6 +51,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [filterModelo, setFilterModelo] = useState('');
   const [filterSerie, setFilterSerie] = useState('');
   const [filterSede, setFilterSede] = useState('');
+  const [filterServicio, setFilterServicio] = useState('');
 
   // Obtener listas únicas para filtros
   const marcas = useMemo(() => {
@@ -65,6 +67,11 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const sedes = useMemo(() => {
     const uniqueSedes = new Set(reportesProcesados.map(r => r.equipoSnapshot.Sede).filter(Boolean));
     return Array.from(uniqueSedes).sort();
+  }, [reportesProcesados]);
+
+  const servicios = useMemo(() => {
+    const uniqueServicios = new Set(reportesProcesados.map(r => r.equipoSnapshot.Servicio).filter(Boolean));
+    return Array.from(uniqueServicios).sort();
   }, [reportesProcesados]);
 
   // Equipos filtrados
@@ -96,10 +103,12 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       // Filtro por sede
       if (filterSede && equipo.Sede !== filterSede) return false;
 
+      // Filtro por servicio
+      if (filterServicio && equipo.Servicio !== filterServicio) return false;
+
       return true;
     });
-  }, [reportesProcesados, searchTerm, filterMarca, filterModelo, filterSerie, filterSede]);
-
+  }, [reportesProcesados, searchTerm, filterMarca, filterModelo, filterSerie, filterSede, filterServicio]);
   // Limpiar filtros
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -230,6 +239,8 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const onPDFReports = async (sheetId: string) => {
 
     console.log('Generando PDF de reportes para la hoja: ', sheetId);
+    if (!sheetId) return;
+    setLoadingPdfSheets(prev => ({ ...prev, [sheetId]: true }));
     try {
       const tenantId = localStorage.getItem('tenantId');
       const response = await generateBulkPDF(
@@ -239,6 +250,12 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       console.log('PDF de reportes generado:', response);
     } catch (error) {
       console.error('Error al generar el PDF de reportes:', error);
+    } finally {
+      setLoadingPdfSheets(prev => {
+        const copy = { ...prev };
+        delete copy[sheetId];
+        return copy;
+      });
     }
   }
 
@@ -347,12 +364,31 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                           <FaDownload className="me-1" />
                           PDF
                         </Button>
-                        <Button size="sm" variant="outline-secondary"
-                          onClick={() => onPDFReports(hoja._id!)}
-                        >
-                          <FaFilePdf className="me-1" />
-                          Reportes PDF
-                        </Button>
+                        {(() => {
+                          const isLoadingPdf = loadingPdfSheets[hoja._id!] ?? false;
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              onClick={() => onPDFReports(hoja._id!)}
+                              disabled={isLoadingPdf}
+                            >
+                              {isLoadingPdf ? (
+                                <Spinner
+                                  as="span"
+                                  animation="border"
+                                  size="sm"
+                                  role="status"
+                                  aria-hidden="true"
+                                  className="me-1"
+                                />
+                              ) : (
+                                <FaFilePdf className="me-1" />
+                              )}
+                              {isLoadingPdf ? 'Procesando...' : 'Reportes PDF'}
+                            </Button>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>
@@ -403,7 +439,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                   </div>
 
                   <Row className="g-2">
-                    <Col md={12}>
+                    <Col md={6}>
                       <InputGroup size="sm">
                         <InputGroup.Text>
                           <FaSearch />
@@ -415,6 +451,21 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                         />
                       </InputGroup>
                     </Col>
+                    {/* select para servicio*/}
+                    <Col md={6}>
+                      <Form.Select 
+                        size="sm"
+                        value={filterServicio}
+                        onChange={(e) => setFilterServicio(e.target.value)}
+                      >
+                        <option value="">Todas los servicios</option>
+                        {servicios.map(servicio => (
+                          <option key={servicio} value={servicio}>{servicio}</option>
+                        ))}
+                      </Form.Select>
+                    </Col>
+
+
 
                     <Col md={3}>
                       <Form.Select 

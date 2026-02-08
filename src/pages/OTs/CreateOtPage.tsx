@@ -37,7 +37,7 @@ const CreateOtPage: React.FC = () => {
     servicioId: '',
     mes: '',
     tipoServicio: 'Preventivo',
-    urgencia: 'Normal',
+    urgencia: 'Baja',
     equiposSeleccionados: []
   });
 
@@ -286,8 +286,8 @@ const CreateOtPage: React.FC = () => {
                   <option value="Preventivo">Preventivo</option>
                   <option value="Correctivo">Correctivo</option>
                     <option value="Predictivo">Predictivo</option>
-                  <option value="Instalacion">Instalacion</option>
-                  <option value="Proactivo">Proactivo</option>
+                  <option value="Instalación">Instalación</option>
+                  <option value="Diagnóstico">Diagnóstico</option>
                 </Form.Select>
               </Form.Group>
             </Col>

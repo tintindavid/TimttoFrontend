@@ -56,9 +56,7 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
   });
 
   const onSubmit = async (data: Omit<CreateRepuestoSolicitudDto, 'ResponsableSolicitud'>) => {
-    console.log('DEBUG - user:', user);
-    console.log('DEBUG - user?._id:', user?._id);
-    console.log('DEBUG - token:', token);
+
     
     // Función para extraer userId del token JWT como fallback
     const getUserIdFromToken = (token: string): string | null => {

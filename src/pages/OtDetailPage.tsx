@@ -29,6 +29,7 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import { useOT } from '../hooks/useOTs';
 import { useReportes } from '../hooks/useReportes';
 import { reporteService } from '../services/reporte.service';
+import Swal from 'sweetalert2';
 
 // Types
 import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '../types/reporte.types';
@@ -43,6 +44,7 @@ const OtDetailPage: React.FC = () => {
   const [selectedReporte, setSelectedReporte] = useState<Reporte | null>(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showAddEquipoModal, setShowAddEquipoModal] = useState(false);
+  const [isUpdatingReporte, setIsUpdatingReporte] = useState(false);
 
   // Queries
   const { data: otResponse, isLoading: loadingOT, error: otError } = useOT(id!);
@@ -63,6 +65,12 @@ const OtDetailPage: React.FC = () => {
   const reportesProcesados = useMemo(() => 
     reportes.filter((r: Reporte) => r.estado==='Procesado' || r.estado==='Cerrado' || r.estado==='Cancelado'), 
     [reportes]
+  );
+
+  //reportes reportesProcesados sin hojaDeTrabajo 
+  const reportesSinHoja = useMemo(() =>
+    reportesProcesados.filter((r: Reporte) => !r.hojaDeTrabajo && (r.estado==='Procesado'||r.estado==='Cancelado')),
+    [reportesProcesados]
   );
 
   const reportesPendientes = useMemo(() => 
@@ -95,6 +103,9 @@ const OtDetailPage: React.FC = () => {
     reporteId: string,
     updates: Partial<Reporte>
   ) => {
+    // Activar spinner
+    setIsUpdatingReporte(true);
+    
     try {
       await reporteService.updateReporte(reporteId, updates);
       await refetchReportes();
@@ -103,9 +114,31 @@ const OtDetailPage: React.FC = () => {
       if (selectedReporte?._id === reporteId) {
         setSelectedReporte(prev => prev ? { ...prev, ...updates } : null);
       }
+      
+      // Mostrar alerta de éxito
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Reporte Actualizado!',
+        text: 'El reporte se ha guardado exitosamente.',
+        confirmButtonColor: '#28a745',
+        timer: 2000,
+        showConfirmButton: false
+      });
     } catch (error) {
       console.error('Error updating reporte:', error);
+      
+      // Mostrar alerta de error
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error al Actualizar',
+        text: 'No se pudo actualizar el reporte. Inténtelo de nuevo.',
+        confirmButtonColor: '#d33'
+      });
+      
       throw error;
+    } finally {
+      // Desactivar spinner
+      setIsUpdatingReporte(false);
     }
   }, [refetchReportes, selectedReporte]);
 
@@ -166,6 +199,25 @@ const OtDetailPage: React.FC = () => {
       throw error;
     }
   }, [refetchReportes, reportes]);
+
+  // Función para refrescar datos y actualizar el reporte seleccionado
+  const handleRefreshData = useCallback(async () => {
+    try {
+      // Refrescar datos desde el backend
+      const result = await refetchReportes();
+      
+      // Si hay un reporte seleccionado, actualizarlo con los datos frescos
+      if (selectedReporte && result.data?.data) {
+        const reporteActualizado = result.data.data.find((r: Reporte) => r._id === selectedReporte._id);
+        if (reporteActualizado) {
+          console.log('Actualizando reporte seleccionado con datos frescos:', reporteActualizado);
+          setSelectedReporte(reporteActualizado);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  }, [refetchReportes, selectedReporte]);
 
   const handleCreateWorkSheet = useCallback(async (
     equiposIds: string[], 
@@ -265,7 +317,33 @@ const OtDetailPage: React.FC = () => {
   }
 
   return (
-    <Container fluid className="mt-4">
+    <Container fluid className="mt-4" style={{ position: 'relative' }}>
+      {/* Overlay de spinner cuando está actualizando */}
+      {isUpdatingReporte && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999
+          }}
+        >
+          <div className="spinner-border text-light" role="status" style={{ width: '4rem', height: '4rem' }}>
+            <span className="visually-hidden">Actualizando...</span>
+          </div>
+          <div className="text-light mt-3 fs-5">
+            Guardando reporte, por favor espere...
+          </div>
+        </div>
+      )}
+      
       {/* Report Detail Tab */}
       {selectedReporte? (
         <>
@@ -284,7 +362,7 @@ const OtDetailPage: React.FC = () => {
             onBack={handleBackToList}
             onSave={(reporte) => handleUpdateReporte(reporte._id!, reporte)}
             onMarkAsProcessed={handleMarkAsProcessed}
-            onRefreshData={() => refetchReportes()}
+            onRefreshData={handleRefreshData}
           />
         </>
       ) :
@@ -556,7 +634,7 @@ const OtDetailPage: React.FC = () => {
               <Tab.Pane eventKey="worksheets">
                 <WorkSheets 
                   otId={id!}
-                  reportesProcesados={reportesProcesados}
+                  reportesProcesados={reportesSinHoja}
                   onCreateSheet={handleCreateWorkSheet}
                   onSignSheet={handleSignWorkSheet}
                   clienteId={ot.ClienteId?._id!}
