@@ -19,10 +19,14 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
     defaultValues: { 
       Nombre: '', 
       Observacion: '', 
-      ProtocoloId: '' 
+      ProtocoloId: '',
+      Iva: '',
+      IvaIncluido: false,
+      Precio: ''
     } 
   });
 
+  console.log('register', register);
   const onSubmit = async (values: any) => {
     try {  
       await create.mutateAsync(values);
@@ -66,6 +70,36 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
               disabled={formState.isSubmitting}
             />
           </Form.Group>
+
+            <Form.Group className="mb-3">
+            <Form.Label>IVA</Form.Label>
+            <Form.Control 
+              type="number"
+              step="1"
+              {...register('Iva')} 
+              placeholder="IVA del item"
+              disabled={formState.isSubmitting}
+            />
+          </Form.Group>
+
+            <Form.Group className="mb-3">
+            <Form.Label>IVA Incluido</Form.Label>
+            <Form.Check 
+              type="checkbox"
+              {...register('IvaIncluido')} 
+              disabled={formState.isSubmitting}
+            />
+          </Form.Group>
+            <Form.Group className="mb-3">
+            <Form.Label>Precio</Form.Label>
+            <Form.Control 
+              type="number"
+              step="1000"
+              {...register('Precio')} 
+              placeholder="Precio del item"
+              disabled={formState.isSubmitting}
+            />
+          </Form.Group> 
 
           <Form.Group className="mb-3">
             <Form.Label>Observación</Form.Label>
@@ -136,16 +170,47 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
             />
           </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Observación</Form.Label>
-            <Form.Control 
-              as="textarea"
-              rows={3}
-              {...register('Observacion')} 
-              placeholder="Observaciones adicionales"
-              disabled={formState.isSubmitting}
-            />
-          </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Observación</Form.Label>
+              <Form.Control 
+                as="textarea"
+                rows={3}
+                {...register('Observacion')} 
+                placeholder="Observaciones adicionales"
+                disabled={formState.isSubmitting}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>IVA</Form.Label>
+              <Form.Control 
+                type="number"
+                step="0.01"
+                {...register('Iva')} 
+                placeholder="IVA del item"
+                disabled={formState.isSubmitting}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>IVA Incluido</Form.Label>
+              <Form.Check 
+                type="checkbox"
+                {...register('IvaIncluido')} 
+                disabled={formState.isSubmitting}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Precio</Form.Label>
+              <Form.Control 
+                type="number"
+                step="0.01"
+                {...register('Precio')} 
+                placeholder="Precio del item"
+                disabled={formState.isSubmitting}
+              />
+            </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label>Protocolo</Form.Label>

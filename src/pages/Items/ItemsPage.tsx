@@ -20,6 +20,9 @@ const ItemsPage: React.FC = () => {
     { key: 'Nombre', label: 'Nombre' },
     { key: 'Observacion', label: 'Observación' },
     { key: 'ProtocoloId', label: 'Protocolo' },
+    { key: 'Iva', label: 'IVA' },
+    { key: 'IvaIncluido', label: 'IVA Incluido', render: (row: any) => row.IvaIncluido ? 'Sí' : 'No' },
+    { key: 'Precio', label: 'Precio' },
   ];
 
   return (

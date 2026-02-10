@@ -16,7 +16,6 @@ const ItemFormPage: React.FC = () => {
 
   const { register, handleSubmit, reset } = useForm<any>({ defaultValues: { Nombre: '', Observacion: '', ProtocoloId: '' } });
 
-  console.log('isEdit:', isEdit);
   useEffect(() => {
     if (itemData?.data) reset(itemData.data);
   }, [itemData, reset]);
@@ -48,6 +47,34 @@ const ItemFormPage: React.FC = () => {
             <Form.Group className="mb-3">
               <Form.Label>Observación</Form.Label>
               <Form.Control {...register('Observacion')} />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>IVA Incluido</Form.Label>
+              <Form.Check 
+                type="checkbox"
+                {...register('IvaIncluido')} 
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>IVA</Form.Label>
+              <Form.Control 
+                type="number"
+                step="1"
+                {...register('Iva')} 
+                placeholder="IVA del item"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Precio</Form.Label>
+              <Form.Control 
+                type="number"
+                step="1000"
+                {...register('Precio')} 
+                placeholder="Precio del item"
+              />
             </Form.Group>
 
             <Form.Group className="mb-3">

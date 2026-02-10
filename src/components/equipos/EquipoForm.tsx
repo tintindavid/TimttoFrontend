@@ -49,6 +49,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
   const [formData, setFormData] = useState({
     ClienteId: customerId,
     item: '',
+    Precio:'',
     ItemId: '',
     Marca: '',
     Modelo: '',
@@ -61,6 +62,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
     mesesMtto: [] as string[]
   });
 
+  console.log('EquipoForm renderizado con formData:', formData);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const items = itemsData?.data || [];
   const validateForm = (): boolean => {
@@ -69,11 +71,9 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
     if (!formData.Servicio) {
       errors.push('Debe seleccionar un servicio');
     }
-
     if (!formData.SedeId) {
       errors.push('Debe seleccionar una sede');
     }
-
     if (formData.mesesMtto.length === 0) {
       errors.push('Debe seleccionar al menos un mes de mantenimiento');
     }
@@ -100,7 +100,8 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
         SedeId: formData.SedeId,
         Ubicacion: formData.Ubicacion || undefined,
         Estado: formData.Estado || undefined,
-        mesesMtto: formData.mesesMtto
+        mesesMtto: formData.mesesMtto,
+        Precio: formData.Precio || '0'
       };
 
       await createMutation.mutateAsync(payload);
@@ -255,7 +256,28 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                         setShowItemModal(true);
                         e.target.value = '';
                       } else {
-                        handleInputChange('ItemId', e.target.value);
+                        const itemId = e.target.value;
+                        const selectedItem = items.find(item => item._id === itemId);
+                        
+                        let precioFinal = 0;
+                        if (selectedItem) {
+                          const precioBase = selectedItem.Precio || 0;
+                          if (selectedItem.IvaIncluido) {
+                            // Si el IVA ya está incluido, usar el precio tal cual
+                            precioFinal = precioBase;
+                          } else {
+                            // Si el IVA no está incluido, aplicar el IVA
+                            const iva = selectedItem.Iva || 0;
+                            precioFinal = precioBase * (1 + iva / 100);
+                          }
+                        }
+                        
+                        setFormData(prev => ({
+                          ...prev,
+                          ItemId: itemId,
+                          item: selectedItem?.Nombre || prev.item,
+                          Precio: precioFinal.toString()
+                        }));
                       }
                     }}
                   >
