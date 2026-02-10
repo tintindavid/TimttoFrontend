@@ -49,7 +49,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
   const [formData, setFormData] = useState({
     ClienteId: customerId,
     item: '',
-    Precio:'',
+    Precio: 0,
     ItemId: '',
     Marca: '',
     Modelo: '',
@@ -101,7 +101,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
         Ubicacion: formData.Ubicacion || undefined,
         Estado: formData.Estado || undefined,
         mesesMtto: formData.mesesMtto,
-        Precio: formData.Precio || '0'
+        Precio: formData.Precio || 0
       };
 
       await createMutation.mutateAsync(payload);
@@ -276,7 +276,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                           ...prev,
                           ItemId: itemId,
                           item: selectedItem?.Nombre || prev.item,
-                          Precio: precioFinal.toString()
+                          Precio: precioFinal
                         }));
                       }
                     }}

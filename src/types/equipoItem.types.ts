@@ -26,7 +26,7 @@ export interface EquipoItem {
   isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
-  Precio?: string;
+  Precio?: number;
 }
 
 export interface CreateEquipoItemDto {
@@ -44,7 +44,7 @@ export interface CreateEquipoItemDto {
   mesesMtto?: string[];
   Riesgo?: string;
   Invima?: string;
-  Precio?: string;
+  Precio?: number;
 }
 
 export interface UpdateEquipoItemDto {
@@ -58,5 +58,5 @@ export interface UpdateEquipoItemDto {
   Ubicacion?: string;
   Estado?: string;
   mesesMtto?: string[];
-  Precio?: string;
+  Precio?: number;
 }

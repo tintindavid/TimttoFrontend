@@ -35,6 +35,7 @@ interface ExcelRow {
   Invima?: string;
   ItemId?: string;
   ItemName?: string; // Para mostrar en preview cuando ItemId esté vacío
+  Precio?: number; // Para mostrar en preview y usar en payload
 }
 
 interface ProcessedRow extends ExcelRow {
@@ -232,6 +233,7 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
           Riesgo: row.Riesgo || 'No definido',
           Invima: row.Invima || 'No definido',
           Estado: 'Operativo',
+          Precio: row.Precio || 0,
           mesesMtto: contextData.mesesMtto
         };
 
