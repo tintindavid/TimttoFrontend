@@ -198,11 +198,12 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   // Función para agregar actividad del protocolo a actividadesRealizadas
   const handleProtocolActivityToggle = useCallback((actividadProtocolo: ActividadMtto, checked: boolean) => {
     if (checked) {
+      console.log('Agregando actividad realizada para:', actividadProtocolo);
       // Agregar actividad realizada con la observación ingresada
       const observacion = observacionesActividades[actividadProtocolo._id || ''] || '';
       const nuevaActividad: ActividadRealizada = {
         _id: `temp_${Date.now()}`, // ID temporal
-        descripcion: actividadProtocolo.Descripcion || actividadProtocolo.Nombre || 'Actividad del protocolo',
+        descripcion: actividadProtocolo.Nombre,
         realizado: true, // Cambio de 'realizada' a 'realizado'
         fecha: new Date().toISOString(),
         actividadProtocoloId: actividadProtocolo._id || '', // Proveer fallback para evitar undefined

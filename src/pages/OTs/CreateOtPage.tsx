@@ -4,7 +4,7 @@ import {
   Badge, Spinner, Modal 
 } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { useCustomers } from '@/hooks/useCustomers';
+import { useCustomers, useCreateCustomer } from '@/hooks/useCustomers';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
@@ -14,7 +14,9 @@ import { EquipoItem } from '@/types/equipoItem.types';
 import { Sede } from '@/types/sede.types';
 import { Servicio } from '@/types/servicio.types';
 import { toast } from 'react-toastify';
-import { FaPlus, FaCheck, FaMinus } from 'react-icons/fa';
+import { FaPlus, FaCheck, FaMinus, FaTimes } from 'react-icons/fa';
+import Swal from 'sweetalert2';
+import EquipoForm from '@/components/equipos/EquipoForm';
 
 interface CreateOtFormData {
   customerId: string;
@@ -29,6 +31,7 @@ interface CreateOtFormData {
 const CreateOtPage: React.FC = () => {
   const navigate = useNavigate();
   const createOtMutation = useCreateOt();
+  const createCustomerMutation = useCreateCustomer();
 
   // Estados principales
   const [formData, setFormData] = useState<CreateOtFormData>({
@@ -56,6 +59,26 @@ const CreateOtPage: React.FC = () => {
   // Estados de UI
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Estados para modal de crear cliente
+  const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+  const [newCustomerData, setNewCustomerData] = useState({
+    Razonsocial: '',
+    Ciudad: '',
+    Departamento: '',
+    Email: '',
+    Nit: '',
+    Direccion: '',
+    TelContacto: '',
+    UserContacto: ''
+  });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [fileError, setFileError] = useState<string>('');
+  
+  // Estados para modal de crear equipo
+  const [showCreateEquipoModal, setShowCreateEquipoModal] = useState(false);
 
   // Queries principales
   const { data: customersData, isLoading: loadingCustomers } = useCustomers();
@@ -76,7 +99,7 @@ const CreateOtPage: React.FC = () => {
   );
   const servicios = useMemo(() => serviciosData?.data || [], [serviciosData?.data]);
 
-  const { data: equiposData, isLoading: loadingEquipos } = useEquipoItems(
+  const { data: equiposData, isLoading: loadingEquipos, refetch: refetchEquipos } = useEquipoItems(
     formData.customerId ? { ClienteId: formData.customerId } : null,
     //{ enabled: !!formData.customerId }
   );
@@ -122,6 +145,12 @@ const CreateOtPage: React.FC = () => {
 
   // Event handlers optimizados
   const handleCustomerChange = useCallback((customerId: string) => {
+    // Si selecciona la opción de crear nuevo cliente
+    if (customerId === '__CREATE_NEW__') {
+      setShowCreateCustomerModal(true);
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       customerId,
@@ -216,6 +245,141 @@ const CreateOtPage: React.FC = () => {
     }
   }, [formData, createOtMutation, navigate]);
 
+  // Manejadores para crear cliente
+  const handleNewCustomerInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewCustomerData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }, []);
+
+  const handleLogoFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setFileError('');
+    
+    if (!file) {
+      setLogoFile(null);
+      setLogoPreview('');
+      return;
+    }
+
+    // Validar tipo de archivo
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+      setFileError('Solo se permiten archivos PNG o JPG');
+      setLogoFile(null);
+      setLogoPreview('');
+      e.target.value = '';
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setFileError('El archivo no debe superar los 5MB');
+      setLogoFile(null);
+      setLogoPreview('');
+      e.target.value = '';
+      return;
+    }
+
+    setLogoFile(file);
+
+    // Crear preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleRemoveLogo = useCallback(() => {
+    setLogoFile(null);
+    setLogoPreview('');
+    setFileError('');
+    const fileInput = document.getElementById('newCustomerLogoInput') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  }, []);
+
+  const resetNewCustomerForm = useCallback(() => {
+    setNewCustomerData({
+      Razonsocial: '',
+      Ciudad: '',
+      Departamento: '',
+      Email: '',
+      Nit: '',
+      Direccion: '',
+      TelContacto: '',
+      UserContacto: ''
+    });
+    setLogoFile(null);
+    setLogoPreview('');
+    setFileError('');
+  }, []);
+
+  const handleCreateCustomer = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingCustomer(true);
+    
+    try {
+      // Crear FormData para enviar archivo
+      const formDataToSend = new FormData();
+      
+      // Agregar todos los campos del formulario
+      formDataToSend.append('Razonsocial', newCustomerData.Razonsocial);
+      formDataToSend.append('Ciudad', newCustomerData.Ciudad);
+      formDataToSend.append('Departamento', newCustomerData.Departamento);
+      formDataToSend.append('Email', newCustomerData.Email);
+      if (newCustomerData.Nit) formDataToSend.append('Nit', newCustomerData.Nit);
+      if (newCustomerData.Direccion) formDataToSend.append('Direccion', newCustomerData.Direccion);
+      if (newCustomerData.TelContacto) formDataToSend.append('TelContacto', newCustomerData.TelContacto);
+      if (newCustomerData.UserContacto) formDataToSend.append('UserContacto', newCustomerData.UserContacto);
+      
+      // Agregar archivo de logo si existe
+      if (logoFile) {
+        formDataToSend.append('logo', logoFile, logoFile.name);
+      }
+
+      const response = await createCustomerMutation.mutateAsync(formDataToSend);
+      
+      // Cerrar modal
+      setShowCreateCustomerModal(false);
+      resetNewCustomerForm();
+      
+      // Notificar con SweetAlert2
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Cliente creado!',
+        text: `${newCustomerData.Razonsocial} ha sido creado exitosamente`,
+        confirmButtonText: 'Aceptar',
+        timer: 3000
+      });
+      
+      // Seleccionar el cliente recién creado
+      if (response.data?._id) {
+        setFormData(prev => ({
+          ...prev,
+          customerId: response.data._id!,
+          sedeId: '',
+          servicioId: '',
+          mes: '',
+          equiposSeleccionados: []
+        }));
+      }
+    } catch (error: any) {
+      console.error('Error creating customer:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'Error al crear el cliente',
+        confirmButtonText: 'Aceptar'
+      });
+    } finally {
+      setIsCreatingCustomer(false);
+    }
+  }, [newCustomerData, logoFile, createCustomerMutation, resetNewCustomerForm]);
+
   // Estadísticas de selección
   const statsSeleccion = useMemo(() => {
     const totalEquipos = equipos.length;
@@ -261,18 +425,34 @@ const CreateOtPage: React.FC = () => {
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>Cliente <span className="text-danger">*</span></Form.Label>
-                <Form.Select 
-                  value={formData.customerId}
-                  onChange={(e) => handleCustomerChange(e.target.value)}
-                  disabled={loadingCustomers}
-                >
-                  <option value="">Seleccionar cliente...</option>
-                  {customers.map(customer => (
-                    <option key={customer._id} value={customer._id}>
-                      {customer.Razonsocial}
+                <div className="d-flex gap-2">
+                  <Form.Select 
+                    value={formData.customerId}
+                    onChange={(e) => handleCustomerChange(e.target.value)}
+                    disabled={loadingCustomers}
+                    className="flex-grow-1"
+                  >
+                    <option value="">Seleccionar cliente...</option>
+                    <option value="__CREATE_NEW__" style={{ fontWeight: 'bold', color: '#0d6efd' }}>
+                      ➕ Crear nuevo cliente...
                     </option>
-                  ))}
-                </Form.Select>
+                    <option disabled>──────────</option>
+                    {customers.map(customer => (
+                      <option key={customer._id} value={customer._id}>
+                        {customer.Razonsocial}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Button 
+                    variant="outline-primary" 
+                    onClick={() => setShowCreateCustomerModal(true)}
+                    disabled={loadingCustomers}
+                    style={{ whiteSpace: 'nowrap' }}
+                    title="Crear nuevo cliente"
+                  >
+                    <FaPlus className="me-1" /> Nuevo
+                  </Button>
+                </div>
                 {loadingCustomers && <small className="text-muted">Cargando clientes...</small>}
               </Form.Group>
             </Col>
@@ -391,6 +571,15 @@ const CreateOtPage: React.FC = () => {
               </small>
             </div>
             <div className="d-flex gap-2">
+              {/* Botón para crear equipo del cliente seleccionado */}
+              <Button 
+                variant="outline-primary" 
+                size="sm"
+                onClick={() => setShowCreateEquipoModal(true)}
+                title="Crear nuevo equipo para este cliente"
+                >
+                  <FaPlus className="me-1" /> Agregar Equipo
+                </Button>
               <Button 
                 variant="outline-info" 
                 size="sm" 
@@ -684,6 +873,249 @@ const CreateOtPage: React.FC = () => {
             {isSubmitting ? 'Creando...' : 'Confirmar'}
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* Modal de Crear Cliente */}
+      <Modal 
+        show={showCreateCustomerModal} 
+        onHide={() => {
+          if (!isCreatingCustomer) {
+            setShowCreateCustomerModal(false);
+            resetNewCustomerForm();
+            // Si el usuario cerró sin crear, resetear el select
+            if (formData.customerId === '__CREATE_NEW__' || !formData.customerId) {
+              setFormData(prev => ({ ...prev, customerId: '' }));
+            }
+          }
+        }}
+        size="lg"
+        backdrop={isCreatingCustomer ? 'static' : true}
+        keyboard={!isCreatingCustomer}
+      >
+        <Modal.Header closeButton={!isCreatingCustomer}>
+          <Modal.Title>Crear Nuevo Cliente</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleCreateCustomer}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Razón social <span className="text-danger">*</span></Form.Label>
+              <Form.Control 
+                name="Razonsocial" 
+                value={newCustomerData.Razonsocial} 
+                onChange={handleNewCustomerInputChange} 
+                required
+                disabled={isCreatingCustomer}
+                placeholder="Ingrese la razón social"
+              />
+            </Form.Group>
+
+            <Row>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>NIT <span className="text-danger">*</span></Form.Label>
+                  <Form.Control 
+                    name="Nit" 
+                    type="text" 
+                    value={newCustomerData.Nit} 
+                    onChange={handleNewCustomerInputChange} 
+                    required
+                    disabled={isCreatingCustomer}
+                    placeholder="000000000-0"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Ciudad <span className="text-danger">*</span></Form.Label>
+                  <Form.Control 
+                    name="Ciudad" 
+                    value={newCustomerData.Ciudad} 
+                    onChange={handleNewCustomerInputChange} 
+                    required
+                    disabled={isCreatingCustomer}
+                    placeholder="Ej: Bogotá"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Departamento <span className="text-danger">*</span></Form.Label>
+                  <Form.Control 
+                    name="Departamento" 
+                    value={newCustomerData.Departamento} 
+                    onChange={handleNewCustomerInputChange} 
+                    required
+                    disabled={isCreatingCustomer}
+                    placeholder="Ej: Cundinamarca"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Email <span className="text-danger">*</span></Form.Label>
+                  <Form.Control 
+                    name="Email" 
+                    type="email" 
+                    value={newCustomerData.Email} 
+                    onChange={handleNewCustomerInputChange} 
+                    required
+                    disabled={isCreatingCustomer}
+                    placeholder="correo@ejemplo.com"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Dirección</Form.Label>
+                  <Form.Control 
+                    name="Direccion" 
+                    value={newCustomerData.Direccion} 
+                    onChange={handleNewCustomerInputChange}
+                    disabled={isCreatingCustomer}
+                    placeholder="Dirección completa"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Teléfono contacto</Form.Label>
+                  <Form.Control 
+                    name="TelContacto" 
+                    value={newCustomerData.TelContacto} 
+                    onChange={handleNewCustomerInputChange}
+                    disabled={isCreatingCustomer}
+                    placeholder="3001234567"
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Persona contacto</Form.Label>
+                  <Form.Control 
+                    name="UserContacto" 
+                    value={newCustomerData.UserContacto} 
+                    onChange={handleNewCustomerInputChange}
+                    disabled={isCreatingCustomer}
+                    placeholder="Nombre del contacto"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Logo (Opcional)</Form.Label>
+              <Form.Control 
+                id="newCustomerLogoInput"
+                type="file" 
+                accept="image/png, image/jpeg, image/jpg"
+                onChange={handleLogoFileChange}
+                disabled={isCreatingCustomer}
+              />
+              {fileError && <Alert variant="danger" className="mt-2 mb-0 py-2">{fileError}</Alert>}
+              <Form.Text className="text-muted">
+                Formatos permitidos: PNG, JPG. Tamaño máximo: 5MB
+              </Form.Text>
+              
+              {logoPreview && (
+                <div className="mt-3 position-relative d-inline-block">
+                  <img 
+                    src={logoPreview} 
+                    alt="Preview" 
+                    style={{ maxWidth: '200px', maxHeight: '150px' }}
+                    className="img-thumbnail"
+                  />
+                  {!isCreatingCustomer && (
+                    <Button 
+                      variant="danger" 
+                      size="sm" 
+                      className="position-absolute top-0 end-0 m-1"
+                      onClick={handleRemoveLogo}
+                      style={{ padding: '0.25rem 0.5rem' }}
+                    >
+                      <FaTimes />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button 
+              variant="secondary" 
+              onClick={() => {
+                setShowCreateCustomerModal(false);
+                resetNewCustomerForm();
+                // Si el usuario canceló, resetear el select
+                if (formData.customerId === '__CREATE_NEW__' || !formData.customerId) {
+                  setFormData(prev => ({ ...prev, customerId: '' }));
+                }
+              }}
+              disabled={isCreatingCustomer}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="primary" 
+              type="submit"
+              disabled={isCreatingCustomer}
+            >
+              {isCreatingCustomer ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Creando cliente...
+                </>
+              ) : (
+                <>
+                  <FaCheck className="me-2" />
+                  Crear Cliente
+                </>
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Modal de Crear Equipo */}
+      <Modal 
+        show={showCreateEquipoModal} 
+        onHide={() => setShowCreateEquipoModal(false)}
+        size="xl"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Crear Nuevo Equipo - {selectedCustomer?.Razonsocial}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedCustomer && (
+            <EquipoForm
+              customerId={formData.customerId}
+              sedes={sedes}
+              servicios={servicios}
+              onSuccess={async () => {
+                // Cerrar el modal
+                setShowCreateEquipoModal(false);
+                
+                // Notificación con SweetAlert2
+                await Swal.fire({
+                  icon: 'success',
+                  title: '¡Equipo creado!',
+                  text: 'El equipo ha sido creado exitosamente y está disponible para selección',
+                  confirmButtonText: 'Aceptar',
+                  timer: 3000
+                });
+                
+                // Refrescar la lista de equipos
+                await refetchEquipos();
+              }}
+              onCancel={() => setShowCreateEquipoModal(false)}
+            />
+          )}
+        </Modal.Body>
       </Modal>
     </Container>
   );
