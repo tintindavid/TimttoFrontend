@@ -10,6 +10,7 @@ import { EquipoItem } from '@/types/equipoItem.types';
 import EquipoForm from '@/components/equipos/EquipoForm';
 import EquipoBulkUpload from '@/components/equipos/EquipoBulkUpload';
 import AppPagination from '@/components/common/Pagination';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 interface CustomerEquiposSectionProps {
   customerId: string;
@@ -23,6 +24,8 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const [activeTab, setActiveTab] = useState<'list' | 'create' | 'bulk'>('list');
   const [page, setPage] = useState(1);
   const [limit] = useState(20); // Items por página
+
+  const navigate = useNavigate();
 
   // Parámetros de query memoizados para evitar re-queries innecesarias
   const queryParams = useMemo(() => {
@@ -278,7 +281,10 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                     <tr key={equipo._id}>
                       <td>{(page - 1) * limit + index + 1}</td>
                       <td>
-                        <div>
+                        <div 
+                          onClick={() => navigate(`/hv-equipo/${equipo?._id}`)}
+                          style={{ cursor: 'pointer' }}
+                          >
                           <strong>{equipo?.ItemId?.Nombre || 'N/A'}</strong>
                         </div>
                       </td>

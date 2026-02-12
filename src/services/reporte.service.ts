@@ -15,6 +15,17 @@ export const reporteService = {
     return response.data;
   },
 
+  // Get reportes by Equipo ID
+  getReportesByEquipo: async (equipoId: string, params?: { page?: number; limit?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    
+    const url = `/reports/equipo/${equipoId}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get<ApiResponse<Reporte[]>>(url);
+    return response.data;
+  },
+
   // Get single reporte
   getReporte: async (id: string) => {
     const response = await api.get<ApiResponse<Reporte>>(`/reports/${id}`);

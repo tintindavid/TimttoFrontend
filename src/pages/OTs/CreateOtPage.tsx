@@ -107,18 +107,7 @@ const CreateOtPage: React.FC = () => {
   
   const equipos = useMemo(() => equiposData?.data || [], [equiposData?.data]);
 
-  console.log('Equipos cargados:', equipos);
-  // Datos procesados y memoizados
-  const mesesDisponibles = useMemo(() => {
-    // const meses = new Set<string>();
-    // equipos.forEach(equipo => {
-    //   if (equipo.Mes) {
-    //     meses.add(equipo.Mes);
-    //   }
-    // });
-    // return Array.from(meses).sort();
-    return []; // Mes no disponible en EquipoItem type
-  }, [equipos]);
+
 
   // Equipos filtrados
   const equiposFiltrados = useMemo(() => {
@@ -136,8 +125,8 @@ const CreateOtPage: React.FC = () => {
       
       const cumpleEstado = !filtros.estado || equipo.Estado === filtros.estado;
       
-      // const cumpleMes = !formData.mes || equipo.Mes === formData.mes;
-      const cumpleMes = true; // Mes no existe en EquipoItem type
+      const cumpleMes = !formData.mes || equipo.mesesMtto?.includes(formData.mes);
+      //const cumpleMes = true; // Mes no existe en EquipoItem type
 
       return cumpleCodigo && cumpleNombre && cumpleSede && cumpleServicio && cumpleEstado && cumpleMes;
     });
@@ -543,12 +532,20 @@ const CreateOtPage: React.FC = () => {
                   <Form.Select 
                     value={formData.mes}
                     onChange={(e) => setFormData(prev => ({ ...prev, mes: e.target.value }))}
-                    disabled={mesesDisponibles.length === 0}
                   >
                     <option value="">Todos</option>
-                    {mesesDisponibles.map(mes => (
-                      <option key={mes} value={mes}>{mes}</option>
-                    ))}
+                    <option value="ene">Enero</option>
+                    <option value="feb">Febrero</option>
+                    <option value="mar">Marzo</option>
+                    <option value="abr">Abril</option>
+                    <option value="may">Mayo</option>
+                    <option value="jun">Junio</option>
+                    <option value="jul">Julio</option>
+                    <option value="ago">Agosto</option>
+                    <option value="sep">Septiembre</option>
+                    <option value="oct">Octubre</option>
+                    <option value="nov">Noviembre</option>
+                    <option value="dic">Diciembre</option>
                   </Form.Select>
                 </Form.Group>
               </Col>

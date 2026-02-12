@@ -18,6 +18,17 @@ export const useReportes = (params?: { otId?: string }) => {
   });
 };
 
+// Get reportes by Equipo
+export const useReportesByEquipo = (equipoId: string, params?: { page?: number; limit?: number }) => {
+  return useQuery({
+    queryKey: ['reportes', 'equipo', equipoId, params],
+    queryFn: () => reporteService.getReportesByEquipo(equipoId, params),
+    enabled: !!equipoId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
 // Get single reporte
 export const useReporte = (id: string) => {
   return useQuery({

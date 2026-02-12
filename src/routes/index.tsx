@@ -117,6 +117,9 @@ const AppRoutes: React.FC = () => {
         <Route path="ots/new" element={<CreateOtPage />} />
         <Route path="ots/:id" element={<OtDetailPage />} />
         <Route path="ots/:id/edit" element={<OtFormPage />} />
+
+        {/* hoja de vida de equipos */}
+        <Route path="/hv-equipo/:equipoId" element={<HVEquipoPage />} />
       </Route>
 
       <Route path="*" element={<div>404 - Not Found</div>} />

@@ -41,6 +41,7 @@ export interface Reporte {
   procesado: boolean;
   fechaProcesado?: string;
   fechaMtto?: string;
+  fechaFinalizado?: string;
   responsableProcesado?: string;
   actividadesRealizadas?: ActividadRealizada[];
   hojaDeTrabajo: string; // Nuevo campo para mostrar número de hoja de trabajo o estado como 'Cerrado'

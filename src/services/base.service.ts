@@ -18,6 +18,12 @@ export class BaseService<T, CreateDto = any, UpdateDto = any> {
     return response.data;
   }
 
+  // getByIdPopulated para obtener el recurso con datos poblados (usando la ruta /:id/populated)
+  async getByIdPopulated(id: string): Promise<ApiResponse<T>> {
+    const response = await api.get<ApiResponse<T>>(`${this.endpoint}/${id}/populated`);
+    return response.data;
+  }
+
   async create(data: CreateDto): Promise<ApiResponse<T>> {
     console.log(`[${this.endpoint}] CREATE - Datos a enviar:`, data);
     logger.debug(`[${this.endpoint}] Es FormData:`, data instanceof FormData);

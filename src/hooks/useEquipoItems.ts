@@ -26,6 +26,11 @@ export const useEquipoItem = (id: string) => {
   return useQuery(['equipo-items', id], () => equipoItemService.getById(id), { enabled: !!id });
 };
 
+// servicio para utilizar la ruta equipo-item/507f1f77bcf86cd799439011/populated
+export const useEquipoItemPopulated = (id: string) => {
+  return useQuery(['equipo-items', 'populated', id], () => equipoItemService.getByIdPopulated(id), { enabled: !!id });
+}
+
 export const useCreateEquipoItem = () => {
   const qc = useQueryClient();
   return useMutation((data: CreateEquipoItemDto) => equipoItemService.create(data), {

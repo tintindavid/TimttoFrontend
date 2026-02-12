@@ -12,3 +12,4 @@ export * from './reporte.types';
 export * from './protocol.types';
 export * from './actividad.types';
 export * from './report.types';
+export * from './hvEquipo.types';
