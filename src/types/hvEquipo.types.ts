@@ -121,6 +121,9 @@ export interface HVEquipo {
   // Recomendaciones
   Recomendaciones?: string;
   
+  // Foto del equipo en HV
+  Foto?: string;
+  
   // Timestamps
   createdAt?: string;
   updatedAt?: string;
@@ -188,6 +191,7 @@ export interface CreateHVEquipoDto {
   PlanoDisponible?: boolean;
   RequiereCapacitacion?: boolean;
   Recomendaciones?: string;
+  Foto?: string;
 }
 
 export interface UpdateHVEquipoDto extends Partial<CreateHVEquipoDto> {}

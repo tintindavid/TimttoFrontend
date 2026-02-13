@@ -39,7 +39,8 @@ const ActividadFormPage: React.FC = () => {
     }
   }, [actividadResp, reset]);
 
-  if (isLoadingActividad) return <div className="d-flex justify-content-center my-4"><Spinner animation="border" /></div>;
+  // Solo mostrar spinner cuando estamos en modo edición Y cargando datos
+  if (id && isLoadingActividad) return <div className="d-flex justify-content-center my-4"><Spinner animation="border" /></div>;
 
   const title = id ? 'Editar Actividad' : 'Crear Actividad';
   const submitting = formState.isSubmitting || create.isLoading || update.isLoading;

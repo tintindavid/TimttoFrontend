@@ -16,6 +16,7 @@ import {
 } from '@/hooks/useHVEquipo';
 import { useEquipoItem, useEquipoItemPopulated } from '@/hooks/useEquipoItems';
 import { useReportesByEquipo } from '@/hooks/useReportes';
+import { hvEquipoService } from '@/services/hvEquipo.service';
 import { Reporte } from '@/types/reporte.types';
 import { CreateHVEquipoDto, UpdateHVEquipoDto } from '@/types/hvEquipo.types';
 import Swal from 'sweetalert2';
@@ -93,6 +94,7 @@ const HVEquipoPage: React.FC = () => {
         PlanoDisponible: hvEquipo.PlanoDisponible || false,
         RequiereCapacitacion: hvEquipo.RequiereCapacitacion || false,
         Recomendaciones: hvEquipo.Recomendaciones || '',
+        Foto: hvEquipo.Foto || ''
       });
     } else if (equipoInfo) {
       // Si no existe HV, inicializar con datos del equipo
@@ -108,6 +110,7 @@ const HVEquipoPage: React.FC = () => {
         ManualDisponible: false,
         PlanoDisponible: false,
         RequiereCapacitacion: false,
+        Foto: '',
       });
     }
   }, [hvEquipo, equipoInfo, equipoId]);
@@ -209,8 +212,54 @@ const HVEquipoPage: React.FC = () => {
       })) || []);
   }, [reportes]);
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (!hvEquipo?._id) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No disponible',
+        text: 'La hoja de vida debe estar guardada para generar el PDF',
+        confirmButtonText: 'Aceptar'
+      });
+      return;
+    }
+
+    if (hvEquipo.EstadoHV !== 'Aprobada') {
+      Swal.fire({
+        icon: 'warning',
+        title: 'HV no aprobada',
+        text: 'Solo se puede generar el PDF de hojas de vida aprobadas',
+        confirmButtonText: 'Aceptar'
+      });
+      return;
+    }
+
+    try {
+      Swal.fire({
+        title: 'Generando PDF...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      await hvEquipoService.downloadPDF(hvEquipo._id);
+
+      Swal.close();
+      Swal.fire({
+        icon: 'success',
+        title: '¡PDF Generado!',
+        text: 'El archivo se ha descargado correctamente',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error: any) {
+      console.error('Error al generar PDF:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'No se pudo generar el PDF de la hoja de vida',
+        confirmButtonText: 'Aceptar'
+      });
+    }
   };
 
   const handleEditHV = () => {
@@ -505,6 +554,57 @@ const HVEquipoPage: React.FC = () => {
     }));
   };
 
+  // Función para manejar la carga de foto
+  const handleFotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de archivo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Formato no válido',
+        text: 'Solo se permiten archivos JPG y PNG',
+        confirmButtonText: 'Aceptar'
+      });
+      event.target.value = ''; // Reset input
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Archivo muy grande',
+        text: 'La imagen no debe superar los 5MB',
+        confirmButtonText: 'Aceptar'
+      });
+      event.target.value = '';
+      return;
+    }
+
+    // Convertir a base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setFormData(prev => ({
+        ...prev,
+        Foto: base64String
+      }));
+    };
+    reader.onerror = () => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo cargar la imagen',
+        confirmButtonText: 'Aceptar'
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Función para manejar recomendaciones
   const handleRecomendacionesChange = (text: string) => {
     // Guardar el texto tal como está (Recomendaciones es un string en el backend)
@@ -601,9 +701,11 @@ const HVEquipoPage: React.FC = () => {
               </div>
             </div>
             <div className="action-buttons">
-              <Button variant="outline-primary" size="sm" onClick={handlePrint}>
-                <FaPrint className="me-1" /> Imprimir
-              </Button>
+              {hvEquipo && hvEquipo.EstadoHV === 'Aprobada' && (
+                <Button variant="outline-primary" size="sm" onClick={handlePrint}>
+                  <FaPrint className="me-1" /> Descargar PDF
+                </Button>
+              )}
               {!isEditingHV ? (
                 <>
                   <Button variant="primary" size="sm" onClick={handleEditHV}>
@@ -684,22 +786,64 @@ const HVEquipoPage: React.FC = () => {
 
               <div className="hv-content">
                   {/* Foto del Equipo */}
-                  {itemFoto && (
-                    <Row className="mb-4">
-                      <Col md={12} className="text-center">
-                        <Card className="shadow-sm">
-                          <Card.Body>
-                            <img 
-                              src={itemFoto} 
-                              alt={equipoInfo?.ItemId?.Nombre}
-                              className="equipo-foto"
-                              style={{ maxHeight: '300px', objectFit: 'contain' }}
-                            />
-                          </Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                  )}
+                  <Row className="mb-4">
+                    <Col md={12} className="text-center">
+                      <Card className="shadow-sm">
+                        <Card.Header className="bg-light">
+                          <h6 className="mb-0">📷 Foto del Equipo</h6>
+                        </Card.Header>
+                        <Card.Body>
+                          {isEditingHV ? (
+                            <>
+                              {/* Vista de edición */}
+                              <div className="mb-3">
+                                {(formData.Foto || hvEquipo?.Foto || itemFoto) && (
+                                  <div className="mb-3">
+                                    <img 
+                                      src={formData.Foto || hvEquipo?.Foto || itemFoto} 
+                                      alt="Equipo"
+                                      className="equipo-foto"
+                                      style={{ maxHeight: '300px', maxWidth: '100%', objectFit: 'contain' }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <Form.Group>
+                                <Form.Label>
+                                  {formData.Foto || hvEquipo?.Foto ? 'Cambiar foto' : 'Cargar foto'}
+                                </Form.Label>
+                                <Form.Control
+                                  type="file"
+                                  accept=".jpg,.jpeg,.png"
+                                  onChange={handleFotoChange}
+                                  size="sm"
+                                />
+                                <Form.Text className="text-muted">
+                                  Solo archivos JPG o PNG. Tamaño máximo: 5MB
+                                </Form.Text>
+                              </Form.Group>
+                            </>
+                          ) : (
+                            /* Vista de solo lectura */
+                            <>
+                              {(hvEquipo?.Foto || itemFoto) ? (
+                                <img 
+                                  src={hvEquipo?.Foto || itemFoto} 
+                                  alt={equipoInfo?.ItemId?.Nombre || 'Equipo'}
+                                  className="equipo-foto"
+                                  style={{ maxHeight: '300px', maxWidth: '100%', objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <Alert variant="secondary" className="mb-0">
+                                  No hay foto disponible para este equipo
+                                </Alert>
+                              )}
+                            </>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  </Row>
 
                   {/* Identificación de la Institución */}
                   <div className="hv-section">
