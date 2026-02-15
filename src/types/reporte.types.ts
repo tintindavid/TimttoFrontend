@@ -35,6 +35,8 @@ export interface Reporte {
     ServicioId?: string;
     Sede?: string;
     Servicio?: string;
+    Riesgo?: string;
+    Invima?: string;
     mesesMtto?: string[];
   };
   estado: 'Pendiente' | 'En_Progreso' | 'Cerrado' | 'Cancelado' | 'Procesado';

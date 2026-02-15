@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog } from 'react-icons/fa';
+import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
 import './Sidebar.css';
 
@@ -34,6 +34,7 @@ const menu: MenuItem[] = [
       { id: 'ots-new', label: 'Crear OT', path: '/maintenance-orders/new' },
     ],
   },
+  { id: 'cronogramas', label: 'Cronogramas', path: '/cronogramas', icon: <FaCalendarAlt /> },
   { id: 'customers', label: 'Clientes', path: '/customers', icon: <FaBuilding /> },
   { id: 'users', label: 'Usuarios', path: '/users', icon: <FaUsers /> },
   { id: 'reports', label: 'Reportes', path: '/reports', icon: <FaFilePdf /> },

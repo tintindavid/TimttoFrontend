@@ -22,7 +22,7 @@ interface EditEquipoModalProps {
         ProtocoloId?: string
     };
   };
-  reporteId: string;
+  reporteId: string | undefined;
   onSuccess?: () => void;
 }
 
@@ -30,7 +30,7 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
   show, 
   onHide, 
   equipo,
-  reporteId,
+  reporteId = undefined,
   onSuccess 
 }) => {
     
@@ -39,6 +39,8 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
     const { data: sedesData } = useSedesByCustomer(equipo?.ClienteId || '', {}, {
         enabled: shouldLoadContext
     });
+
+    console.log('reporteId:', reporteId);
     
     const { data: serviciosData } = useServiciosByCustomer(equipo?.ClienteId || '', {}, {
         enabled: shouldLoadContext
@@ -52,7 +54,6 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
     const sedes = useMemo(() => sedesData?.data || [], [sedesData?.data]);
     const servicios = useMemo(() => serviciosData?.data || [], [serviciosData?.data]);  
 
-    
     const [formData, setFormData] = useState({
         reportId: reporteId,
         ItemId: typeof equipoData?.data.ItemId === 'string'
@@ -69,6 +70,8 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
         Servicio: typeof equipoData?.data.Servicio === 'string'
             ? equipoData.data.Servicio
             : (equipoData?.data.Servicio as any)?._id || '',
+        Riesgo: equipoData?.data.Riesgo || '',
+        Invima: equipoData?.data.Invima || '',
         mesesMtto: equipoData?.data.mesesMtto || [],
     });
 
@@ -103,8 +106,16 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
 
     setUpdating(true);
     try {
-      await equipoItemService.updateSnapshot(equipo._id, formData);
-      
+      // Si hay reporteId, actualizar snapshot (para reportes)
+      // Si NO hay reporteId, actualizar equipo directamente (para cronogramas, etc.)
+      if (reporteId && reporteId.trim()) {
+        await equipoItemService.updateSnapshot(equipo._id, formData);
+      } else {
+        // Para actualización normal, no enviar reportId
+        const { reportId, ...updateData } = formData;
+        await equipoItemService.update(equipo._id, updateData);
+      }
+       
       // Mostrar alerta de éxito
       await Swal.fire({
         icon: 'success',
@@ -164,6 +175,8 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
             Servicio: typeof equipoData?.data.Servicio === 'string'
                 ? equipoData.data.Servicio  
                 : (equipoData?.data.Servicio as any)?._id || '',
+            Riesgo: equipoData?.data.Riesgo || '',
+            Invima: equipoData?.data.Invima || '',
             mesesMtto: equipoData?.data.mesesMtto || [],
         });
     }
@@ -364,6 +377,40 @@ const meses = [
                     Ubicación específica del equipo en la institución
                   </Form.Text>
                 </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={6}> {/* Campos adicionales como Riesgo II, IIA, etc riesgo medico debe ser un select*/} 
+                <Form.Group className="mb-3">
+                  <Form.Label>Nivel de Riesgo</Form.Label>
+                  <Form.Select
+                    value={formData.Riesgo}
+                    onChange={(e) => handleChange('Riesgo', e.target.value)}
+                    disabled={updating}
+                  >
+                    <option value="">Seleccionar nivel de riesgo...</option>
+                    <option value="I">I</option>
+                    <option value="II">IIA</option>
+                    <option value="III">IIB</option>
+                    <option value="IV">III</option>
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Nivel de riesgo médico del equipo (si aplica)
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+
+              <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Invima</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={formData.Invima}
+                        onChange={(e) => handleChange('Invima', e.target.value)}
+                        placeholder="Número de registro Invima"
+                        disabled={updating}
+                      />
+                    </Form.Group>
               </Col>
             </Row>
           </div>

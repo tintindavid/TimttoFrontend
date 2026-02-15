@@ -1,0 +1,353 @@
+/* ============================================
+   CRONOGRAMAS DE MANTENIMIENTO - ESTILOS
+   ============================================ */
+
+/* Página principal */
+.cronogramas-page {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.cronogramas-page .page-header h1 {
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+/* Tabs personalizados */
+.cronogramas-page .nav-tabs {
+  border-bottom: 2px solid #dee2e6;
+}
+
+.cronogramas-page .nav-tabs .nav-link {
+  color: #6c757d;
+  font-weight: 500;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.cronogramas-page .nav-tabs .nav-link:hover {
+  color: #0d6efd;
+  border-bottom-color: rgba(13, 110, 253, 0.3);
+  background-color: transparent;
+}
+
+.cronogramas-page .nav-tabs .nav-link.active {
+  color: #0d6efd;
+  background-color: transparent;
+  border-bottom-color: #0d6efd;
+}
+
+/* ============================================
+   COMPONENTES DE CRONOGRAMA
+   ============================================ */
+
+/* Cards de estadísticas */
+.stats-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+/* Grid del cronograma */
+.cronograma-grid-container {
+  max-width: 100%;
+  overflow-x: auto;
+  position: relative;
+}
+
+.cronograma-grid {
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  min-width: 100%;
+}
+
+.cronograma-grid thead th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.813rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.75rem 0.5rem;
+  vertical-align: middle;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.cronograma-grid thead th.mes-header {
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+}
+
+.cronograma-grid tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.cronograma-grid tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.05);
+}
+
+.cronograma-grid tbody tr.table-active {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.cronograma-grid tbody td {
+  padding: 0.625rem 0.5rem;
+  vertical-align: middle;
+}
+
+.cronograma-grid tbody td small {
+  font-size: 0.813rem;
+}
+
+.cronograma-grid .mes-cell {
+  padding: 0.5rem 0.25rem;
+  background-color: #fff;
+  transition: background-color 0.2s ease;
+}
+
+.cronograma-grid .mes-cell.tiene-mtto {
+  background-color: rgba(40, 167, 69, 0.15);
+}
+
+.cronograma-grid .mes-cell.tiene-mtto:hover {
+  background-color: rgba(40, 167, 69, 0.25);
+}
+
+/* Grupos de servicio */
+.cronograma-grid .grupo-row td.grupo {
+  background-color: #e5e7eb;
+  font-weight: bold;
+  text-align: left;
+  font-size: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  color: #374151;
+}
+
+.cronograma-grid .grupo-row:hover {
+  background-color: rgba(0, 123, 255, 0);
+}
+
+/* Badges personalizados */
+.badge-sm {
+  font-size: 0.688rem;
+  padding: 0.25rem 0.5rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   FILTROS
+   ============================================ */
+
+.cronograma-filtros {
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 0.375rem;
+}
+
+/* React Select customization */
+.react-select-container {
+  font-size: 0.875rem;
+}
+
+.react-select__control {
+  border-color: #ced4da;
+  min-height: 38px;
+  font-size: 0.875rem;
+}
+
+.react-select__control:hover {
+  border-color: #86b7fe;
+}
+
+.react-select__control--is-focused {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.react-select__menu {
+  font-size: 0.875rem;
+  z-index: 1050;
+}
+
+.react-select__multi-value {
+  background-color: #e7f1ff;
+  border-radius: 0.25rem;
+}
+
+.react-select__multi-value__label {
+  color: #0d6efd;
+  font-size: 0.813rem;
+}
+
+.react-select__multi-value__remove:hover {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.react-select__placeholder {
+  color: #6c757d;
+}
+
+/* ============================================
+   ACCIONES
+   ============================================ */
+
+.cronograma-acciones {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1200px) {
+  .cronograma-grid thead th,
+  .cronograma-grid tbody td {
+    padding: 0.5rem 0.375rem;
+    font-size: 0.75rem;
+  }
+
+  .stats-icon {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cronogramas-page {
+    padding: 0.5rem !important;
+  }
+
+  .cronograma-grid thead th,
+  .cronograma-grid tbody td {
+    padding: 0.375rem 0.25rem;
+    font-size: 0.688rem;
+  }
+
+  .cronograma-grid thead th.mes-header {
+    padding: 0.375rem 0.125rem;
+  }
+
+  .stats-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .cronograma-acciones {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .cronograma-acciones > * {
+    width: 100%;
+  }
+}
+
+/* ============================================
+   ANIMACIONES
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cronograma-grid tbody tr {
+  animation: fadeIn 0.3s ease;
+}
+
+/* ============================================
+   IMPRESIÓN
+   ============================================ */
+
+@media print {
+  .cronograma-acciones,
+  .cronograma-filtros,
+  .pagination,
+  .btn,
+  .nav-tabs {
+    display: none !important;
+  }
+
+  .cronograma-grid {
+    font-size: 8pt;
+  }
+
+  .cronograma-grid thead th {
+    background-color: #f8f9fa !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .cronograma-grid .grupo-row td.grupo {
+    background-color: #e5e7eb !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    page-break-inside: avoid;
+    page-break-after: avoid;
+  }
+
+  .cronograma-grid .grupo-row + tr {
+    page-break-before: avoid;
+  }
+
+  .cronograma-grid .mes-cell.tiene-mtto {
+    background-color: rgba(40, 167, 69, 0.3) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ============================================
+   UTILIDADES
+   ============================================ */
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Scrollbar personalizado */
+.cronograma-grid-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.cronograma-grid-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.cronograma-grid-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.cronograma-grid-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

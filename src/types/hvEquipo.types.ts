@@ -2,6 +2,8 @@
 
 export interface HVEquipo {
   _id?: string;
+  Descripcion?: string;
+  CiudadProveedor?: string;
   clienteId: string | {
     _id: string;
     Razonsocial: string;
@@ -108,10 +110,13 @@ export interface HVEquipo {
   CargoResponsableTécnico?: string;
   
   // Aprobación
+  UserIdAprobacion?: string;
   UserAprobacion?: string;
   CargoUserAprobacion?: string;
+  FirmAprobacion?: string;
   FechaAprobacion?: string;
   
+      
   // Observaciones y recomendaciones
   Observaciones?: string;
   ManualDisponible?: boolean;
@@ -152,9 +157,11 @@ export interface CreateHVEquipoDto {
     Sede?: string;
     MesesMtto?: string[];
   };
+  userIdCreacion?: string;
   Accesorios?: Accesorio[];
   TecnologiaPredominante?: string;
   EstadoHV?: 'Guardada' | 'Aprobada';
+  Descripcion?: string;
   Fabricante?: string;
   FechaAdquisicin?: string;
   FechaInstalacion?: string;
@@ -178,13 +185,16 @@ export interface CreateHVEquipoDto {
   TemperaturaOperacion?: string;
   HumedadOperacion?: string;
   NombreProveedor?: string;
+  CiudadProveedor?: string;
   TelefonoProveedor?: string;
   EmailProveedor?: string;
   DireccionProveedor?: string;
   ResponsableTécnico?: string;
   CargoResponsableTécnico?: string;
+  UserIdAprobacion?: string;
   UserAprobacion?: string;
   CargoUserAprobacion?: string;
+  FirmAprobacion?: string;
   FechaAprobacion?: string;
   Observaciones?: string;
   ManualDisponible?: boolean;

@@ -34,6 +34,7 @@ import ActividadesPage from '@/pages/Actividades/ActividadesPage';
 import ItemsPage from '@/pages/Items/ItemsPage';
 import ItemFormPage from '@/pages/Items/ItemFormPage';
 import ItemDetailPage from '@/pages/Items/ItemDetailPage';
+import CronogramasPage from '@/pages/Cronogramas/CronogramasPage';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -74,6 +75,9 @@ const AppRoutes: React.FC = () => {
         <Route path="maintenance-orders/create" element={<CreateOtPage />} />
         <Route path="maintenance-orders/:id" element={<OtDetailPage />} />
         <Route path="maintenance-orders/:id/edit" element={<OtFormPage />} />
+
+        {/* cronogramas */}
+        <Route path="cronogramas" element={<CronogramasPage />} />
 
         {/* customers, reports, protocols, settings, hv-equipo */}
         <Route path="customers" element={<CustomersPage />} />

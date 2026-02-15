@@ -50,6 +50,16 @@ const ItemFormPage: React.FC = () => {
             </Form.Group>
 
             <Form.Group className="mb-3">
+              <Form.Label>Precio</Form.Label>
+              <Form.Control 
+                type="number"
+                step="1000"
+                {...register('Precio')} 
+                placeholder="Precio del item"
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
               <Form.Label>IVA Incluido</Form.Label>
               <Form.Check 
                 type="checkbox"
@@ -64,16 +74,6 @@ const ItemFormPage: React.FC = () => {
                 step="1"
                 {...register('Iva')} 
                 placeholder="IVA del item"
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Precio</Form.Label>
-              <Form.Control 
-                type="number"
-                step="1000"
-                {...register('Precio')} 
-                placeholder="Precio del item"
               />
             </Form.Group>
 

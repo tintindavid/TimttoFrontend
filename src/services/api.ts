@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import { toast } from 'react-toastify';
 import { ApiErrorResponse } from '@/types/api.types';
+import { getUserIdFromToken } from '@/utils/token';
 
 // Default to backend base URL for all environments per backend contract
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
@@ -11,11 +12,17 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-// Request interceptor: attach token and tenant header
+// Request interceptor: attach token, tenant, and userId headers
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
+    
+    // Extraer userId del token JWT
+    const userId = getUserIdFromToken(token);
+    if (userId) {
+      config.headers['x-user-id'] = userId;
+    }
   }
 
   const tenant = localStorage.getItem('tenantId');

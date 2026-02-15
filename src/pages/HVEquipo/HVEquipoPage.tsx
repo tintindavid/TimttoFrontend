@@ -8,6 +8,7 @@ import {
   FaFileAlt, FaHistory, FaExchangeAlt, FaTools, FaCog,
   FaPrint, FaEdit, FaSave, FaCheck, FaTimes, FaClipboardList, FaMagic, FaPlus
 } from 'react-icons/fa';
+import { useAuth } from '@/context/AuthContext';
 import { 
   useHVEquipoByEquipoId, 
   useHVEquiposByMarcaModelo,
@@ -21,10 +22,16 @@ import { Reporte } from '@/types/reporte.types';
 import { CreateHVEquipoDto, UpdateHVEquipoDto } from '@/types/hvEquipo.types';
 import Swal from 'sweetalert2';
 import './HVEquipoPage.css';
+import { useCurrentUserData } from '@/context/userContext';
 
 const HVEquipoPage: React.FC = () => {
   const { equipoId } = useParams<{ equipoId: string }>();
   const navigate = useNavigate();
+  const user = useCurrentUserData()
+
+  console.log('usuario en HVEquipoPage:', user);
+
+  
   
   const [activeTab, setActiveTab] = useState<string>('hoja-vida');
   const [isEditingHV, setIsEditingHV] = useState(false);
@@ -94,7 +101,9 @@ const HVEquipoPage: React.FC = () => {
         PlanoDisponible: hvEquipo.PlanoDisponible || false,
         RequiereCapacitacion: hvEquipo.RequiereCapacitacion || false,
         Recomendaciones: hvEquipo.Recomendaciones || '',
-        Foto: hvEquipo.Foto || ''
+        Foto: hvEquipo.Foto || '',
+        CiudadProveedor: hvEquipo.CiudadProveedor || '',
+        Descripcion: hvEquipo.Descripcion || '',
       });
     } else if (equipoInfo) {
       // Si no existe HV, inicializar con datos del equipo
@@ -415,8 +424,11 @@ const HVEquipoPage: React.FC = () => {
           data: dataToSave as UpdateHVEquipoDto
         });
       } else {
-        // Crear nueva HV
-        await createHVMutation.mutateAsync(dataToSave as CreateHVEquipoDto);
+        // Crear nueva HV - Agregar userIdCreacion
+        await createHVMutation.mutateAsync({
+          ...dataToSave,
+          userIdCreacion: user?._id || ''
+        } as CreateHVEquipoDto);
       }
 
       await Swal.fire({
@@ -485,12 +497,29 @@ const HVEquipoPage: React.FC = () => {
           MesesMtto: equipoInfo.mesesMtto || []
         } : undefined;
 
+        // Obtener nombre del usuario para aprobación
+        const nombreUsuario = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Usuario';
+        
+        // Mapear role a un cargo más descriptivo
+        const roleToCargo: Record<string, string> = {
+          'admin': 'Administrador',
+          'technician': 'Técnico',
+          'user': 'Usuario'
+        };
+        const cargoUsuario = user?.role ? roleToCargo[user.role] || user.role : 'N/A';
+
         await updateHVMutation.mutateAsync({
           id: hvEquipo._id,
           data: { 
             ...formData, 
             EstadoHV: 'Aprobada',
-            equipoSnapshot 
+            equipoSnapshot,
+            // Campos de aprobación
+            UserIdAprobacion: user?._id || '',
+            UserAprobacion: nombreUsuario,
+            CargoUserAprobacion: cargoUsuario,
+            FirmAprobacion: user?.fileFirma || '',
+            FechaAprobacion: new Date().toISOString()
           } as UpdateHVEquipoDto
         });
 
@@ -953,6 +982,24 @@ const HVEquipoPage: React.FC = () => {
                         </div>
                       </Col>
                     </Row>
+                    <Row>  {/* Campo de descripción que no viene de la hoja de vida y debe ser editable*/}
+                      <Col md={12}>
+                        <div className="field-group">
+                          <label>Descripción:</label>
+                          {isEditingHV ? (
+                            <Form.Control
+                              type="text"
+                              value={formData.Descripcion || ''}
+                              onChange={(e) => handleFieldChange('Descripcion', e.target.value)}
+                              size="sm"
+                              placeholder="Descripción"
+                            />
+                          ) : (
+                            <div className="field-value">{hvEquipo?.Descripcion || 'N/A'}</div>
+                          )}
+                        </div>
+                      </Col>
+                    </Row>
                   </div>
 
                   {/* Proveedor */}
@@ -1009,7 +1056,23 @@ const HVEquipoPage: React.FC = () => {
                       </Col>
                     </Row>
                     <Row>
-                      <Col md={12}>
+                      <Col md={6}>
+                        <div className="field-group">
+                          <label>Ciudad :</label>
+                          {isEditingHV ? (
+                            <Form.Control
+                              type="text"
+                              value={formData.CiudadProveedor || ''}
+                              onChange={(e) => handleFieldChange('CiudadProveedor', e.target.value)}
+                              size="sm"
+                              placeholder="Ciudad del proveedor"
+                            />
+                          ) : (
+                            <div className="field-value">{hvEquipo?.CiudadProveedor || 'N/A'}</div>
+                          )}
+                        </div>
+                      </Col>
+                      <Col md={6}>
                         <div className="field-group">
                           <label>Dirección:</label>
                           {isEditingHV ? (
@@ -1297,7 +1360,7 @@ const HVEquipoPage: React.FC = () => {
                       <Row className="mt-2">
                         <Col md={4}>
                           <div className="field-group">
-                            <label>Autonomía Batería:</label>
+                            <label>Autonomía Batería (horas):</label>
                             {isEditingHV ? (
                               <Form.Control
                                 type="text"

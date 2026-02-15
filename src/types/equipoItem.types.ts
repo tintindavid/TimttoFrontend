@@ -3,6 +3,7 @@ export interface EquipoItem {
   item?: string;
   ClienteId?: string;
   Estado?: string;
+  EstadoOperativo?: string;
   ItemId?: {
     _id: string;
     Nombre?: string;
@@ -27,6 +28,8 @@ export interface EquipoItem {
   createdAt?: string;
   updatedAt?: string;
   Precio?: number;
+  Riesgo?: string;
+  Invima?: string;
 }
 
 export interface CreateEquipoItemDto {
@@ -41,6 +44,7 @@ export interface CreateEquipoItemDto {
   Ubicacion?: string;
   Modelo?: string;
   Estado?: string;
+  EstadoOperativo?: string;
   mesesMtto?: string[];
   Riesgo?: string;
   Invima?: string;
@@ -57,6 +61,9 @@ export interface UpdateEquipoItemDto {
   Modelo?: string;
   Ubicacion?: string;
   Estado?: string;
+  EstadoOperativo?: string;
   mesesMtto?: string[];
   Precio?: number;
+  Riesgo?: string;
+  Invima?: string;
 }

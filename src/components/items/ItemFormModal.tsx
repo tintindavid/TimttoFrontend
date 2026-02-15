@@ -20,13 +20,12 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
       Nombre: '', 
       Observacion: '', 
       ProtocoloId: '',
-      Iva: '',
+      Iva: 19,
       IvaIncluido: false,
-      Precio: ''
+      Precio: 0
     } 
   });
 
-  console.log('register', register);
   const onSubmit = async (values: any) => {
     try {  
       await create.mutateAsync(values);
@@ -76,7 +75,7 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
             <Form.Control 
               type="number"
               step="1"
-              {...register('Iva')} 
+              {...register('Iva', { valueAsNumber: true })} 
               placeholder="IVA del item"
               disabled={formState.isSubmitting}
             />
@@ -95,7 +94,7 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
             <Form.Control 
               type="number"
               step="1000"
-              {...register('Precio')} 
+              {...register('Precio', { valueAsNumber: true })} 
               placeholder="Precio del item"
               disabled={formState.isSubmitting}
             />
@@ -186,7 +185,7 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
               <Form.Control 
                 type="number"
                 step="0.01"
-                {...register('Iva')} 
+                {...register('Iva', { valueAsNumber: true })} 
                 placeholder="IVA del item"
                 disabled={formState.isSubmitting}
               />
@@ -206,7 +205,7 @@ const ItemFormModal: React.FC<ItemFormModalProps> = ({ show, onHide, onSuccess }
               <Form.Control 
                 type="number"
                 step="0.01"
-                {...register('Precio')} 
+                {...register('Precio', { valueAsNumber: true })} 
                 placeholder="Precio del item"
                 disabled={formState.isSubmitting}
               />
