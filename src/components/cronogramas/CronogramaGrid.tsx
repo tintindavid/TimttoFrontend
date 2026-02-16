@@ -118,10 +118,11 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
                     </td>
                     <td>
                       <small>
-                        {typeof equipo.Servicio === 'object' 
-                          ? (equipo.Servicio?.nombre || '-') 
-                          : (equipo.Servicio || '-')
-                        } {equipo.Ubicacion || '-'}
+                        {/*Siempre viene equipo.Servicio?.nombre  */}
+                        {typeof equipo.Servicio === 'object' && equipo.Servicio?.nombre !== 'Principal'? 
+                          equipo.Servicio?.nombre? equipo.Servicio?.nombre + ' - ' + equipo.Ubicacion : equipo.Ubicacion
+                           : equipo.Ubicacion || '-'  
+                        }
                       </small>
                     </td>
                     <td>
