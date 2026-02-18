@@ -41,20 +41,20 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
 
   return (
     <div className="cronograma-grid-container">
-      <Table bordered hover responsive className="cronograma-grid">
-        <thead className="table-light sticky-top">
+      <Table bordered hover className="cronograma-grid">
+        <thead className="table-light">
           <tr>
             {mostrarCheckboxes && <th style={{ width: '40px' }}></th>}
-            <th style={{ minWidth: '150px' }}>Item</th>
-            <th style={{ minWidth: '120px' }}>Marca</th>
-            <th style={{ minWidth: '120px' }}>Modelo</th>
-            <th style={{ minWidth: '100px' }}>Serie</th>
-            <th style={{ minWidth: '100px' }}>Inventario</th>
-            <th style={{ minWidth: '120px' }}>Ubicación</th>
-            <th style={{ minWidth: '80px' }}>Estado</th>
-            <th style={{ minWidth: '80px' }}>Riesgo</th>
+            <th style={{ minWidth: '130px' }}>Item</th>
+            <th style={{ minWidth: '100px' }}>Marca</th>
+            <th style={{ minWidth: '90px' }}>Modelo</th>
+            <th style={{ minWidth: '90px' }}>Serie</th>
+            <th style={{ minWidth: '80px' }}>Inventario</th>
+            <th style={{ minWidth: '100px' }}>Ubicación</th>
+            <th style={{ minWidth: '60px' }}>Estado</th>
+            <th style={{ minWidth: '60px' }}>Riesgo</th>
             <th style={{ minWidth: '80px'}}>Invima</th>
-            {onEditEquipo && <th style={{ width: '80px', textAlign: 'center' }}>Acciones</th>}
+            {onEditEquipo && <th style={{ width: '60px', textAlign: 'center' }}>Edit</th>}
 
             {MESES.map(mes => (
               <th key={mes} className="text-center mes-header" style={{ width: '50px' }}>

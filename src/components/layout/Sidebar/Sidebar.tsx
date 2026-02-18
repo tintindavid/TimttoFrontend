@@ -37,9 +37,6 @@ const menu: MenuItem[] = [
   { id: 'cronogramas', label: 'Cronogramas', path: '/cronogramas', icon: <FaCalendarAlt /> },
   { id: 'customers', label: 'Clientes', path: '/customers', icon: <FaBuilding /> },
   { id: 'users', label: 'Usuarios', path: '/users', icon: <FaUsers /> },
-  { id: 'reports', label: 'Reportes', path: '/reports', icon: <FaFilePdf /> },
-  { id: 'protocols', label: 'Protocolos', path: '/protocols', icon: <FaClipboardList /> },
-  { id: 'tenants', label: 'Tenants', path: '/tenants', icon: <FaBuilding /> },
   { id: 'settings', label: 'Configuración', path: '/settings', icon: <FaCog /> },
 ];
 

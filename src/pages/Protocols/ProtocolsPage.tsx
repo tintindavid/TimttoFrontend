@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Container,
   Card,
@@ -10,8 +10,10 @@ import {
   Table,
   Badge,
   Dropdown,
-  Form
+  Form,
+  InputGroup
 } from 'react-bootstrap';
+import { FaSearch, FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useProtocols, useDeleteProtocol } from '@/hooks/useProtocols';
 import { ProtocolMtto } from '@/types/protocol.types';
@@ -23,16 +25,48 @@ const ProtocolsPage: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProtocol, setSelectedProtocol] = useState<ProtocolMtto | null>(null);
 
   const { data, isLoading, error } = useProtocols({
     page,
-    limit: 10,
-    search: searchTerm
+    limit: 10
   });
 
   const deleteMutation = useDeleteProtocol();
+
+  // Extraer datos y ordenar ANTES de los returns tempranos
+  const protocols = data?.data ?? [];
+  const totalPages = data?.pagination?.pages ?? 1;
+  
+  // Filtrar y ordenar protocolos
+  const filteredAndSortedProtocols = useMemo(() => {
+    let result = [...protocols];
+    
+    // Filtrar por búsqueda (nombre o descripción)
+    if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
+      result = result.filter(protocol => 
+        protocol.nombre?.toLowerCase().includes(query) ||
+        protocol.Descripcion?.toLowerCase().includes(query)
+      );
+    }
+    
+    // Ordenar por nombre
+    result.sort((a, b) => {
+      const nameA = a.nombre?.toUpperCase() || '';
+      const nameB = b.nombre?.toUpperCase() || '';
+      
+      if (sortOrder === 'asc') {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    });
+    
+    return result;
+  }, [protocols, searchTerm, sortOrder]);
 
   const handleDelete = async () => {
     if (!selectedProtocol?._id) return;
@@ -67,9 +101,6 @@ const ProtocolsPage: React.FC = () => {
     );
   }
 
-  const protocols = data?.data ?? [];
-  const totalPages = data?.pagination?.pages ?? 1;
-
   return (
     <Container>
       <Row className="align-items-center mb-4">
@@ -92,38 +123,65 @@ const ProtocolsPage: React.FC = () => {
 
       <Row className="mb-3">
         <Col md={6}>
-          <Form.Control
-            type="text"
-            placeholder="Buscar protocolos por nombre..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setPage(1);
-            }}
-          />
+          <InputGroup>
+            <InputGroup.Text>
+              <FaSearch />
+            </InputGroup.Text>
+            <Form.Control
+              type="text"
+              placeholder="Buscar protocolos por nombre o descripción..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </InputGroup>
         </Col>
-        <Col md={6} className="d-flex justify-content-end align-items-center">
+        <Col md={3}>
+          <InputGroup>
+            <InputGroup.Text>
+              {sortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
+            </InputGroup.Text>
+            <Form.Select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+            >
+              <option value="asc">A-Z (Ascendente)</option>
+              <option value="desc">Z-A (Descendente)</option>
+            </Form.Select>
+          </InputGroup>
+        </Col>
+        <Col md={3} className="d-flex justify-content-end align-items-center">
           <Badge bg="info" className="fs-6">
-            {protocols.length} protocolo{protocols.length !== 1 ? 's' : ''}
+            {filteredAndSortedProtocols.length} de {protocols.length} protocolo{protocols.length !== 1 ? 's' : ''}
           </Badge>
         </Col>
       </Row>
 
       <Card className="tt-card">
         <Card.Body className="p-0">
-          {protocols.length === 0 ? (
+          {filteredAndSortedProtocols.length === 0 ? (
             <div className="text-center py-5">
               <Alert variant="info" className="mx-4">
-                <h5>No hay protocolos disponibles</h5>
-                <p className="mb-3">
-                  Crea tu primer protocolo para comenzar.
-                </p>
-                <Button
-                  variant="primary"
-                  onClick={() => navigate('/protocols/new')}
-                >
-                  Crear Protocolo
-                </Button>
+                {searchTerm ? (
+                  <>
+                    <h5>No se encontraron protocolos</h5>
+                    <p className="mb-0">
+                      No hay protocolos que coincidan con "{searchTerm}"
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h5>No hay protocolos disponibles</h5>
+                    <p className="mb-3">
+                      Crea tu primer protocolo para comenzar.
+                    </p>
+                    <Button
+                      variant="primary"
+                      onClick={() => navigate('/protocols/new')}
+                    >
+                      Crear Protocolo
+                    </Button>
+                  </>
+                )}
               </Alert>
             </div>
           ) : (
@@ -142,7 +200,7 @@ const ProtocolsPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {protocols.map((protocol) => (
+                    {filteredAndSortedProtocols.map((protocol) => (
                       <tr key={protocol._id}>
                         <td>
                           <strong>{protocol.nombre}</strong>

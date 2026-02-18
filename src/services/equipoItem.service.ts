@@ -13,6 +13,12 @@ class EquipoItemService extends BaseService<EquipoItem, CreateEquipoItemDto, Upd
     return response;
   }
 
+  // Obtener equipos por mes con jerarquía Cliente → Servicio → Sede → Equipos
+  async getByMes(mes: string) {
+    const response = await api.get(`/equipo-items/mes/${mes.toLowerCase()}`);
+    return response.data;
+  }
+
   // Actualizar snapshot del equipo desde un reporte
   async updateSnapshot(equipoId: string, data: any) {
     const response = await api.put(`/equipo-items/${equipoId}/snapshot`, {

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Button, Table, Badge, Row, Col, 
-  Spinner, Alert, Dropdown, Form, Card, Nav, Tab 
+  Spinner, Alert, Dropdown, Form, Card, Nav, Tab, InputGroup 
 } from 'react-bootstrap';
+import { FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
@@ -21,29 +22,26 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sedeFilter, setSedeFilter] = useState<string>('');
   const [servicioFilter, setServicioFilter] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [activeTab, setActiveTab] = useState<'list' | 'create' | 'bulk'>('list');
   const [page, setPage] = useState(1);
   const [limit] = useState(20); // Items por página
 
   const navigate = useNavigate();
 
-  // Parámetros de query memoizados para evitar re-queries innecesarias
+  // Parámetros de query - solo para paginación, filtros en cliente
   const queryParams = useMemo(() => {
     if (!customerId) return null;
     
     const params = {
       ClienteId: customerId,
-      page,
-      limit,
-      ...(searchTerm && { search: searchTerm }),
-      ...(statusFilter && { Estado: statusFilter }),
-      ...(sedeFilter && { SedeId: sedeFilter }),
-      ...(servicioFilter && { Servicio: servicioFilter })
+      page: 1, // Cargar todos en página 1
+      limit: 1000 // Límite alto para traer todos los equipos
     };
     
     console.log('🔍 Query Params construidos:', params);
     return params;
-  }, [customerId, page, limit, searchTerm, statusFilter, sedeFilter, servicioFilter]);
+  }, [customerId]);
 
   // Queries optimizadas con enabled condicional
   const { data: equiposData, isLoading, error, refetch } = useEquipoItems(queryParams);
@@ -58,12 +56,67 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   });
 
   // Datos procesados y memoizados
-  const equipos = useMemo(() => equiposData?.data || [], [equiposData?.data]);
-  const pagination = equiposData?.pagination;
+  const equiposRaw = useMemo(() => equiposData?.data || [], [equiposData?.data]);
 
-  console.log('equiposData', equipos);
+  console.log('equiposData', equiposRaw);
   const sedes = useMemo(() => sedesData?.data || [], [sedesData?.data]); 
   const servicios = useMemo(() => serviciosData?.data || [], [serviciosData?.data]);
+
+  // Filtrado y ordenamiento en cliente
+  const filteredAndSortedEquipos = useMemo(() => {
+    let result = [...equiposRaw];
+
+    // Filtrar por búsqueda (nombre, marca, modelo, serie, inventario)
+    if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
+      result = result.filter(equipo => 
+        equipo.ItemId?.Nombre?.toLowerCase().includes(query) ||
+        equipo.Marca?.toLowerCase().includes(query) ||
+        equipo.Modelo?.toLowerCase().includes(query) ||
+        equipo.Serie?.toLowerCase().includes(query) ||
+        equipo.Inventario?.toLowerCase().includes(query)
+      );
+    }
+
+    // Filtrar por estado
+    if (statusFilter) {
+      result = result.filter(equipo => equipo.Estado === statusFilter);
+    }
+
+    // Filtrar por sede
+    if (sedeFilter) {
+      result = result.filter(equipo => equipo.SedeId?._id === sedeFilter);
+    }
+
+    // Filtrar por servicio
+    if (servicioFilter) {
+      result = result.filter(equipo => equipo.Servicio?._id === servicioFilter);
+    }
+
+    // Ordenar por nombre del equipo (ItemId.Nombre)
+    result.sort((a, b) => {
+      const nameA = a.ItemId?.Nombre?.toUpperCase() || '';
+      const nameB = b.ItemId?.Nombre?.toUpperCase() || '';
+      
+      if (sortOrder === 'asc') {
+        return nameA.localeCompare(nameB);
+      } else {
+        return nameB.localeCompare(nameA);
+      }
+    });
+
+    return result;
+  }, [equiposRaw, searchTerm, statusFilter, sedeFilter, servicioFilter, sortOrder]);
+
+  // Paginación manual en cliente
+  const paginatedEquipos = useMemo(() => {
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    return filteredAndSortedEquipos.slice(startIndex, endIndex);
+  }, [filteredAndSortedEquipos, page, limit]);
+
+  const totalPages = Math.ceil(filteredAndSortedEquipos.length / limit);
+  const totalEquipos = filteredAndSortedEquipos.length;
 
   // Event handlers optimizados con useCallback
   const handleTabChange = useCallback((tab: string) => {
@@ -91,11 +144,12 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
     setStatusFilter('');
     setSedeFilter('');
     setServicioFilter('');
+    setSortOrder('asc');
     setPage(1); // Reset a página 1 al limpiar filtros
   }, []);
 
   // Early return para loading state
-  if (isLoading && !equipos.length) {
+  if (isLoading && !equiposRaw.length) {
     return (
       <div className="p-4 text-center">
         <Spinner animation="border" role="status">
@@ -122,7 +176,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
             active={activeTab === 'list'} 
             onClick={() => handleTabChange('list')}
           >
-            Lista de Equipos ({equipos.length})
+            Lista de Equipos ({equiposRaw.length})
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
@@ -164,7 +218,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                     />
                   </Form.Group>
                 </Col>
-                <Col md={3}>
+                {/*<Col md={2}>
                   <Form.Group>
                     <Form.Label>Estado</Form.Label>
                     <Form.Select
@@ -181,7 +235,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                       <option value="DADO_DE_BAJA">Dado de Baja</option>
                     </Form.Select>
                   </Form.Group>
-                </Col>
+                </Col>*/}
                 <Col md={3}>
                   <Form.Group>
                     <Form.Label>Sede</Form.Label>
@@ -220,6 +274,23 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                     </Form.Select>
                   </Form.Group>
                 </Col>
+                <Col md={3}>
+                  <Form.Group>
+                    <Form.Label>Ordenar por</Form.Label>
+                    <InputGroup>
+                      <InputGroup.Text>
+                        {sortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
+                      </InputGroup.Text>
+                      <Form.Select
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                      >
+                        <option value="asc">A-Z (Ascendente)</option>
+                        <option value="desc">Z-A (Descendente)</option>
+                      </Form.Select>
+                    </InputGroup>
+                  </Form.Group>
+                </Col>
                 <Col md={3} className="d-flex align-items-end">
                   <Button
                     variant="outline-secondary"
@@ -232,24 +303,31 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
               </Row>
               
               {/* Información de resultados */}
-              {pagination && (
-                <Row className="mt-3">
-                  <Col>
-                    <small className="text-muted">
-                      Mostrando {equipos.length} de {pagination.total} equipos
-                      {(searchTerm || statusFilter || sedeFilter || servicioFilter) && ' (filtrados)'}
-                    </small>
-                  </Col>
-                </Row>
-              )}
+              <Row className="mt-3">
+                <Col>
+                  <small className="text-muted">
+                    Mostrando {paginatedEquipos.length} de {totalEquipos} equipos
+                    {(searchTerm || statusFilter || sedeFilter || servicioFilter) && ' (filtrados de ' + equiposRaw.length + ' totales)'}
+                  </small>
+                </Col>
+              </Row>
             </Card.Body>
           </Card>
 
           {/* Lista de equipos */}
-          {equipos.length === 0 ? (
+          {paginatedEquipos.length === 0 ? (
             <Alert variant="info" className="text-center">
-              <h6>No hay equipos registrados</h6>
-              <p className="mb-3">Agrega el primer equipo para este cliente.</p>
+              {equiposRaw.length === 0 ? (
+                <>
+                  <h6>No hay equipos registrados</h6>
+                  <p className="mb-3">Agrega el primer equipo para este cliente.</p>
+                </>
+              ) : (
+                <>
+                  <h6>No se encontraron equipos</h6>
+                  <p className="mb-3">No hay equipos que coincidan con los filtros aplicados.</p>
+                </>
+              )}
               <div className="d-flex gap-2 justify-content-center">
                 <Button variant="primary" onClick={() => setActiveTab('create')}>
                   Crear Equipo
@@ -277,7 +355,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                   </tr>
                 </thead>
                 <tbody>
-                  {equipos.map((equipo, index) => (
+                  {paginatedEquipos.map((equipo, index) => (
                     <tr key={equipo._id}>
                       <td>{(page - 1) * limit + index + 1}</td>
                       <td>
@@ -353,11 +431,11 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
           )}
 
           {/* Paginación */}
-          {pagination && pagination.pages > 1 && (
+          {totalPages > 1 && (
             <div className="d-flex justify-content-center mt-4">
               <AppPagination
-                page={pagination.page}
-                pages={pagination.pages}
+                page={page}
+                pages={totalPages}
                 onChange={handlePageChange}
               />
             </div>

@@ -56,13 +56,17 @@
 /* Grid del cronograma */
 .cronograma-grid-container {
   max-width: 100%;
+  max-height: calc(100vh - 150px); /* Ajustar a la altura de la pantalla menos navbar, filtros y gaps */
   overflow-x: auto;
+  overflow-y: auto; /* Scroll vertical */
   position: relative;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
 }
 
 .cronograma-grid {
   margin-bottom: 0;
-  font-size: 0.875rem;
+  font-size: 0.800rem;
   white-space: nowrap;
   min-width: 100%;
 }
@@ -71,15 +75,18 @@
   background-color: #f8f9fa;
   font-weight: 600;
   color: #495057;
-  font-size: 0.813rem;
+  font-size: 0.800rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 0.75rem 0.5rem;
   vertical-align: middle;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 100; /* Mayor z-index para asegurar que quede sobre el contenido */
   box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+  /* Asegurar que el fondo sea completamente opaco */
+  background-clip: padding-box;
+  border-bottom: 2px solid #dee2e6;
 }
 
 .cronograma-grid thead th.mes-header {
@@ -89,23 +96,34 @@
 
 .cronograma-grid tbody tr {
   transition: background-color 0.2s ease;
+  position: relative;
+  z-index: 1; /* Menor que el thead */
 }
 
 .cronograma-grid tbody tr:hover {
   background-color: rgba(0, 123, 255, 0.05);
 }
 
+.cronograma-grid tbody tr:hover td {
+  background-color: rgba(0, 123, 255, 0.05); /* Asegurar que el hover se aplique a las celdas */
+}
+
 .cronograma-grid tbody tr.table-active {
   background-color: rgba(40, 167, 69, 0.1);
+}
+
+.cronograma-grid tbody tr.table-active td {
+  background-color: rgba(40, 167, 69, 0.1); /* Asegurar que el active se aplique a las celdas */
 }
 
 .cronograma-grid tbody td {
   padding: 0.625rem 0.5rem;
   vertical-align: middle;
+  background-color: #fff; /* Fondo blanco para evitar transparencias */
 }
 
 .cronograma-grid tbody td small {
-  font-size: 0.813rem;
+  font-size: 0.765rem;
 }
 
 .cronograma-grid .mes-cell {
@@ -115,11 +133,11 @@
 }
 
 .cronograma-grid .mes-cell.tiene-mtto {
-  background-color: rgba(40, 167, 69, 0.15);
+  background-color: rgba(40, 167, 69, 0.15) !important; /* !important para override del hover */
 }
 
 .cronograma-grid .mes-cell.tiene-mtto:hover {
-  background-color: rgba(40, 167, 69, 0.25);
+  background-color: rgba(40, 167, 69, 0.25) !important;
 }
 
 /* Grupos de servicio */
@@ -127,9 +145,11 @@
   background-color: #e5e7eb;
   font-weight: bold;
   text-align: left;
-  font-size: 0.875rem;
+  font-size: 0.800rem;
   padding: 0.625rem 0.75rem;
   color: #374151;
+  position: relative;
+  z-index: 2; /* Entre tbody y thead */
 }
 
 .cronograma-grid .grupo-row:hover {
@@ -138,7 +158,7 @@
 
 /* Badges personalizados */
 .badge-sm {
-  font-size: 0.688rem;
+  font-size: 0.622rem;
   padding: 0.25rem 0.5rem;
   font-weight: 500;
 }
@@ -155,13 +175,13 @@
 
 /* React Select customization */
 .react-select-container {
-  font-size: 0.875rem;
+  font-size: 0.800rem;
 }
 
 .react-select__control {
   border-color: #ced4da;
   min-height: 38px;
-  font-size: 0.875rem;
+  font-size: 0.800rem;
 }
 
 .react-select__control:hover {
@@ -174,7 +194,7 @@
 }
 
 .react-select__menu {
-  font-size: 0.875rem;
+  font-size: 0.800rem;
   z-index: 1050;
 }
 
@@ -185,7 +205,7 @@
 
 .react-select__multi-value__label {
   color: #0d6efd;
-  font-size: 0.813rem;
+  font-size: 0.780rem;
 }
 
 .react-select__multi-value__remove:hover {
@@ -216,10 +236,14 @@
    ============================================ */
 
 @media (max-width: 1200px) {
+  .cronograma-grid-container {
+    max-height: calc(100vh - 180px); /* Ajustar para tablets */
+  }
+
   .cronograma-grid thead th,
   .cronograma-grid tbody td {
     padding: 0.5rem 0.375rem;
-    font-size: 0.75rem;
+    font-size: 0.765rem;
   }
 
   .stats-icon {
@@ -233,10 +257,14 @@
     padding: 0.5rem !important;
   }
 
+  .cronograma-grid-container {
+    max-height: calc(100vh - 150px); /* Ajustar para móviles */
+  }
+
   .cronograma-grid thead th,
   .cronograma-grid tbody td {
     padding: 0.375rem 0.25rem;
-    font-size: 0.688rem;
+    font-size: 0.622rem;
   }
 
   .cronograma-grid thead th.mes-header {
@@ -290,14 +318,21 @@
     display: none !important;
   }
 
+  .cronograma-grid-container {
+    max-height: none !important; /* Remover límite de altura en impresión */
+    overflow: visible !important;
+    border: none !important;
+  }
+
   .cronograma-grid {
-    font-size: 8pt;
+    font-size: 7pt;
   }
 
   .cronograma-grid thead th {
     background-color: #f8f9fa !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    position: static !important; /* Remover sticky en impresión */
   }
 
   .cronograma-grid .grupo-row td.grupo {
@@ -336,6 +371,7 @@
 /* Scrollbar personalizado */
 .cronograma-grid-container::-webkit-scrollbar {
   height: 8px;
+  width: 8px; /* Scrollbar vertical */
 }
 
 .cronograma-grid-container::-webkit-scrollbar-track {
@@ -351,3 +387,39 @@
 .cronograma-grid-container::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* ============================================
+   CRONOGRAMA GENERAL - JERARQUÍA CLIENTE
+   ============================================ */
+
+/* Fila de cliente (nivel superior) */
+.cronograma-grid .table-primary td {
+  background-color: #cfe2ff !important;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.75rem 0.75rem;
+  border-top: 2px solid #0d6efd;
+  border-bottom: 2px solid #0d6efd;
+}
+
+/* Columnas de mes resaltadas */
+.cronograma-grid .mes-cell-actual {
+  background-color: #e3f2fd !important;
+  border-left: 2px solid #1976d2;
+  border-right: 2px solid #1976d2;
+}
+
+.cronograma-grid .mes-cell-seleccionado {
+  background-color: #fff3cd !important;
+  border-left: 2px solid #856404;
+  border-right: 2px solid #856404;
+}
+
+.cronograma-grid .mes-cell-actual.tiene-mtto {
+  background-color: #a5d6a7 !important;
+}
+
+.cronograma-grid .mes-cell-seleccionado.tiene-mtto {
+  background-color: #ffe082 !important;
+}
+
