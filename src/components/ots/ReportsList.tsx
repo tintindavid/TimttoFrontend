@@ -10,6 +10,7 @@ interface ReportsListProps {
 }
 
 const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, showFilters = false }) => {
+  console.log('ReportsList - Reportes:', reportes);
   const getEstadoIcon = (estado: string) => {
     switch (estado) {
       case 'Pendiente': return <FaClock className="text-info" />;
@@ -60,7 +61,9 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, sh
             <p className="text-muted mb-0">No hay reportes asociados a esta OT</p>
           </div>
         ) : (
-          <div className="table-responsive">
+          <div className="table-responsive"
+              style={{ maxHeight: '75vh', overflowY: 'auto' }} // Ajuste para evitar que la tabla crezca demasiado y cause problemas de rendimiento
+              >
             <Table hover className="mb-0">
               <thead className="table-light">
                 <tr>

@@ -8,6 +8,7 @@ const OtDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { data, isLoading, error } = useOT(id || '');
 
+  console.log('OT Detail - Data:', data);
   if (isLoading) return <div>Cargando...</div>;
   if (error) return <div className="text-danger">Error al cargar</div>;
   if (!data?.data) return <div>No encontrado</div>;

@@ -516,12 +516,12 @@ const OtDetailPage: React.FC = () => {
             <Nav variant="tabs" className="mb-4">
               <Nav.Item>
                 <Nav.Link eventKey="overview">
-                  📋 Vista General
+                  📋 Listado Total
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item>
                 <Nav.Link eventKey="reports">
-                  ⌛ Reportes 
+                  ⌛ Reportes Pendientes 
                   {reportesPendientes.length > 0 && (
                     <span className="badge bg-warning ms-1">
                       {reportesPendientes.length} Pendientes
@@ -549,67 +549,10 @@ const OtDetailPage: React.FC = () => {
             <Tab.Content>
               {/* Overview Tab */}
               <Tab.Pane eventKey="overview">
-                <Row>
-                  <Col lg={8}>
                     <ReportsList 
                       reportes={reportes}
                       onReporteSelect={handleReporteSelect}
                     />
-                  </Col>
-                  <Col lg={4}>
-                    <div className="mb-4">
-                      <h5>📊 Resumen de Progreso</h5>
-                      <div className="bg-light p-3 rounded">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Equipos Totales:</span>
-                          <strong>{reportes.length}</strong>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Procesados:</span>
-                          <strong className="text-success">{reportesProcesados.length}</strong>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Pendientes:</span>
-                          <strong className="text-warning">{reportesPendientes.length}</strong>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span>Progreso:</span>
-                          <strong>{porcentajeProcesados}%</strong>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div>
-                      <h5>⚡ Acciones Rápidas</h5>
-                      <div className="d-grid gap-2">
-                        <Button 
-                          variant="outline-primary"
-                          onClick={() => setActiveTab('reports')}
-                          disabled={reportes.length === 0}
-                        >
-                          Ver Todos los Reportes
-                        </Button>
-                        <Button 
-                          variant="outline-success"
-                          onClick={() => setActiveTab('worksheets')}
-                          disabled={reportesProcesados.length === 0}
-                        >
-                          Gestionar Hojas de Trabajo
-                        </Button>
-                        {porcentajeProcesados === 100 && reportes.length > 0 && (
-                          <Button 
-                            variant="success"
-                            onClick={() => setShowCompleteModal(true)}
-                          >
-                            <FaCheckCircle className="me-1" />
-                            Completar OT
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
               </Tab.Pane>
 
               {/* Reports Tab */}
