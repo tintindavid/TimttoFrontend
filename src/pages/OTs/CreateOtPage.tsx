@@ -51,7 +51,7 @@ const CreateOtPage: React.FC = () => {
     nombre: '',
     sede: '',
     servicio: '',
-    estado: ''
+    mes: ''
   });
 
   console.log(filtros);
@@ -122,15 +122,13 @@ const CreateOtPage: React.FC = () => {
       const cumpleSede = !filtros.sede || equipo.SedeId?._id === filtros.sede;
       
       const cumpleServicio = !filtros.servicio || equipo.Servicio?._id === filtros.servicio;
-      
-      const cumpleEstado = !filtros.estado || equipo.Estado === filtros.estado;
-      
-      const cumpleMes = !formData.mes || equipo.mesesMtto?.includes(formData.mes);
+    
+      const cumpleMes = !filtros.mes || equipo.mesesMtto?.includes(filtros.mes);
       //const cumpleMes = true; // Mes no existe en EquipoItem type
 
-      return cumpleCodigo && cumpleNombre && cumpleSede && cumpleServicio && cumpleEstado && cumpleMes;
+      return cumpleCodigo && cumpleNombre && cumpleSede && cumpleServicio && cumpleMes;
     });
-  }, [equipos, filtros, formData.mes]);
+  }, [equipos, filtros]);
 
   // Event handlers optimizados
   const handleCustomerChange = useCallback((customerId: string) => {
@@ -153,7 +151,7 @@ const CreateOtPage: React.FC = () => {
       nombre: '',
       sede: '',
       servicio: '',
-      estado: ''
+      mes: ''
     });
   }, []);
 
@@ -195,7 +193,8 @@ const CreateOtPage: React.FC = () => {
       nombre: '',
       sede: '',
       servicio: '',
-      estado: ''
+      mes: ''
+
     });
   }, []);
 
@@ -404,6 +403,8 @@ const CreateOtPage: React.FC = () => {
         </Col>
       </Row>
 
+      
+
       {/* Sección 1: Datos Generales de la OT */}
       <Card className="mb-4">
         <Card.Header>
@@ -478,8 +479,7 @@ const CreateOtPage: React.FC = () => {
           </Row>
         </Card.Body>
       </Card>
-
-      {/* Cliente Seleccionado */}
+            {/* Cliente Seleccionado */}
       {selectedCustomer && (
         <Card className="mb-4">
           <Card.Body>
@@ -492,67 +492,69 @@ const CreateOtPage: React.FC = () => {
                   <small className="text-muted">{selectedCustomer.Email}</small>
                 </div>
               </Col>
+            </Row>
+          </Card.Body>
+        </Card>
+      )}
+      
+      {/* Sección 3: Resumen y Acción */}
+      {formData.customerId && formData.equiposSeleccionados.length > 0 && (
+        <Card className="border-success">
+          <Card.Header className="bg-light-success">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 className="mb-1">✅ Resumen de la Orden</h5>
+                <small className="text-muted">
+                  {formData.equiposSeleccionados.length} equipos seleccionados para {formData.tipoServicio.toLowerCase()}
+                </small>
+              </div>
+              <div className="d-flex gap-2">
+                <Button 
+                  variant="success" 
+                  onClick={() => setShowConfirmModal(true)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <><Spinner animation="border" size="sm" className="me-2" />Creando...</>
+                  ) : (
+                    <><FaCheck className="me-2" />Crear Orden de Trabajo</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </Card.Header>
+          <Card.Body>
+            <Row>
               <Col md={3}>
-                <Form.Group>
-                  <Form.Label>Sede (Opcional)</Form.Label>
-                  <Form.Select 
-                    value={formData.sedeId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, sedeId: e.target.value }))}
-                    disabled={loadingSedes || sedes.length === 0}
-                  >
-                    <option value="">Todas las sedes</option>
-                    {sedes.map(sede => (
-                      <option key={sede._id} value={sede._id}>
-                        {sede.nombreSede}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <strong>Cliente:</strong><br />
+                <span className="text-muted">{selectedCustomer?.Razonsocial}</span>
               </Col>
               <Col md={3}>
-                <Form.Group>
-                  <Form.Label>Servicio (Opcional)</Form.Label>
-                  <Form.Select 
-                    value={formData.servicioId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, servicioId: e.target.value }))}
-                    disabled={loadingServicios || servicios.length === 0}
-                  >
-                    <option value="">Todos los servicios</option>
-                    {servicios.map(servicio => (
-                      <option key={servicio._id} value={servicio._id}>
-                        {servicio.nombre}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <strong>Tipo:</strong><br />
+                <Badge bg="primary" className="fs-6">{formData.tipoServicio}</Badge>
               </Col>
-              <Col md={2}>
-                <Form.Group>
-                  <Form.Label>Mes</Form.Label>
-                  <Form.Select 
-                    value={formData.mes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, mes: e.target.value }))}
-                  >
-                    <option value="">Todos</option>
-                    <option value="ene">Enero</option>
-                    <option value="feb">Febrero</option>
-                    <option value="mar">Marzo</option>
-                    <option value="abr">Abril</option>
-                    <option value="may">Mayo</option>
-                    <option value="jun">Junio</option>
-                    <option value="jul">Julio</option>
-                    <option value="ago">Agosto</option>
-                    <option value="sep">Septiembre</option>
-                    <option value="oct">Octubre</option>
-                    <option value="nov">Noviembre</option>
-                    <option value="dic">Diciembre</option>
-                  </Form.Select>
-                </Form.Group>
+              <Col md={3}>
+                <strong>Urgencia:</strong><br />
+                <Badge bg={
+                  formData.urgencia === 'Crítica' ? 'danger' :
+                  formData.urgencia === 'Alta' ? 'warning' : 'secondary'
+                } className="fs-6">
+                  {formData.urgencia}
+                </Badge>
+              </Col>
+              <Col md={3}>
+                <strong>Equipos:</strong><br />
+                <Badge bg="success" className="fs-6">
+                  {formData.equiposSeleccionados.length} seleccionados
+                </Badge>
               </Col>
             </Row>
           </Card.Body>
         </Card>
       )}
+      <br/>
+
+
 
       {/* Sección 2: Filtros y Selección de Equipos */}
       {formData.customerId && (
@@ -656,15 +658,24 @@ const CreateOtPage: React.FC = () => {
               </Col>
               <Col md={2}>
                 <Form.Group>
-                  <Form.Label>Estado</Form.Label>
+                  <Form.Label>Mes</Form.Label>
                   <Form.Select 
-                    value={filtros.estado}
-                    onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
+                    value={filtros.mes}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, mes: e.target.value }))}
                   >
                     <option value="">Todos</option>
-                    <option value="OPERATIVO">Operativo</option>
-                    <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
-                    <option value="FUERA_DE_SERVICIO">Fuera de Servicio</option>
+                    <option value="ene">Enero</option>
+                    <option value="feb">Febrero</option>
+                    <option value="mar">Marzo</option>
+                    <option value="abr">Abril</option>
+                    <option value="may">Mayo</option>
+                    <option value="jun">Junio</option>
+                    <option value="jul">Julio</option>
+                    <option value="ago">Agosto</option>
+                    <option value="sep">Septiembre</option>
+                    <option value="oct">Octubre</option>
+                    <option value="nov">Noviembre</option>
+                    <option value="dic">Diciembre</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
@@ -688,7 +699,9 @@ const CreateOtPage: React.FC = () => {
               </Alert>
             ) : (
               <div className="table-responsive">
-                <Table hover className="mb-0">
+                <Table hover className="mb-0"
+                  style={{ maxHeight: '80vh', overflowY: 'auto', display: 'block' }}
+                  >
                   <thead className="table-light">
                     <tr>
                       <th style={{ width: '50px' }}>
@@ -782,62 +795,6 @@ const CreateOtPage: React.FC = () => {
                 </Table>
               </div>
             )}
-          </Card.Body>
-        </Card>
-      )}
-
-      {/* Sección 3: Resumen y Acción */}
-      {formData.customerId && formData.equiposSeleccionados.length > 0 && (
-        <Card className="border-success">
-          <Card.Header className="bg-light-success">
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <h5 className="mb-1">✅ Resumen de la Orden</h5>
-                <small className="text-muted">
-                  {formData.equiposSeleccionados.length} equipos seleccionados para {formData.tipoServicio.toLowerCase()}
-                </small>
-              </div>
-              <div className="d-flex gap-2">
-                <Button 
-                  variant="success" 
-                  onClick={() => setShowConfirmModal(true)}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <><Spinner animation="border" size="sm" className="me-2" />Creando...</>
-                  ) : (
-                    <><FaCheck className="me-2" />Crear Orden de Trabajo</>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </Card.Header>
-          <Card.Body>
-            <Row>
-              <Col md={3}>
-                <strong>Cliente:</strong><br />
-                <span className="text-muted">{selectedCustomer?.Razonsocial}</span>
-              </Col>
-              <Col md={3}>
-                <strong>Tipo:</strong><br />
-                <Badge bg="primary" className="fs-6">{formData.tipoServicio}</Badge>
-              </Col>
-              <Col md={3}>
-                <strong>Urgencia:</strong><br />
-                <Badge bg={
-                  formData.urgencia === 'Crítica' ? 'danger' :
-                  formData.urgencia === 'Alta' ? 'warning' : 'secondary'
-                } className="fs-6">
-                  {formData.urgencia}
-                </Badge>
-              </Col>
-              <Col md={3}>
-                <strong>Equipos:</strong><br />
-                <Badge bg="success" className="fs-6">
-                  {formData.equiposSeleccionados.length} seleccionados
-                </Badge>
-              </Col>
-            </Row>
           </Card.Body>
         </Card>
       )}
@@ -1077,6 +1034,8 @@ const CreateOtPage: React.FC = () => {
           </Modal.Footer>
         </Form>
       </Modal>
+
+
 
       {/* Modal de Crear Equipo */}
       <Modal 

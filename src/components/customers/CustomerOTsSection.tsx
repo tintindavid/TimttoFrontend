@@ -201,12 +201,7 @@ const CustomerOTsSection: React.FC<CustomerOTsSectionProps> = ({ customerId }) =
                   <tr key={ot._id}>
                     <td>
                       <div>
-                        <strong>{ot.numeroOt || ot.Norden || 'N/A'}</strong>
-                        {ot.OTPK && (
-                          <div className="text-muted small">
-                            ID: {ot.OTPK}
-                          </div>
-                        )}
+                        <strong>{ot.numeroOT || 'N/A'}</strong>
                       </div>
                     </td>
                     <td>{ot.Consecutivo || 'N/A'}</td>

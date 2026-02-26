@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   Card, Form, Button, Row, Col, Spinner, Alert, 
   Table, Badge, Modal 
 } from 'react-bootstrap';
+import Select from 'react-select';
 import * as XLSX from 'xlsx';
 import { useItems } from '@/hooks/useItems';
 import { useCreateEquipoItem } from '@/hooks/useEquipoItems';
@@ -53,13 +54,13 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
   onCancel 
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { data: itemsData } = useItems({ limit: 100 });
+  const { data: itemsData } = useItems({ limit: 500 });
   const createMutation = useCreateEquipoItem();
 
   // Refetch sedes, servicios e items
   const { refetch: refetchSedes } = useSedesByCustomer(customerId);
   const { refetch: refetchServicios } = useServiciosByCustomer(customerId);
-  const { refetch: refetchItems } = useItems({ limit: 100 });
+  const { refetch: refetchItems } = useItems({ limit: 500 });
 
   // Estados para modales
   const [showSedeModal, setShowSedeModal] = useState(false);
@@ -83,7 +84,24 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  const items = itemsData?.data || [];
+  // Items ordenados alfabéticamente
+  const items = useMemo(() => {
+    const rawItems = itemsData?.data || [];
+    return [...rawItems].sort((a, b) => {
+      const nameA = a.Nombre?.toUpperCase() || '';
+      const nameB = b.Nombre?.toUpperCase() || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [itemsData?.data]);
+
+  // Opciones para react-select
+  const itemOptions = useMemo(() => [
+    { value: 'CREATE_NEW', label: '+ Crear Nuevo Item', isSpecial: true },
+    ...items.map(item => ({
+      value: item._id,
+      label: item.Nombre
+    }))
+  ], [items]);
 
   const validateContext = (): boolean => {
     const errors: string[] = [];
@@ -140,10 +158,22 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
           return;
         }
 
-        // Procesar y validar cada fila
-        const processedData = jsonData.map((row, index) => 
-          validateRow(row, index + 1)
-        );
+        // Procesar y validar cada fila con auto-selección de items
+        const processedData = jsonData.map((row, index) => {
+          // Buscar coincidencia automática del item por nombre
+          const matchingItem = items.find(item => 
+            item.Nombre?.toLowerCase().trim() === row.Equipo?.toLowerCase().trim()
+          );
+          
+          // Crear objeto con datos actualizados incluyendo auto-selección
+          const updatedRow = {
+            ...row,
+            ItemId: matchingItem?._id || row.ItemId,
+            selectedItemId: matchingItem?._id
+          };
+          
+          return validateRow(updatedRow, index + 1);
+        });
 
         setExcelData(processedData);
         setShowPreview(true);
@@ -160,7 +190,7 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
     reader.readAsBinaryString(file);
   };
 
-  const validateRow = (row: ExcelRow, id: number): ProcessedRow => {
+  const validateRow = (row: ExcelRow & { selectedItemId?: string }, id: number): ProcessedRow => {
     const errors: string[] = [];
     let valid = true;
 
@@ -169,8 +199,8 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
       valid = false;
     }
 
-    // Si ItemId está vacío, necesita selección manual
-    if (!row.ItemId) {
+    // Si ItemId o selectedItemId está vacío, necesita selección manual
+    if (!row.ItemId && !row.selectedItemId) {
       errors.push('Requiere selección de Item');
       valid = false;
     }
@@ -179,7 +209,8 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
       ...row,
       id,
       valid,
-      errors
+      errors,
+      selectedItemId: row.selectedItemId || row.ItemId
     };
   };
 
@@ -464,26 +495,36 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
                         </small>
                       </td>
                       <td>
-                          <Form.Select
-                            size="sm"
-                            value={row.selectedItemId || ''}
-                            onChange={(e) => {
-                              if (e.target.value === 'CREATE_NEW') {
-                                setShowItemModal(true);
-                                e.target.value = '';
-                              } else {
-                                handleItemSelection(row.id, e.target.value);
-                              }
-                            }}
-                          >
-                            <option value="">Seleccionar item...</option>
-                            <option value="CREATE_NEW" style={{ color: '#0d6efd', fontWeight: 'bold' }}>+ Crear Nuevo Item</option>
-                            {items.map((item) => (
-                              <option key={item._id} value={item._id}>
-                                {item.Nombre}
-                              </option>
-                            ))}
-                          </Form.Select>
+                        <Select
+                          options={itemOptions}
+                          value={itemOptions.find(opt => opt.value === row.selectedItemId) || null}
+                          onChange={(selected) => {
+                            if (selected?.value === 'CREATE_NEW') {
+                              setShowItemModal(true);
+                            } else {
+                              handleItemSelection(row.id, selected?.value || '');
+                            }
+                          }}
+                          placeholder="Seleccionar item..."
+                          isClearable
+                          isSearchable
+                          noOptionsMessage={() => 'No se encontraron items'}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              minHeight: '31px',
+                              fontSize: '0.875rem'
+                            }),
+                            option: (base, { data }: any) => ({
+                              ...base,
+                              color: data.isSpecial ? '#0d6efd' : base.color,
+                              fontWeight: data.isSpecial ? 'bold' : base.fontWeight
+                            }),
+                            menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                          }}
+                          menuPortalTarget={document.body}
+                          menuPosition="fixed"
+                        />
                       </td>
                       <td>
                         {row.valid ? (

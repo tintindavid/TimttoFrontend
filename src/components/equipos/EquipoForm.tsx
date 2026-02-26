@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Card, Form, Button, Row, Col, Spinner, Alert, Modal 
 } from 'react-bootstrap';
+import Select from 'react-select';
 import { useItems } from '@/hooks/useItems';
 import { useCreateEquipoItem } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
@@ -64,7 +65,26 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
 
   console.log('EquipoForm renderizado con formData:', formData);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const items = itemsData?.data || [];
+  
+  // Items ordenados alfabéticamente
+  const items = useMemo(() => {
+    const rawItems = itemsData?.data || [];
+    return [...rawItems].sort((a, b) => {
+      const nameA = a.Nombre?.toUpperCase() || '';
+      const nameB = b.Nombre?.toUpperCase() || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [itemsData?.data]);
+
+  // Opciones para react-select
+  const itemOptions = useMemo(() => [
+    { value: 'CREATE_NEW', label: '+ Crear Nuevo Item', isSpecial: true },
+    ...items.map(item => ({
+      value: item._id,
+      label: item.Nombre
+    }))
+  ], [items]);
+  
   const validateForm = (): boolean => {
     const errors: string[] = [];
 
@@ -249,14 +269,14 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                     Cargando items...
                   </div>
                 ) : (
-                  <Form.Select
-                    value={formData.ItemId}
-                    onChange={(e) => {
-                      if (e.target.value === 'CREATE_NEW') {
+                  <Select
+                    options={itemOptions}
+                    value={itemOptions.find(opt => opt.value === formData.ItemId) || null}
+                    onChange={(selected) => {
+                      if (selected?.value === 'CREATE_NEW') {
                         setShowItemModal(true);
-                        e.target.value = '';
                       } else {
-                        const itemId = e.target.value;
+                        const itemId = selected?.value || '';
                         const selectedItem = items.find(item => item._id === itemId);
                         
                         let precioFinal = 0;
@@ -280,15 +300,21 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                         }));
                       }
                     }}
-                  >
-                    <option value="">Sin item relacionado</option>
-                    <option value="CREATE_NEW" style={{ color: '#0d6efd', fontWeight: 'bold' }}>+ Crear Nuevo Item</option>
-                    {items.map((item) => (
-                      <option key={item._id} value={item._id}>
-                        {item.Nombre}
-                      </option>
-                    ))}
-                  </Form.Select>
+                    placeholder="Sin item relacionado"
+                    isClearable
+                    isSearchable
+                    noOptionsMessage={() => 'No se encontraron items'}
+                    styles={{
+                      option: (base, { data }: any) => ({
+                        ...base,
+                        color: data.isSpecial ? '#0d6efd' : base.color,
+                        fontWeight: data.isSpecial ? 'bold' : base.fontWeight
+                      }),
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                    }}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                  />
                 )}
                 <Form.Text className="text-muted">
                   Opcional: Relacionar con un item del catálogo

@@ -524,7 +524,7 @@ const OtDetailPage: React.FC = () => {
                   ⌛ Reportes Pendientes 
                   {reportesPendientes.length > 0 && (
                     <span className="badge bg-warning ms-1">
-                      {reportesPendientes.length} Pendientes
+                      {reportesPendientes.length}
                     </span>
                   )}
                 </Nav.Link>
