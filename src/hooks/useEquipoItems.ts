@@ -5,7 +5,7 @@ import { EquipoItem, CreateEquipoItemDto, UpdateEquipoItemDto } from '@/types/eq
 export const useEquipoItems = (params?: any) => {
   // Si no se especifica limit, usar 100 por defecto (en lugar del 10 del backend)
   const queryParams = {
-    limit: 100,
+    limit: 1000,
     ...params
   };
 

@@ -3,6 +3,7 @@ import {
   Container, Row, Col, Card, Form, Button, Table, Alert, 
   Badge, Spinner, Modal 
 } from 'react-bootstrap';
+import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import { useCustomers, useCreateCustomer } from '@/hooks/useCustomers';
 import { useSedesByCustomer } from '@/hooks/useSedes';
@@ -98,6 +99,48 @@ const CreateOtPage: React.FC = () => {
     { enabled: !!formData.customerId }
   );
   const servicios = useMemo(() => serviciosData?.data || [], [serviciosData?.data]);
+
+  // Opciones ordenadas para react-select
+  const customerOptions = useMemo(() => {
+    const sorted = [...customers].sort((a, b) => {
+      const nameA = (a.Razonsocial || '').toUpperCase();
+      const nameB = (b.Razonsocial || '').toUpperCase();
+      return nameA.localeCompare(nameB);
+    });
+    return [
+      { value: '__CREATE_NEW__', label: '➡ Crear nuevo cliente...', isSpecial: true },
+      ...sorted.map(c => ({
+        value: c._id!,
+        label: c.Razonsocial || 'Sin nombre'
+      }))
+    ];
+  }, [customers]);
+
+  const sedeOptions = useMemo(() => {
+    return [...sedes]
+      .sort((a, b) => {
+        const nameA = (a.nombreSede || '').toUpperCase();
+        const nameB = (b.nombreSede || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      })
+      .map(s => ({
+        value: s._id!,
+        label: s.nombreSede || 'Sin nombre'
+      }));
+  }, [sedes]);
+
+  const servicioOptions = useMemo(() => {
+    return [...servicios]
+      .sort((a, b) => {
+        const nameA = (a.nombre || '').toUpperCase();
+        const nameB = (b.nombre || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      })
+      .map(s => ({
+        value: s._id!,
+        label: s.nombre || 'Sin nombre'
+      }));
+  }, [servicios]);
 
   const { data: equiposData, isLoading: loadingEquipos, refetch: refetchEquipos } = useEquipoItems(
     formData.customerId ? { ClienteId: formData.customerId } : null,
@@ -627,33 +670,39 @@ const CreateOtPage: React.FC = () => {
               <Col md={2}>
                 <Form.Group>
                   <Form.Label>Sede</Form.Label>
-                  <Form.Select 
-                    value={filtros.sede}
-                    onChange={(e) => setFiltros(prev => ({ ...prev, sede: e.target.value }))}
-                  >
-                    <option value="">Todas</option>
-                    {sedes.map(sede => (
-                      <option key={sede._id} value={sede._id}>
-                        {sede.nombreSede}
-                      </option>
-                    ))}
-                  </Form.Select>
+                  <Select
+                    options={sedeOptions}
+                    value={sedeOptions.find(opt => opt.value === filtros.sede) || null}
+                    onChange={(selected) => setFiltros(prev => ({ ...prev, sede: selected?.value || '' }))}
+                    placeholder="Todas"
+                    isSearchable
+                    isClearable
+                    noOptionsMessage={() => 'No hay sedes'}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                    styles={{
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                    }}
+                  />
                 </Form.Group>
               </Col>
               <Col md={2}>
                 <Form.Group>
                   <Form.Label>Servicio</Form.Label>
-                  <Form.Select 
-                    value={filtros.servicio}
-                    onChange={(e) => setFiltros(prev => ({ ...prev, servicio: e.target.value }))}
-                  >
-                    <option value="">Todos</option>
-                    {servicios.map(servicio => (
-                      <option key={servicio._id} value={servicio._id}>
-                        {servicio.nombre}
-                      </option>
-                    ))}
-                  </Form.Select>
+                  <Select
+                    options={servicioOptions}
+                    value={servicioOptions.find(opt => opt.value === filtros.servicio) || null}
+                    onChange={(selected) => setFiltros(prev => ({ ...prev, servicio: selected?.value || '' }))}
+                    placeholder="Todos"
+                    isSearchable
+                    isClearable
+                    noOptionsMessage={() => 'No hay servicios'}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                    styles={{
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                    }}
+                  />
                 </Form.Group>
               </Col>
               <Col md={2}>

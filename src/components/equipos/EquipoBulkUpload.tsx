@@ -94,6 +94,23 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
     });
   }, [itemsData?.data]);
 
+  // Sedes y Servicios ordenados alfabéticamente
+  const sedesOrdenadas = useMemo(() => {
+    return [...sedes].sort((a, b) => {
+      const nameA = (a.nombreSede || '').toUpperCase();
+      const nameB = (b.nombreSede || '').toUpperCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [sedes]);
+
+  const serviciosOrdenados = useMemo(() => {
+    return [...servicios].sort((a, b) => {
+      const nameA = (a.nombre || '').toUpperCase();
+      const nameB = (b.nombre || '').toUpperCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [servicios]);
+
   // Opciones para react-select
   const itemOptions = useMemo(() => [
     { value: 'CREATE_NEW', label: '+ Crear Nuevo Item', isSpecial: true },
@@ -102,6 +119,22 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
       label: item.Nombre
     }))
   ], [items]);
+
+  const sedeOptions = useMemo(() => [
+    { value: 'CREATE_NEW', label: '+ Crear Nueva Sede', isSpecial: true },
+    ...sedesOrdenadas.map(sede => ({
+      value: sede._id!,
+      label: sede.nombreSede || 'Sin nombre'
+    }))
+  ], [sedesOrdenadas]);
+
+  const servicioOptions = useMemo(() => [
+    { value: 'CREATE_NEW', label: '+ Crear Nuevo Servicio', isSpecial: true },
+    ...serviciosOrdenados.map(servicio => ({
+      value: servicio._id!,
+      label: servicio.nombre || 'Sin nombre'
+    }))
+  ], [serviciosOrdenados]);
 
   const validateContext = (): boolean => {
     const errors: string[] = [];
@@ -331,57 +364,67 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
               <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>Servicio *</Form.Label>
-                  <Form.Select
-                    value={contextData.Servicio}
-                    onChange={(e) => {
-                      if (e.target.value === 'CREATE_NEW') {
+                  <Select
+                    options={servicioOptions}
+                    value={servicioOptions.find(opt => opt.value === contextData.Servicio) || null}
+                    onChange={(selected) => {
+                      if (selected?.value === 'CREATE_NEW') {
                         setShowServicioModal(true);
-                        e.target.value = '';
                       } else {
                         setContextData(prev => ({ 
                           ...prev, 
-                          Servicio: e.target.value 
+                          Servicio: selected?.value || ''
                         }));
                       }
                     }}
-                    required
-                  >
-                    <option value="">Seleccionar servicio...</option>
-                    <option value="CREATE_NEW" style={{ color: '#0d6efd', fontWeight: 'bold' }}>+ Crear Nuevo Servicio</option>
-                    {servicios.map((servicio) => (
-                      <option key={servicio._id} value={servicio._id}>
-                        {servicio.nombre}
-                      </option>
-                    ))}
-                  </Form.Select>
+                    placeholder="Seleccionar servicio..."
+                    isSearchable
+                    isClearable
+                    noOptionsMessage={() => 'No hay servicios disponibles'}
+                    styles={{
+                      option: (base, { data }: any) => ({
+                        ...base,
+                        color: data.isSpecial ? '#0d6efd' : base.color,
+                        fontWeight: data.isSpecial ? 'bold' : base.fontWeight
+                      }),
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                    }}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                  />
                 </Form.Group>
               </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>Sede *</Form.Label>
-                  <Form.Select
-                    value={contextData.SedeId}
-                    onChange={(e) => {
-                      if (e.target.value === 'CREATE_NEW') {
+                  <Select
+                    options={sedeOptions}
+                    value={sedeOptions.find(opt => opt.value === contextData.SedeId) || null}
+                    onChange={(selected) => {
+                      if (selected?.value === 'CREATE_NEW') {
                         setShowSedeModal(true);
-                        e.target.value = '';
                       } else {
                         setContextData(prev => ({ 
                           ...prev, 
-                          SedeId: e.target.value 
+                          SedeId: selected?.value || ''
                         }));
                       }
                     }}
-                    required
-                  >
-                    <option value="">Seleccionar sede...</option>
-                    <option value="CREATE_NEW" style={{ color: '#0d6efd', fontWeight: 'bold' }}>+ Crear Nueva Sede</option>
-                    {sedes.map((sede) => (
-                      <option key={sede._id} value={sede._id}>
-                        {sede.nombreSede}
-                      </option>
-                    ))}
-                  </Form.Select>
+                    placeholder="Seleccionar sede..."
+                    isSearchable
+                    isClearable
+                    noOptionsMessage={() => 'No hay sedes disponibles'}
+                    styles={{
+                      option: (base, { data }: any) => ({
+                        ...base,
+                        color: data.isSpecial ? '#0d6efd' : base.color,
+                        fontWeight: data.isSpecial ? 'bold' : base.fontWeight
+                      }),
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                    }}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                  />
                 </Form.Group>
               </Col>
               <Col md={4}>

@@ -47,21 +47,35 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
   onSearchChange,
   onLimpiar
 }) => {
-  // Transformar a formato react-select
-  const sedesSelectOptions = sedesOptions.map(sede => ({
-    value: sede._id!,
-    label: sede.nombreSede || 'Sin nombre'
-  }));
+  // Transformar a formato react-select (ordenados alfabéticamente)
+  const sedesSelectOptions = [...sedesOptions]
+    .sort((a, b) => {
+      const nameA = (a.nombreSede || 'Sin nombre').toUpperCase();
+      const nameB = (b.nombreSede || 'Sin nombre').toUpperCase();
+      return nameA.localeCompare(nameB);
+    })
+    .map(sede => ({
+      value: sede._id!,
+      label: sede.nombreSede || 'Sin nombre'
+    }));
 
-  const serviciosSelectOptions = serviciosOptions.map(servicio => ({
-    value: servicio._id!,
-    label: servicio.nombre || 'Sin nombre'
-  }));
+  const serviciosSelectOptions = [...serviciosOptions]
+    .sort((a, b) => {
+      const nameA = (a.nombre || 'Sin nombre').toUpperCase();
+      const nameB = (b.nombre || 'Sin nombre').toUpperCase();
+      return nameA.localeCompare(nameB);
+    })
+    .map(servicio => ({
+      value: servicio._id!,
+      label: servicio.nombre || 'Sin nombre'
+    }));
 
-  const ubicacionesSelectOptions = ubicacionesOptions.map(ubicacion => ({
-    value: ubicacion,
-    label: ubicacion
-  }));
+  const ubicacionesSelectOptions = [...ubicacionesOptions]
+    .sort((a, b) => a.toUpperCase().localeCompare(b.toUpperCase()))
+    .map(ubicacion => ({
+      value: ubicacion,
+      label: ubicacion
+    }));
 
   const mesesSelectOptions = MESES.map(mes => ({
     value: mes,
@@ -127,6 +141,8 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
                 onSedesChange(selected.map(s => s.value))
               }
               placeholder="Seleccionar sedes..."
+              isSearchable
+              isClearable
               className="react-select-container"
               classNamePrefix="react-select"
               noOptionsMessage={() => 'No hay sedes disponibles'}
@@ -157,6 +173,8 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
                 onServiciosChange(selected.map(s => s.value))
               }
               placeholder="Seleccionar servicios..."
+              isSearchable
+              isClearable
               className="react-select-container"
               classNamePrefix="react-select"
               noOptionsMessage={() => 'No hay servicios disponibles'}
@@ -187,6 +205,8 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
                 onUbicacionesChange(selected.map(u => u.value))
               }
               placeholder="Seleccionar ubicaciones..."
+              isSearchable
+              isClearable
               className="react-select-container"
               classNamePrefix="react-select"
               noOptionsMessage={() => 'No hay ubicaciones disponibles'}
@@ -217,6 +237,8 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
                 onMesesChange(selected.map(m => m.value as Mes))
               }
               placeholder="Seleccionar meses..."
+              isSearchable
+              isClearable
               className="react-select-container"
               classNamePrefix="react-select"
               noOptionsMessage={() => 'No hay meses disponibles'}

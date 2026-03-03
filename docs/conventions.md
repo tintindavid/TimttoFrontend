@@ -871,6 +871,202 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
 ---
 
+## 🎛️ Componentes Select (react-select)
+
+### Convenciones Obligatorias para Select con Datos de BD
+
+Todos los componentes `<Select>` de react-select que obtienen sus opciones desde base de datos (usando `.map()`) deben cumplir:
+
+#### 1. Props Requeridas
+```tsx
+<Select
+  isSearchable  // ✅ SIEMPRE - Permite buscar opciones
+  isClearable   // ✅ SIEMPRE - Permite limpiar selección
+  // ... resto de props
+/>
+```
+
+#### 2. Ordenamiento Alfabético
+Las opciones deben ordenarse alfabéticamente por el nombre del objeto original (Nombre, nombre, nombreSede, Razonsocial, etc.):
+
+```tsx
+// ✅ CORRECTO - Ordenar antes de mapear
+const itemOptions = useMemo(() => {
+  const rawItems = itemsData?.data || [];
+  return [...rawItems]
+    .sort((a, b) => {
+      const nameA = (a.Nombre || '').toUpperCase();
+      const nameB = (b.Nombre || '').toUpperCase();
+      return nameA.localeCompare(nameB);
+    })
+    .map(item => ({
+      value: item._id,
+      label: item.Nombre
+    }));
+}, [itemsData?.data]);
+
+// ✅ CORRECTO - Ordenar después de mapear
+const sedesOptions = useMemo(() => {
+  return [...sedes]
+    .map(sede => ({
+      value: sede._id!,
+      label: sede.nombreSede || 'Sin nombre'
+    }))
+    .sort((a, b) => a.label.toUpperCase().localeCompare(b.label.toUpperCase()));
+}, [sedes]);
+```
+
+#### 3. Excepciones al Ordenamiento
+Opciones especiales (como "CREATE_NEW") deben mantenerse al INICIO:
+```tsx
+const itemOptions = useMemo(() => [
+  // ✅ Opción especial primero (NO ordenar)
+  { value: 'CREATE_NEW', label: '+ Crear Nuevo Item', isSpecial: true },
+  // ✅ Opciones de BD ordenadas alfabéticamente
+  ...items
+    .sort((a, b) => a.Nombre.localeCompare(b.Nombre))
+    .map(item => ({
+      value: item._id,
+      label: item.Nombre
+    }))
+], [items]);
+```
+
+#### 4. Configuración Completa de Select
+```tsx
+<Select
+  // Props de búsqueda y limpieza (OBLIGATORIAS para BD)
+  isSearchable
+  isClearable
+  
+  // Datos
+  options={sortedOptions}
+  value={selectedValue}
+  onChange={handleChange}
+  
+  // UI/UX
+  placeholder="Seleccionar..."
+  noOptionsMessage={() => 'No hay opciones disponibles'}
+  
+  // Estilos y posicionamiento
+  className="react-select-container"
+  classNamePrefix="react-select"
+  menuPortalTarget={document.body}  // Para modales/dropdowns
+  menuPosition="fixed"
+  styles={{
+    menuPortal: (base) => ({ ...base, zIndex: 9999 })
+  }}
+  
+  // Estados
+  isLoading={isLoading}
+  isDisabled={isDisabled}
+/>
+```
+
+#### 5. Multi-Select
+Para selecciones múltiples:
+```tsx
+<Select
+  isMulti
+  isSearchable
+  isClearable
+  options={sortedOptions}
+  value={selectedOptions}
+  onChange={(selected) => setSelected(selected.map(s => s.value))}
+  placeholder="Seleccionar múltiples..."
+  // ... resto de props
+/>
+```
+
+#### 6. Opciones que NO Requieren isSearchable/isClearable
+- **Opciones predefinidas/hardcoded** (no vienen de BD):
+  ```tsx
+  // Meses, estados, prioridades, etc.
+  const mesesOptions = [
+    { value: 'ene', label: 'Enero' },
+    { value: 'feb', label: 'Febrero' },
+    // ... NO necesitan ordenamiento alfabético ni isSearchable
+  ];
+  ```
+
+#### 7. Patrones de Uso Común
+
+**Single Select con BD:**
+```tsx
+const { data: itemsData } = useItems({ limit: 500 });
+
+const itemOptions = useMemo(() => {
+  const items = itemsData?.data || [];
+  return [...items]
+    .sort((a, b) => a.Nombre.toUpperCase().localeCompare(b.Nombre.toUpperCase()))
+    .map(item => ({
+      value: item._id,
+      label: item.Nombre
+    }));
+}, [itemsData?.data]);
+
+<Select
+  isSearchable
+  isClearable
+  options={itemOptions}
+  value={itemOptions.find(opt => opt.value === selectedId) || null}
+  onChange={(selected) => setSelectedId(selected?.value || '')}
+  placeholder="Seleccionar item..."
+  noOptionsMessage={() => 'No se encontraron items'}
+  menuPortalTarget={document.body}
+  menuPosition="fixed"
+  styles={{
+    menuPortal: (base) => ({ ...base, zIndex: 9999 })
+  }}
+/>
+```
+
+**Multi-Select Cascading (Cliente → Servicio → Sede):**
+```tsx
+// Opciones de clientes
+const clienteOptions = useMemo(() => {
+  return clientes
+    .map(c => ({ value: c._id, label: c.Razonsocial }))
+    .sort((a, b) => a.label.toUpperCase().localeCompare(b.label.toUpperCase()));
+}, [clientes]);
+
+// Servicios filtrados por clientes seleccionados
+const servicioOptions = useMemo(() => {
+  if (clientesSeleccionados.length === 0) return [];
+  
+  return servicios
+    .filter(s => clientesSeleccionados.includes(s.ClienteId))
+    .map(s => ({ value: s._id, label: s.nombre }))
+    .sort((a, b) => a.label.toUpperCase().localeCompare(b.label.toUpperCase()));
+}, [servicios, clientesSeleccionados]);
+
+<Select
+  isMulti
+  isSearchable
+  isClearable
+  options={clienteOptions}
+  value={clienteOptions.filter(opt => clientesSeleccionados.includes(opt.value))}
+  onChange={(selected) => {
+    setClientesSeleccionados(selected.map(s => s.value));
+    setServiciosSeleccionados([]); // Limpiar dependientes
+  }}
+  placeholder="Todos los clientes"
+  // ... props comunes
+/>
+```
+
+### Checklist para Select Components
+- [ ] Datos vienen de BD → usar `isSearchable` + `isClearable`
+- [ ] Opciones ordenadas alfabéticamente (excepto CREATE_NEW)
+- [ ] `menuPortalTarget={document.body}` para dropdowns en modales
+- [ ] `menuPosition="fixed"` para mejor posicionamiento
+- [ ] `noOptionsMessage` personalizado
+- [ ] `useMemo` para optimizar re-renders
+- [ ] Usar `localeCompare` para ordenamiento (mejor que `<` / `>`)
+- [ ] `.toUpperCase()` antes de comparar (case-insensitive)
+
+---
+
 ## ✅ Checklist de Implementación
 
 Antes de considerar una página/componente completo:
@@ -886,3 +1082,5 @@ Antes de considerar una página/componente completo:
 - [ ] Comentarios JSDoc en funciones complejas
 - [ ] Nombres descriptivos de variables
 - [ ] Imports organizados
+- [ ] Select components con isSearchable/isClearable (si datos de BD)
+- [ ] Opciones de Select ordenadas alfabéticamente

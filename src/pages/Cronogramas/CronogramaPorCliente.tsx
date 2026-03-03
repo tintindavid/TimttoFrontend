@@ -304,11 +304,19 @@ export const CronogramaPorCliente: React.FC = () => {
     }
   }, [equiposSeleccionados, clienteSeleccionado, createOtMutation, limpiarSeleccion, navigate]);
 
-  // Transformar customers para react-select
-  const customersOptions = customers.map(c => ({
-    value: c._id!,
-    label: `${c.Razonsocial || 'Sin nombre'} ${c.Nit ? `- ${c.Nit}` : ''}`
-  }));
+  // Transformar customers para react-select (ordenados alfabéticamente)
+  const customersOptions = useMemo(() => {
+    return [...customers]
+      .sort((a, b) => {
+        const nameA = (a.Razonsocial || 'Sin nombre').toUpperCase();
+        const nameB = (b.Razonsocial || 'Sin nombre').toUpperCase();
+        return nameA.localeCompare(nameB);
+      })
+      .map(c => ({
+        value: c._id!,
+        label: `${c.Razonsocial || 'Sin nombre'} ${c.Nit ? `- ${c.Nit}` : ''}`
+      }));
+  }, [customers]);
 
   const clienteActual = customers.find(c => c._id === clienteSeleccionado);
 
@@ -328,11 +336,17 @@ export const CronogramaPorCliente: React.FC = () => {
                   value={customersOptions.find(c => c.value === clienteSeleccionado) || null}
                   onChange={(selected: { value: string; label: string } | null) => handleClienteChange(selected?.value || '')}
                   placeholder="Buscar cliente por nombre o NIT..."
+                  isSearchable
                   isClearable
                   isLoading={loadingCustomers}
                   className="react-select-container"
                   classNamePrefix="react-select"
                   noOptionsMessage={() => 'No hay clientes disponibles'}
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={{
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                  }}
                 />
               </Form.Group>
             </Col>

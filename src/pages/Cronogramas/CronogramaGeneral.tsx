@@ -116,14 +116,16 @@ export const CronogramaGeneral: React.FC = () => {
     return { totalEquipos, totalClientes };
   }, [clientes]);
 
-  // Extraer opciones de filtros desde los datos
+  // Extraer opciones de filtros desde los datos (ordenadas alfabéticamente)
   const clienteOptions = useMemo(() => {
     if (!Array.isArray(clientes)) return [];
     
-    return clientes.map((item: any) => ({
-      value: item.cliente._id,
-      label: item.cliente.Razonsocial || item.cliente.Nit
-    }));
+    return clientes
+      .map((item: any) => ({
+        value: item.cliente._id,
+        label: item.cliente.Razonsocial || item.cliente.Nit
+      }))
+      .sort((a, b) => a.label.toUpperCase().localeCompare(b.label.toUpperCase()));
   }, [clientes]);
 
   const servicioOptions = useMemo(() => {
@@ -147,10 +149,12 @@ export const CronogramaGeneral: React.FC = () => {
       });
     });
     
-    return Array.from(serviciosMap.entries()).map(([id, servicio]) => ({
-      value: id,
-      label: servicio.nombre
-    }));
+    return Array.from(serviciosMap.entries())
+      .map(([id, servicio]) => ({
+        value: id,
+        label: servicio.nombre
+      }))
+      .sort((a, b) => a.label.toUpperCase().localeCompare(b.label.toUpperCase()));
   }, [clientes, clientesFiltrados]);
 
   const sedeOptions = useMemo(() => {
@@ -181,10 +185,12 @@ export const CronogramaGeneral: React.FC = () => {
       });
     });
     
-    return Array.from(sedesMap.entries()).map(([id, sede]) => ({
-      value: id,
-      label: sede.nombreSede
-    }));
+    return Array.from(sedesMap.entries())
+      .map(([id, sede]) => ({
+        value: id,
+        label: sede.nombreSede
+      }))
+      .sort((a, b) => a.label.toUpperCase().localeCompare(b.label.toUpperCase()));
   }, [clientes, clientesFiltrados, serviciosFiltrados]);
 
   // Filtrar datos según selecciones
@@ -352,6 +358,8 @@ export const CronogramaGeneral: React.FC = () => {
                     setSedesFiltradas([]);
                   }}
                   placeholder="Todos los clientes"
+                  isSearchable
+                  isClearable
                   noOptionsMessage={() => 'No hay clientes'}
                   menuPortalTarget={document.body}
                   menuPosition="fixed"
@@ -375,6 +383,8 @@ export const CronogramaGeneral: React.FC = () => {
                     setSedesFiltradas([]);
                   }}
                   placeholder="Todos los servicios"
+                  isSearchable
+                  isClearable
                   noOptionsMessage={() => 'No hay servicios'}
                   isDisabled={clientesFiltrados.length === 0}
                   menuPortalTarget={document.body}
@@ -397,6 +407,8 @@ export const CronogramaGeneral: React.FC = () => {
                     setSedesFiltradas(selected.map(s => s.value));
                   }}
                   placeholder="Todas las sedes"
+                  isSearchable
+                  isClearable
                   noOptionsMessage={() => 'No hay sedes'}
                   isDisabled={serviciosFiltrados.length === 0}
                   menuPortalTarget={document.body}

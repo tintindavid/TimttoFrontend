@@ -173,6 +173,80 @@ Cada entidad del backend debe tener:
 ... etc
 ```
 
+## 🎛️ Componentes Select (react-select)
+
+### Convenciones OBLIGATORIAS para Select con Datos de BD
+
+Todos los `<Select>` de react-select que obtienen opciones desde BD (con `.map()`) DEBEN tener:
+
+#### Props Requeridas
+```typescript
+<Select
+  isSearchable  // ✅ OBLIGATORIO - Permite buscar en opciones
+  isClearable   // ✅ OBLIGATORIO - Permite limpiar selección
+  // ... resto de props
+/>
+```
+
+#### Ordenamiento Alfabético
+Opciones DEBEN ordenarse alfabéticamente por nombre del objeto original:
+```typescript
+// ✅ CORRECTO
+const itemOptions = useMemo(() => {
+  const items = itemsData?.data || [];
+  return [...items]
+    .sort((a, b) => {
+      const nameA = (a.Nombre || '').toUpperCase();
+      const nameB = (b.Nombre || '').toUpperCase();
+      return nameA.localeCompare(nameB);
+    })
+    .map(item => ({
+      value: item._id,
+      label: item.Nombre
+    }));
+}, [itemsData?.data]);
+
+<Select
+  isSearchable
+  isClearable
+  options={itemOptions}
+  // ...
+/>
+```
+
+#### Excepciones
+- Opciones especiales como `CREATE_NEW` van al INICIO (no ordenar)
+- Opciones predefinidas (meses, estados) NO necesitan `isSearchable/isClearable`
+
+#### Template Completo
+```typescript
+<Select
+  // OBLIGATORIO para datos de BD
+  isSearchable
+  isClearable
+  
+  // Datos
+  options={sortedOptions}
+  value={selectedValue}
+  onChange={handleChange}
+  
+  // UI/UX
+  placeholder="Seleccionar..."
+  noOptionsMessage={() => 'No hay opciones disponibles'}
+  
+  // Posicionamiento (importante para modales)
+  menuPortalTarget={document.body}
+  menuPosition="fixed"
+  styles={{
+    menuPortal: (base) => ({ ...base, zIndex: 9999 })
+  }}
+  
+  // Estados
+  isLoading={isLoading}
+  isDisabled={isDisabled}
+/>
+```
+
 ## 📦 Servicios API
 
 ### Estructura de Service

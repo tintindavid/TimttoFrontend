@@ -3,6 +3,7 @@ import {
   Button, Table, Badge, Row, Col, 
   Spinner, Alert, Dropdown, Form, Card, Nav, Tab, InputGroup 
 } from 'react-bootstrap';
+import Select from 'react-select';
 import { FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
@@ -32,7 +33,6 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   // Parámetros de query - solo para paginación, filtros en cliente
   const queryParams = useMemo(() => {
     if (!customerId) return null;
-    
     const params = {
       ClienteId: customerId,
       page: 1, // Cargar todos en página 1
@@ -61,6 +61,33 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   console.log('equiposData', equiposRaw);
   const sedes = useMemo(() => sedesData?.data || [], [sedesData?.data]); 
   const servicios = useMemo(() => serviciosData?.data || [], [serviciosData?.data]);
+
+  // Opciones ordenadas para filtros
+  const sedeOptions = useMemo(() => {
+    return [...sedes]
+      .sort((a, b) => {
+        const nameA = (a.nombreSede || '').toUpperCase();
+        const nameB = (b.nombreSede || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      })
+      .map(s => ({
+        value: s._id!,
+        label: s.nombreSede || 'Sin nombre'
+      }));
+  }, [sedes]);
+
+  const servicioOptions = useMemo(() => {
+    return [...servicios]
+      .sort((a, b) => {
+        const nameA = (a.nombre || '').toUpperCase();
+        const nameB = (b.nombre || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      })
+      .map(s => ({
+        value: s._id!,
+        label: s.nombre || 'Sin nombre'
+      }));
+  }, [servicios]);
 
   // Filtrado y ordenamiento en cliente
   const filteredAndSortedEquipos = useMemo(() => {
@@ -239,39 +266,45 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                 <Col md={3}>
                   <Form.Group>
                     <Form.Label>Sede</Form.Label>
-                    <Form.Select
-                      value={sedeFilter}
-                      onChange={(e) => {
-                        setSedeFilter(e.target.value);
+                    <Select
+                      options={sedeOptions}
+                      value={sedeOptions.find(opt => opt.value === sedeFilter) || null}
+                      onChange={(selected) => {
+                        setSedeFilter(selected?.value || '');
                         setPage(1);
                       }}
-                    >
-                      <option value="">Todas las sedes</option>
-                      {sedes.map((sede) => (
-                        <option key={sede._id} value={sede._id}>
-                          {sede.nombreSede}
-                        </option>
-                      ))}
-                    </Form.Select>
+                      placeholder="Todas las sedes"
+                      isSearchable
+                      isClearable
+                      noOptionsMessage={() => 'No hay sedes'}
+                      menuPortalTarget={document.body}
+                      menuPosition="fixed"
+                      styles={{
+                        menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                      }}
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={3}>
                   <Form.Group>
                     <Form.Label>Servicio</Form.Label>
-                    <Form.Select
-                      value={servicioFilter}
-                      onChange={(e) => {
-                        setServicioFilter(e.target.value);
+                    <Select
+                      options={servicioOptions}
+                      value={servicioOptions.find(opt => opt.value === servicioFilter) || null}
+                      onChange={(selected) => {
+                        setServicioFilter(selected?.value || '');
                         setPage(1);
                       }}
-                    >
-                      <option value="">Todos los servicios</option>
-                      {servicios.map((servicio) => (
-                        <option key={servicio._id} value={servicio._id}>
-                          {servicio.nombre}
-                        </option>
-                      ))}
-                    </Form.Select>
+                      placeholder="Todos los servicios"
+                      isSearchable
+                      isClearable
+                      noOptionsMessage={() => 'No hay servicios'}
+                      menuPortalTarget={document.body}
+                      menuPosition="fixed"
+                      styles={{
+                        menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                      }}
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={3}>

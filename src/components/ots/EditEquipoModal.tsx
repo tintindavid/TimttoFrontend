@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Spinner, Card } from 'react-bootstrap';
+import Select from 'react-select';
 import { FaEdit, FaSave } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { equipoItemService } from '@/services/equipoItem.service';
@@ -50,9 +51,61 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
     });
 
     const {data:equipoData, isLoading: loadingEquipo} = useEquipoItem(equipo._id);
-    const items = itemsData?.data || [];
-    const sedes = useMemo(() => sedesData?.data || [], [sedesData?.data]);
-    const servicios = useMemo(() => serviciosData?.data || [], [serviciosData?.data]);  
+    
+    // Items ordenados alfabéticamente
+    const items = useMemo(() => {
+      const rawItems = itemsData?.data || [];
+      return [...rawItems].sort((a, b) => {
+        const nameA = (a.Nombre || '').toUpperCase();
+        const nameB = (b.Nombre || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      });
+    }, [itemsData?.data]);
+
+    // Sedes ordenadas alfabéticamente
+    const sedes = useMemo(() => {
+      const rawSedes = sedesData?.data || [];
+      return [...rawSedes].sort((a, b) => {
+        const nameA = (a.nombreSede || '').toUpperCase();
+        const nameB = (b.nombreSede || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      });
+    }, [sedesData?.data]);
+
+    // Servicios ordenados alfabéticamente
+    const servicios = useMemo(() => {
+      const rawServicios = serviciosData?.data || [];
+      return [...rawServicios].sort((a, b) => {
+        const nameA = (a.nombre || '').toUpperCase();
+        const nameB = (b.nombre || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      });
+    }, [serviciosData?.data]);
+
+    // Opciones para react-select
+    const itemOptions = useMemo(() => 
+      items.map(item => ({
+        value: item._id,
+        label: item.Nombre
+      })),
+      [items]
+    );
+
+    const sedeOptions = useMemo(() => 
+      sedes.map(sede => ({
+        value: sede._id!,
+        label: sede.nombreSede || 'Sin nombre'
+      })),
+      [sedes]
+    );
+
+    const servicioOptions = useMemo(() => 
+      servicios.map(servicio => ({
+        value: servicio._id!,
+        label: servicio.nombre || 'Sin nombre'
+      })),
+      [servicios]
+    );  
 
     const [formData, setFormData] = useState({
         reportId: reporteId,
@@ -248,17 +301,20 @@ const meses = [
                         Cargando items...
                     </div>
                     ) : (
-                    <Form.Select
-                        value={formData.ItemId}
-                        onChange={(e) => handleInputChange('ItemId', e.target.value)}
-                    >
-                        <option value="">Sin item relacionado</option>
-                        {items.map((item) => (
-                        <option key={item._id} value={item._id}>
-                            {item.Nombre}
-                        </option>
-                        ))}
-                    </Form.Select>
+                    <Select
+                        options={itemOptions}
+                        value={itemOptions.find(opt => opt.value === formData.ItemId) || null}
+                        onChange={(selected) => handleInputChange('ItemId', selected?.value || '')}
+                        placeholder="Sin item relacionado"
+                        isSearchable
+                        isClearable
+                        noOptionsMessage={() => 'No se encontraron items'}
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
+                        styles={{
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                        }}
+                    />
                     )}
                     <Form.Text className="text-muted">
                     Opcional: Relacionar con un item del catálogo
@@ -332,35 +388,39 @@ const meses = [
                 <Col md={4}>
                     <Form.Group className="mb-3">
                     <Form.Label>Sede *</Form.Label>
-                    <Form.Select
-                        value={formData?.SedeId}
-                        onChange={(e) => handleInputChange('SedeId', e.target.value)}
-                        required
-                    >
-                        <option value="">Seleccionar sede...</option>
-                        {sedes.map((sede) => (
-                        <option key={sede._id} value={sede._id}>
-                            {sede.nombreSede}
-                        </option>
-                        ))}
-                    </Form.Select>
+                    <Select
+                        options={sedeOptions}
+                        value={sedeOptions.find(opt => opt.value === formData?.SedeId) || null}
+                        onChange={(selected) => handleInputChange('SedeId', selected?.value || '')}
+                        placeholder="Seleccionar sede..."
+                        isSearchable
+                        isClearable
+                        noOptionsMessage={() => 'No hay sedes disponibles'}
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
+                        styles={{
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                        }}
+                    />
                     </Form.Group>
                 </Col>
               <Col md={4}>
                 <Form.Group className="mb-3">
                 <Form.Label>Servicio *</Form.Label>
-                <Form.Select
-                    value={formData.Servicio}
-                    onChange={(e) => handleInputChange('Servicio', e.target.value)}
-                    required
-                >
-                    <option value="">Seleccionar servicio...</option>
-                    {servicios.map((servicio) => (
-                    <option key={servicio._id} value={servicio._id}>
-                        {servicio.nombre}
-                    </option>
-                    ))}
-                </Form.Select>
+                <Select
+                    options={servicioOptions}
+                    value={servicioOptions.find(opt => opt.value === formData.Servicio) || null}
+                    onChange={(selected) => handleInputChange('Servicio', selected?.value || '')}
+                    placeholder="Seleccionar servicio..."
+                    isSearchable
+                    isClearable
+                    noOptionsMessage={() => 'No hay servicios disponibles'}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                    styles={{
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                    }}
+                />
                 </Form.Group>
               </Col>  
               <Col md={4}>

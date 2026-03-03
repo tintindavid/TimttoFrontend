@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { Container, Card, Form, Button, Spinner, Alert } from 'react-bootstrap';
+import Select from 'react-select';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useCreateItem, useItem, useUpdateItem } from '@/hooks/useItems';
 import useProtocols from '@/hooks/useProtocols';
@@ -14,7 +15,24 @@ const ItemFormPage: React.FC = () => {
   const create = useCreateItem();
   const update = useUpdateItem();
 
-  const { register, handleSubmit, reset } = useForm<any>({ defaultValues: { Nombre: '', Observacion: '', ProtocoloId: '' } });
+  const { register, handleSubmit, reset, setValue, watch } = useForm<any>({ defaultValues: { Nombre: '', Observacion: '', ProtocoloId: '' } });
+
+  // Opciones ordenadas para protocolos
+  const protocolOptions = useMemo(() => {
+    const protocols = protocolsData?.data || [];
+    return [...protocols]
+      .sort((a, b) => {
+        const nameA = (a.nombre || '').toUpperCase();
+        const nameB = (b.nombre || '').toUpperCase();
+        return nameA.localeCompare(nameB);
+      })
+      .map(p => ({
+        value: p._id,
+        label: p.nombre || 'Sin nombre'
+      }));
+  }, [protocolsData?.data]);
+
+  const selectedProtocol = watch('ProtocoloId');
 
   useEffect(() => {
     if (itemData?.data) reset(itemData.data);
@@ -79,12 +97,20 @@ const ItemFormPage: React.FC = () => {
 
             <Form.Group className="mb-3">
               <Form.Label>Protocolo</Form.Label>
-              <Form.Select {...register('ProtocoloId')}>
-                <option value="">-- Selecciona protocolo --</option>
-                {protocolsData?.data?.map((p: any) => (
-                  <option key={p._id} value={p._id}>{p.nombre || p.ProtocoloId || p.nombre}</option>
-                ))}
-              </Form.Select>
+              <Select
+                options={protocolOptions}
+                value={protocolOptions.find(opt => opt.value === selectedProtocol) || null}
+                onChange={(selected) => setValue('ProtocoloId', selected?.value || '')}
+                placeholder="-- Selecciona protocolo --"
+                isSearchable
+                isClearable
+                noOptionsMessage={() => 'No hay protocolos disponibles'}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+                styles={{
+                  menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                }}
+              />
             </Form.Group>
 
             <div className="d-flex gap-2">
