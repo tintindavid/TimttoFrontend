@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reporteService } from '@/services/reporte.service';
+import { sheetworkService } from '@/services/sheetwork.service';
 import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '@/types/reporte.types';
 
 // Get reportes by OT
@@ -260,20 +261,6 @@ export const useCreateWorkSheet = () => {
   });
 };
 
-// Sign worksheet
-export const useSignWorkSheet = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: ({ sheetId, firma }: { sheetId: string; firma: string }) => 
-      reporteService.signWorkSheet(sheetId, firma),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ots'] });
-      queryClient.invalidateQueries({ queryKey: ['worksheets'] });
-    },
-  });
-};
-
 // Update observations
 export const useUpdateObservaciones = () => {
   const queryClient = useQueryClient();
@@ -354,5 +341,111 @@ export const useWorkSheets = (otId: string) => {
     enabled: !!otId,
     staleTime: 2 * 60 * 1000, // 2 minutes
     cacheTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+// ============================================
+// HOOKS PARA SHEETWORKS (HOJAS DE TRABAJO)
+// ============================================
+
+/**
+ * Obtener todas las hojas de trabajo con filtros y paginación
+ */
+export const useAllWorkSheets = (params?: {
+  page?: number;
+  limit?: number;
+  clienteId?: string;
+  estado?: string;
+  startDate?: string;
+  endDate?: string;
+  numeroHoja?: string;
+}) => {
+  return useQuery({
+    queryKey: ['worksheets', 'all', params],
+    queryFn: () => sheetworkService.getAll(params),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+/**
+ * Obtener una hoja de trabajo por ID
+ */
+export const useWorkSheet = (id: string) => {
+  return useQuery({
+    queryKey: ['worksheets', id],
+    queryFn: () => sheetworkService.getById(id),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000,
+  });
+};
+
+/**
+ * Firmar hoja de trabajo
+ */
+export const useSignWorkSheet = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, firmaCliente }: { id: string; firmaCliente: string }) =>
+      sheetworkService.sign(id, firmaCliente),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worksheets'] });
+    },
+  });
+};
+
+/**
+ * Cerrar hoja de trabajo
+ */
+export const useCloseWorkSheet = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => sheetworkService.close(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worksheets'] });
+    },
+  });
+};
+
+/**
+ * Actualizar observaciones de hoja de trabajo
+ */
+export const useUpdateWorkSheetObservaciones = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, observaciones }: { id: string; observaciones: string }) =>
+      sheetworkService.updateObservaciones(id, observaciones),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worksheets'] });
+    },
+  });
+};
+
+// ============================================
+// HOOKS PARA REPORTES CERRADOS
+// ============================================
+
+/**
+ * Obtener reportes cerrados con filtros
+ */
+export const useClosedReportes = (params?: {
+  page?: number;
+  limit?: number;
+  clienteId?: string;
+  equipoId?: string;
+  startDate?: string;
+  endDate?: string;
+  tipoMtto?: string;
+  servicio?: string;
+}) => {
+  return useQuery({
+    queryKey: ['reportes', 'closed', params],
+    queryFn: () => reporteService.getAll({ ...params, estado: 'Cerrado' }),
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
   });
 };

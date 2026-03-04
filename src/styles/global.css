@@ -61,7 +61,5 @@ body {
 .sidebar .menu-item.active, .sidebar .menu-item:hover{ background: rgba(13,110,253,0.06); }
 .sidebar .menu-item .icon{ color: var(--tt-primary); }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .sidebar { display: none; }
-}
+/* Responsive adjustments - sidebar ahora se maneja con transform en Sidebar.css */
+

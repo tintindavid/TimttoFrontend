@@ -1,9 +1,14 @@
 import React from 'react';
 import { Navbar as BSNavbar, Container, Nav, NavDropdown, Button, Image } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { FaBars } from 'react-icons/fa';
 import { useAuth } from '../../../context/AuthContext';
 
-const Navbar: React.FC = () => {
+interface NavbarProps {
+  onToggleMobileSidebar: () => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ onToggleMobileSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -18,6 +23,16 @@ const Navbar: React.FC = () => {
   return (
     <BSNavbar expand="lg" className="tt-navbar" variant="dark">
       <Container fluid>
+        {/* Botón hamburguesa para móviles */}
+        <Button 
+          variant="link" 
+          className="text-white d-lg-none p-0 me-2 border-0" 
+          onClick={onToggleMobileSidebar}
+          aria-label="Abrir menú"
+        >
+          <FaBars size={24} />
+        </Button>
+
         <BSNavbar.Brand onClick={() => navigate('/')} style={{ cursor: 'pointer' }} className="d-flex align-items-center">
           <Image src="/logo192.png" alt="Timtto" height={32} className="me-2" />
           <span className="fw-bold">TIMTTO</span>

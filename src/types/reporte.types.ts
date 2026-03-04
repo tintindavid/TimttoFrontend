@@ -106,13 +106,18 @@ export interface SheetWork {
   personaRecibe: string;
   responsable: string;
   cargoResponsable?: string;
+  cargoRecibe?: string;
   fullName?: string;
+  fullNameResponsable?: string;
+  firmaFile?: string;
   firmaResponsableFile?: string;  
   reports:  [{
     numeroHoja: string;
     _id: string;
     fechaProcesado?: string;
     inHt: boolean;
+    consecutivo?: string; // Nuevo campo para mostrar número de reporte o estado como 'Cerrado'
+    tipoMtto?: string;
     equipoSnapshot: {
       ItemText: string;
       Marca: string;

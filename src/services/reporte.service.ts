@@ -9,6 +9,34 @@ import {
 
 
 export const reporteService = {
+  // Get all reportes with filters (for closed reports, etc.)
+  getAll: async (params?: { 
+    page?: number; 
+    limit?: number;
+    estado?: string;
+    clienteId?: string;
+    equipoId?: string;
+    startDate?: string;
+    endDate?: string;
+    tipoMtto?: string;
+    servicio?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.estado) queryParams.append('estado', params.estado);
+    if (params?.clienteId) queryParams.append('clienteId', params.clienteId);
+    if (params?.equipoId) queryParams.append('equipoId', params.equipoId);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    if (params?.tipoMtto) queryParams.append('tipoMtto', params.tipoMtto);
+    if (params?.servicio) queryParams.append('servicio', params.servicio);
+    
+    const url = `/reports${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await api.get<ApiResponse<Reporte[]>>(url);
+    return response.data;
+  },
+
   // Get reportes by OT ID
   getReportesByOT: async (otId: string) => {
     const response = await api.get<ApiResponse<Reporte[]>>(`/reports/ot/${otId}`);

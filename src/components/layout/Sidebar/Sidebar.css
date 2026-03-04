@@ -4,6 +4,7 @@
   border-right: 1px solid #eaeaea;
   padding: 12px;
   overflow: auto;
+  transition: transform 0.3s ease-in-out;
 }
 
 .sidebar .nav-link{ color: var(--tt-text); }
@@ -15,3 +16,69 @@
 .submenu.open{ display:block }
 
 .nav-link.small{ color:var(--tt-text-muted); }
+
+/* Botón cerrar para móviles */
+.sidebar-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--tt-text);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  transition: background-color 0.2s;
+}
+
+.sidebar-close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Backdrop para móviles */
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Estilos para móviles */
+@media (max-width: 991.98px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 1050;
+    transform: translateX(-100%);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+    padding-top: 60px; /* Espacio para el botón cerrar */
+  }
+
+  .sidebar.sidebar-mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

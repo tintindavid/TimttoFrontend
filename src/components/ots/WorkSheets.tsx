@@ -39,7 +39,6 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [firmaCliente, setFirmaCliente] = useState('');
   const [loadingPdfSheets, setLoadingPdfSheets] = useState<Record<string, boolean>>({});
   
-  console.log('selected HT: ', selectedSheet);
   // Estados para firma al crear hoja
   const [recibeNombre, setRecibeNombre] = useState('');
   const [recibeCargo, setRecibeCargo] = useState('');

@@ -1,0 +1,146 @@
+/* Diario Page Styles */
+.diario-page {
+  min-height: 100vh;
+}
+
+.diario-page .page-header {
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 1rem;
+}
+
+.diario-page .page-header h1 {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.diario-page .page-header .text-muted {
+  font-size: 0.95rem;
+}
+
+/* Tabs customization */
+#diario-tabs {
+  border-bottom: 2px solid #dee2e6;
+}
+
+#diario-tabs .nav-link {
+  color: #6c757d;
+  font-weight: 500;
+  border: none;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+#diario-tabs .nav-link:hover {
+  color: #0d6efd;
+  border-bottom-color: #0d6efd;
+  background-color: transparent;
+}
+
+#diario-tabs .nav-link.active {
+  color: #0d6efd;
+  background-color: transparent;
+  border-bottom-color: #0d6efd;
+  font-weight: 600;
+}
+
+/* Signature canvas */
+.signature-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.signature-canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .diario-page .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  #diario-tabs .nav-link {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* Loading spinner customization */
+.diario-page .spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+/* Card enhancements */
+.diario-page .card {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 8px;
+}
+
+.diario-page .card-header {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+  font-weight: 600;
+}
+
+/* Badge customization */
+.diario-page .badge {
+  padding: 0.4em 0.7em;
+  font-weight: 500;
+}
+
+/* Button hover effects */
+.diario-page .btn {
+  transition: all 0.2s ease-in-out;
+}
+
+.diario-page .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.diario-page .btn:active {
+  transform: translateY(0);
+}
+
+/* Table enhancements */
+.diario-page .table {
+  margin-bottom: 0;
+}
+
+.diario-page .table thead th {
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.diario-page .table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.diario-page .table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Filter card */
+.diario-page .bg-light {
+  background-color: #f8f9fa !important;
+}
+
+.diario-page .bg-light .card-body {
+  padding: 1rem;
+}
+
+/* Modal enhancements */
+.diario-page .modal-header {
+  border-bottom: 2px solid #e9ecef;
+}
+
+.diario-page .modal-footer {
+  border-top: 2px solid #e9ecef;
+}
