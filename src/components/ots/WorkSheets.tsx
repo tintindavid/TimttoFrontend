@@ -9,6 +9,9 @@ import './WorkSheets.css';
 import { useCurrentUserData } from '@/context/userContext';
 import { ca } from 'date-fns/locale';
 import { generateBulkPDF } from '@/services/descargarPdf.service';
+import PreviewSheetWorkModal from '@/components/common/PreviewSheetWorkModal';
+import { sheetworkService } from '@/services/sheetwork.service';
+import tenantService from '@/services/tenant.service';
 
 interface WorkSheetsProps {
   otId: string;
@@ -38,6 +41,8 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [selectedEquipos, setSelectedEquipos] = useState<string[]>([]);
   const [firmaCliente, setFirmaCliente] = useState('');
   const [loadingPdfSheets, setLoadingPdfSheets] = useState<Record<string, boolean>>({});
+  const [tenantData, setTenantData] = useState<any>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   
   // Estados para firma al crear hoja
   const [recibeNombre, setRecibeNombre] = useState('');
@@ -48,6 +53,22 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMarca, setFilterMarca] = useState('');
   const [filterModelo, setFilterModelo] = useState('');
+
+  // Obtener tenant data para el PDF
+  useEffect(() => {
+    const fetchTenantData = async () => {
+      if (!currentUserData?.tenantId) return;
+      
+      try {
+        const response = await tenantService.getById(currentUserData.tenantId);
+        setTenantData(response.data || null);
+      } catch (error) {
+        console.error('Error al obtener tenant data:', error);
+      }
+    };
+
+    fetchTenantData();
+  }, [currentUserData?.tenantId]);
   const [filterSerie, setFilterSerie] = useState('');
   const [filterSede, setFilterSede] = useState('');
   const [filterServicio, setFilterServicio] = useState('');
@@ -235,6 +256,34 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
     }
   };
 
+  // Función para descargar PDF desde el backend
+  const handleDownloadPdf = async () => {
+    if (!selectedSheet?._id) {
+      alert('Error: ID de hoja de trabajo no disponible');
+      return;
+    }
+
+    try {
+      console.log('Abriendo PDF desde backend para sheet:', selectedSheet._id);
+      
+      const blob = await sheetworkService.getPDF(selectedSheet._id);
+      const url = URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank');
+      
+      if (!newWindow) {
+        alert('Por favor permite ventanas emergentes para ver el PDF');
+        URL.revokeObjectURL(url);
+        return;
+      }
+      
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+      console.log('✅ PDF abierto exitosamente');
+    } catch (error) {
+      console.error('❌ Error al obtener PDF:', error);
+      alert('Error al obtener el PDF del servidor. Intenta nuevamente.');
+    }
+  };
+
   const onPDFReports = async (sheetId: string) => {
 
     console.log('Generando PDF de reportes para la hoja: ', sheetId);
@@ -259,7 +308,33 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   }
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4" style={{ position: 'relative' }}>
+      {/* Overlay de carga durante descarga de PDF */}
+      {isDownloadingPdf && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            borderRadius: '0.25rem'
+          }}
+        >
+          <Spinner animation="border" role="status" variant="primary" style={{ width: '3rem', height: '3rem' }}>
+            <span className="visually-hidden">Generando PDF...</span>
+          </Spinner>
+          <div className="mt-3 fw-bold text-primary">Generando PDF...</div>
+          <div className="text-muted small">Por favor espere</div>
+        </div>
+      )}
+      
       <Card.Header className="d-flex justify-content-between align-items-center">
         <h5 className="mb-0">
           📋 Hojas de Trabajo ({hojasTrabajo.length})
@@ -359,9 +434,52 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                             Firmar
                           </Button>
                         )}
-                        <Button size="sm" variant="outline-secondary">
-                          <FaDownload className="me-1" />
-                          PDF
+                        <Button 
+                          size="sm" 
+                          variant="outline-secondary"
+                          onClick={async () => {
+                            if (!hoja._id) {
+                              alert('Error: ID de hoja de trabajo no disponible');
+                              return;
+                            }
+
+                            setIsDownloadingPdf(true);
+                            try {
+                              console.log('Abriendo PDF desde backend para hoja:', hoja._id);
+                              const blob = await sheetworkService.getPDF(hoja._id);
+                              const url = URL.createObjectURL(blob);
+                              const newWindow = window.open(url, '_blank');
+                              
+                              if (!newWindow) {
+                                alert('Por favor permite ventanas emergentes para ver el PDF');
+                                URL.revokeObjectURL(url);
+                                return;
+                              }
+                              
+                              setTimeout(() => URL.revokeObjectURL(url), 100);
+                              console.log('✅ PDF abierto exitosamente');
+                            } catch (error) {
+                              console.error('❌ Error al obtener PDF:', error);
+                              alert('Error al obtener el PDF del servidor. Intenta nuevamente.');
+                            } finally {
+                              setIsDownloadingPdf(false);
+                            }
+                          }}
+                          disabled={isDownloadingPdf}
+                        >
+                          {isDownloadingPdf ? (
+                            <Spinner
+                              as="span"
+                              animation="border"
+                              size="sm"
+                              role="status"
+                              aria-hidden="true"
+                              className="me-1"
+                            />
+                          ) : (
+                            <FaDownload className="me-1" />
+                          )}
+                          {isDownloadingPdf ? 'Generando...' : 'PDF'}
                         </Button>
                         {(() => {
                           const isLoadingPdf = loadingPdfSheets[hoja._id!] ?? false;
@@ -789,244 +907,14 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
         </Modal.Footer>
       </Modal>
 
-      {/* Modal Vista Previa HT */}
-      <Modal 
-        show={showPreviewModal} 
+      {/* Modal Vista Previa HT - Usando componente reutilizable */}
+      <PreviewSheetWorkModal
+        show={showPreviewModal}
         onHide={() => setShowPreviewModal(false)}
-        size="xl"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <FaFilePdf className="me-2 text-danger" />
-            Vista Previa - Hoja de Trabajo
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4" style={{ backgroundColor: '#f8f9fa' }}>
-          {selectedSheet && (
-            <div 
-              className="bg-white shadow-sm p-4" 
-              style={{ 
-                maxHeight: '70vh', 
-                overflowY: 'auto',
-                fontFamily: 'Arial, sans-serif'
-              }}
-            >
-              {/* Encabezado estilo PDF */}
-              <div className="text-center mb-4 pb-3 border-bottom border-2">
-                <h3 className="mb-2 text-primary fw-bold">HOJA DE TRABAJO</h3>
-                <div className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    <strong>Número:</strong> {selectedSheet.numeroHoja}
-                  </div>
-                  <div>
-                    <strong>Fecha:</strong> {new Date(selectedSheet.createdAt).toLocaleDateString('es-ES', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric'
-                    })}
-                  </div>
-                  <div>
-                    <Badge bg={getEstadoColor(selectedSheet.estado)} className="fs-6">
-                      {selectedSheet.estado}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* Información del Cliente */}
-              {(selectedSheet as any).clienteId && (
-                <div className="mb-4 p-3 bg-light rounded">
-                  <h5 className="mb-3 text-secondary">
-                    🏢 Información del Cliente
-                  </h5>
-                  <Row>
-                    <Col md={6}>
-                      <div className="mb-2">
-                        <strong>Razón Social:</strong> {(selectedSheet as any).clienteId.Razonsocial || 'N/A'}
-                      </div>
-                      <div className="mb-2">
-                        <strong>NIT:</strong> {(selectedSheet as any).clienteId.Nit || 'N/A'}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Dirección:</strong> {(selectedSheet as any).clienteId.Direccion || 'N/A'}
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                      <div className="mb-2">
-                        <strong>Ciudad:</strong> {(selectedSheet as any).clienteId.Ciudad || 'N/A'}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Departamento:</strong> {(selectedSheet as any).clienteId.Departamento || 'N/A'}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Teléfono:</strong> {(selectedSheet as any).clienteId.TelContacto || 'N/A'}
-                      </div>
-                      <div className="mb-2">
-                        <strong>Email:</strong> {(selectedSheet as any).clienteId.Email || 'N/A'}
-                      </div>
-                    </Col>
-                  </Row>
-                </div>
-              )}
-
-              {/* Listado de Equipos */}
-              <div className="mb-4">
-                <h5 className="mb-3 text-secondary border-bottom pb-2">
-                  📋 Equipos Procesados ({selectedSheet.reports?.length || 0})
-                </h5>
-                
-                {selectedSheet.reports && selectedSheet.reports.length > 0 ? (
-                  <div className="table-responsive">
-                    <Table bordered hover size="sm">
-                      <thead className="table-light">
-                        <tr>
-                          <th style={{ width: '5%' }}>#</th>
-                          <th style={{ width: '30%' }}>Equipo</th>
-                          <th style={{ width: '15%' }}>Marca</th>
-                          <th style={{ width: '10%' }}>Modelo</th>
-                          <th style={{ width: '10%' }}>Serie</th>
-                          <th style={{ width: '10%' }}>Sede</th>
-                          <th style={{ width: '20%' }}>Servicio</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {/*mapear  selectedSheet.reports que tiene la informacion de los equipos*/}
-                        {selectedSheet.reports.map((equipo, index) => {
-                          const equipoId = equipo._id;
-                          return (
-                            <tr key={equipoId}>
-                              <td className="text-center fw-bold">{index + 1}</td>
-                              <td>{equipo?.equipoSnapshot?.ItemText || 'N/A'}</td>
-                              <td>{equipo?.equipoSnapshot?.Marca || 'N/A'}</td>
-                              <td>{equipo?.equipoSnapshot?.Modelo || 'N/A'}</td>
-                              <td>{equipo?.equipoSnapshot?.Serie || 'N/A'}</td>
-                              <td>{equipo?.equipoSnapshot?.Sede || 'N/A'}</td>
-                              <td>{equipo?.equipoSnapshot?.Servicio || 'N/A'}
-                                <small> {equipo?.equipoSnapshot?.Ubicacion || 'N/A'}</small>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </Table>
-                  </div>
-                ) : (
-                  <Alert variant="warning" className="mb-0">
-                    No hay equipos asociados a esta hoja de trabajo
-                  </Alert>
-                )}
-              </div>
-
-              {/* Firmas */}
-              {((selectedSheet as any).firmaFile || (selectedSheet as any).firmaResponsable) && (
-                <div className="mt-4 pt-3 border-top">
-                  <h5 className="mb-3 text-secondary">
-                    ✍️ Firmas
-                  </h5>
-                  <Row>
-                  {/* Firma del Responsable del Servicio */}
-                    {(selectedSheet as any).firmaResponsableFile && (
-                      <Col md={6}>
-                        <div className="text-center p-3 bg-light rounded ms-2">
-                          <h6 className="mb-3 text-success">Firma del Responsable del Servicio</h6>
-                          <img 
-                            src={(selectedSheet as any).firmaResponsableFile} 
-                            alt="Firma del responsable del servicio" 
-                            style={{ 
-                              maxWidth: '100%', 
-                              maxHeight: '150px',
-                              border: '1px solid #dee2e6',
-                              borderRadius: '4px',
-                              backgroundColor: 'white'
-                            }}
-                          />
-                          <div className="mt-3">
-                            <div className="fw-bold">
-                              <strong>Responsable: </strong>{(selectedSheet as any).fullNameResponsable || 'N/A'}</div>
-                            <small className="text-muted">
-                              <strong>Cargo: </strong> {(selectedSheet as any).cargoResponsable || 'Técnico de Servicio'}</small>
-                          </div>
-                        </div>
-                      </Col>
-                    )}
-                    {/* Firma del que Recibe */}
-                    {(selectedSheet as any).firmaFile && (
-                      <Col md={6}>
-                        <div className="text-center p-3 bg-light rounded me-2">
-                          <h6 className="mb-3 text-primary">Firma del que Recibe</h6>
-                          <img 
-                            src={(selectedSheet as any).firmaFile} 
-                            alt="Firma del que recibe" 
-                            style={{ 
-                              maxWidth: '100%', 
-                              maxHeight: '150px',
-                              border: '1px solid #dee2e6',
-                              borderRadius: '4px',
-                              backgroundColor: 'white'
-                            }}
-                          />
-                          <div className="mt-3">
-                            <div className="fw-bold">
-                              <strong>Recibe: </strong>{(selectedSheet as any).personaRecibe}</div>
-                            <small className="text-muted">
-                              <strong>Cargo: </strong> {(selectedSheet as any).cargoRecibe}</small>
-                          </div>
-                        </div>
-                      </Col>
-                    )}
-
-                    {/* Si solo hay una firma, centrarla */}
-                    {((selectedSheet as any).firmaFile && !(selectedSheet as any).firmaResponsable) && (
-                      <Col md={6}></Col>
-                    )}
-                    {(!(selectedSheet as any).firmaFile && (selectedSheet as any).firmaResponsable) && (
-                      <Col md={6}></Col>
-                    )}
-                  </Row>
-                </div>
-              )}
-
-              {/* Firma del Cliente (si está firmada) */}
-              {selectedSheet.estado === 'Firmada' && (selectedSheet as any).firmaCliente && (
-                <div className="mt-4 pt-3 border-top">
-                  <h5 className="mb-3 text-secondary">
-                    ✍️ Firma del Cliente
-                  </h5>
-                  <div className="text-center p-3 bg-light rounded">
-                    <div className="fw-bold mb-2">{(selectedSheet as any).firmaCliente}</div>
-                    <small className="text-muted">
-                      Firmado el: {(selectedSheet as any).fechaFirma 
-                        ? new Date((selectedSheet as any).fechaFirma).toLocaleDateString('es-ES')
-                        : 'N/A'
-                      }
-                    </small>
-                  </div>
-                </div>
-              )}
-
-              {/* Pie de página */}
-              <div className="mt-4 pt-3 border-top text-center text-muted">
-                <small>
-                  Documento generado el {new Date().toLocaleDateString('es-ES')} a las {new Date().toLocaleTimeString('es-ES')}
-                </small>
-              </div>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPreviewModal(false)}>
-            Cerrar
-          </Button>
-          <Button 
-            variant="primary" 
-            onClick={() => window.print()}
-          >
-            <FaPrint className="me-1" />
-            Imprimir
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        sheetWork={selectedSheet}
+        tenantData={tenantData}
+        onDownloadPdf={handleDownloadPdf}
+      />
     </Card>
   );
 };
