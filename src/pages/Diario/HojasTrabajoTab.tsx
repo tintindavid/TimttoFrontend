@@ -129,6 +129,8 @@ const HojasTrabajoTab: React.FC = () => {
 
   // Hojas de trabajo
   const worksheets = worksheetsData?.data || [];
+
+  console.log('Hojas de trabajo obtenidas:', worksheets);
   const totalPages = worksheetsData?.pagination?.pages || 1;
 
   // Handlers
@@ -372,6 +374,7 @@ const HojasTrabajoTab: React.FC = () => {
                     <th>Cliente</th>
                     <th>Equipos</th>
                     <th>Estado</th>
+                    <th>Responsable</th>
                     <th>Fecha Creación</th>
                     <th>Acciones</th>
                   </tr>
@@ -390,7 +393,12 @@ const HojasTrabajoTab: React.FC = () => {
                         <Badge bg="info">{hoja.reports?.length || 0} equipos</Badge>
                       </td>
                       <td>
-                        <Badge bg={getEstadoColor(hoja.estado)}>{hoja.estado}</Badge>
+                        <Badge bg={hoja.estado ? getEstadoColor(hoja.estado) : 
+                            hoja.firmaFile ? getEstadoColor('Firmada') : 'warning'
+                        }>{hoja.estado || (hoja.firmaFile ? 'Firmada' : 'N/A')}</Badge>
+                      </td>
+                      <td>
+                        {hoja.fullNameResponsable || 'N/A'}
                       </td>
                       <td>
                         {hoja.createdAt ? (

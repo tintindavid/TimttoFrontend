@@ -34,10 +34,10 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
 
   console.log('Grupos a mostrar en CronogramaGrid:', grupos);
   const NUM_MESES = 12;
-  const NUM_COLUMNAS_DATOS = 6; // Item, Marca, Modelo, Serie, Inventario, Ubicación
-  const NUM_COLUMNAS_ESTADO_RIESGO = 2; // Estado, Riesgo
+  const NUM_COLUMNAS_DATOS = 4; // Item, Equipo, Ubicación, Riesgo/Invima
+  const NUM_COLUMNAS_ESTADO = 1; // Estado
   const NUM_COLUMNAS_ACCIONES = onEditEquipo ? 1 : 0; // Columna de acciones si hay onEditEquipo
-  const totalColumnas = (mostrarCheckboxes ? 1 : 0) + NUM_COLUMNAS_DATOS + NUM_COLUMNAS_ESTADO_RIESGO + NUM_MESES + NUM_COLUMNAS_ACCIONES;
+  const totalColumnas = (mostrarCheckboxes ? 1 : 0) + NUM_COLUMNAS_DATOS + NUM_COLUMNAS_ESTADO + NUM_MESES + NUM_COLUMNAS_ACCIONES;
 
   return (
     <div className="cronograma-grid-container">
@@ -45,15 +45,11 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
         <thead className="table-light">
           <tr>
             {mostrarCheckboxes && <th style={{ width: '40px' }}></th>}
-            <th style={{ minWidth: '130px' }}>Item</th>
-            <th style={{ minWidth: '100px' }}>Marca</th>
-            <th style={{ minWidth: '90px' }}>Modelo</th>
-            <th style={{ minWidth: '90px' }}>Serie</th>
-            <th style={{ minWidth: '80px' }}>Inventario</th>
-            <th style={{ minWidth: '100px' }}>Ubicación</th>
+            <th style={{ minWidth: '110px' }}>Item</th>
+            <th style={{ minWidth: '110px' }}>Equipo</th>
+            <th style={{ minWidth: '110px' }}>Ubicación</th>
             <th style={{ minWidth: '60px' }}>Estado</th>
-            <th style={{ minWidth: '60px' }}>Riesgo</th>
-            <th style={{ minWidth: '80px'}}>Invima</th>
+            <th style={{ minWidth: '90px' }}>Riesgo / Invima</th>
             {onEditEquipo && <th style={{ width: '60px', textAlign: 'center' }}>Edit</th>}
 
             {MESES.map(mes => (
@@ -104,26 +100,24 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
                         {itemName}
                       </small>
                     </td>
-                    <td>
-                      <small>{equipo.Marca || '-'}</small>
+                    <td> 
+                      <div>
+                        <strong className="d-block">{equipo.Marca || '-'}</strong>
+                        <small className="text-muted d-block" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                          <strong>Mod:</strong> {equipo.Modelo || '-'} <strong>SN:</strong> {equipo.Serie || '-'} <strong>Inv:</strong> {equipo.Inventario || '-'}
+                        </small>
+                      </div>
                     </td>
                     <td>
-                      <small>{equipo.Modelo || '-'}</small>
-                    </td>
-                    <td>
-                      <small>{equipo.Serie || '-'}</small>
-                    </td>
-                    <td>
-                      <small>{equipo.Inventario || '-'}</small>
-                    </td>
-                    <td>
-                      <small>
-                        {/*Siempre viene equipo.Servicio?.nombre  */}
-                        {typeof equipo.Servicio === 'object' && equipo.Servicio?.nombre !== 'Principal'? 
-                          equipo.Servicio?.nombre? equipo.Servicio?.nombre + ' - ' + equipo.Ubicacion : equipo.Ubicacion
-                           : equipo.Ubicacion || '-'  
-                        }
-                      </small>
+                      <div>
+                        <strong className="d-block">{grupo.sede || '-'}</strong>
+                        <small className="text-muted d-block" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                          {typeof equipo.Servicio === 'object' && equipo.Servicio?.nombre !== 'Principal'? 
+                            (equipo.Servicio?.nombre ? equipo.Servicio?.nombre + ' - ' + (equipo.Ubicacion || '') : equipo.Ubicacion)
+                             : equipo.Ubicacion || '-'  
+                          }
+                        </small>
+                      </div>
                     </td>
                     <td>
                       <Badge 
@@ -139,10 +133,10 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
                       </Badge>
                     </td>
                     <td>
-                      <small>{equipo.Riesgo || 'N/A'}</small>
-                    </td>
-                    <td>
-                      <small>{equipo.Invima || 'N/A'}</small>
+                      <div>
+                        <small className="d-block">{equipo.Riesgo || 'N/A'}</small>
+                        <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>{equipo.Invima || 'N/A'}</small>
+                      </div>
                     </td>
                     {onEditEquipo && (
                       <td className="text-center">

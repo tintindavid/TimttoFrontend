@@ -104,7 +104,7 @@ const AppRoutes: React.FC = () => {
         <Route path="items/new" element={<ItemFormPage />} />
         <Route path="items/:id" element={<ItemDetailPage />} />
         <Route path="items/:id/edit" element={<ItemFormPage />} />
-        <Route path="actividades" element={<ActividadesPage />} />
+        <Route path="actividades" element={<ActividadesPage />} /> 
         <Route path="actividades/new" element={<ActividadFormPage />} />
         <Route path="actividades/:id" element={<div>Actividad detalle (pendiente)</div>} />
         <Route path="actividades/:id/edit" element={<ActividadFormPage />} />
