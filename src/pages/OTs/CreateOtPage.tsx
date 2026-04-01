@@ -458,7 +458,8 @@ const CreateOtPage: React.FC = () => {
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>Cliente <span className="text-danger">*</span></Form.Label>
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2"> 
+                  {}
                   <Form.Select 
                     value={formData.customerId}
                     onChange={(e) => handleCustomerChange(e.target.value)}
