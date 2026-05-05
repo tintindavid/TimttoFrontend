@@ -29,6 +29,11 @@ const actividadService = {
     const res = await api.delete<ApiResponse<null>>(`${base}/${id}`);
     return res.data;
   },
+
+  search: async (q: string): Promise<ApiResponse<ActividadMtto[]>> => {
+    const res = await api.get<ApiResponse<ActividadMtto[]>>('/actividad-mtto/search', { params: { q } });
+    return res.data;
+  },
 };
 
 export { actividadService };

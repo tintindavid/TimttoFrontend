@@ -24,6 +24,16 @@ export const useActividades = (
   });
 };
 
+export const useSearchActividades = (q: string) => {
+  return useQuery<ApiResponse<ActividadMtto[]>>({
+    queryKey: ['actividades', 'search', q],
+    queryFn: () => actividadService.search(q),
+    enabled: q.trim().length > 0,
+    staleTime: 1 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useActividad = (id?: string) => {
   return useQuery<ApiResponse<ActividadMtto>>({ 
     queryKey: ['actividad', id], 
