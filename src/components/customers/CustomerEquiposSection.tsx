@@ -13,6 +13,7 @@ import EquipoForm from '@/components/equipos/EquipoForm';
 import EquipoBulkUpload from '@/components/equipos/EquipoBulkUpload';
 import AppPagination from '@/components/common/Pagination';
 import { Navigate, useNavigate } from 'react-router-dom';
+import DownloadInventarioModal from './DownloadInventarioModal';
 
 interface CustomerEquiposSectionProps {
   customerId: string;
@@ -27,6 +28,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const [activeTab, setActiveTab] = useState<'list' | 'create' | 'bulk'>('list');
   const [page, setPage] = useState(1);
   const [limit] = useState(20); // Items por página
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -197,7 +199,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
       )*/}
       
       {/* Navegación por tabs */}
-      <Nav variant="pills" className="mb-4">
+      <Nav variant="pills" className="mb-4 d-flex align-items-center">
         <Nav.Item>
           <Nav.Link 
             active={activeTab === 'list'} 
@@ -222,6 +224,17 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
             Carga Masiva
           </Nav.Link>
         </Nav.Item>
+        {equiposRaw.length > 0 && (
+          <Nav.Item className="ms-auto">
+            <Button
+              variant="outline-success"
+              size="sm"
+              onClick={() => setShowDownloadModal(true)}
+            >
+              Descargar Inventario
+            </Button>
+          </Nav.Item>
+        )}
       </Nav>
 
       {/* Contenido según tab activo */}
@@ -495,6 +508,12 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
           onCancel={() => setActiveTab('list')}
         />
       )}
+
+      <DownloadInventarioModal
+        show={showDownloadModal}
+        customerId={customerId}
+        onHide={() => setShowDownloadModal(false)}
+      />
     </div>
   );
 };
