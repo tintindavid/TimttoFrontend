@@ -16,6 +16,7 @@ import AppPagination from '@/components/common/Pagination';
 import { Navigate, useNavigate } from 'react-router-dom';
 import DownloadInventarioModal from './DownloadInventarioModal';
 import { generarCronogramaPDF } from '@/services/cronograma.service';
+import { useCustomer } from '@/hooks/useCustomers';
 
 interface CustomerEquiposSectionProps {
   customerId: string;
@@ -35,20 +36,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
 
   const navigate = useNavigate();
 
-  const handleImprimirCronograma = useCallback(async () => {
-    try {
-      setLoadingCronograma(true);
-      await generarCronogramaPDF({ clienteId: customerId });
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Error al generar el cronograma PDF'
-      );
-    } finally {
-      setLoadingCronograma(false);
-    }
-  }, [customerId]);
+  const { data: customerData } = useCustomer(customerId);
 
   // Parámetros de query - solo para paginación, filtros en cliente
   const queryParams = useMemo(() => {
@@ -166,6 +154,64 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const totalEquipos = filteredAndSortedEquipos.length;
 
   // Event handlers optimizados con useCallback
+  const handleImprimirCronograma = useCallback(async () => {
+    const cliente = customerData?.data;
+    if (!cliente) {
+      toast.error('No se pudo obtener los datos del cliente');
+      return;
+    }
+
+    if (filteredAndSortedEquipos.length === 0) {
+      toast.warning('No hay equipos para imprimir');
+      return;
+    }
+
+    try {
+      setLoadingCronograma(true);
+      toast.info('Generando PDF del cronograma...', { autoClose: 2000 });
+
+      const gruposMap: Record<string, { servicio: string; sede: string; equipos: any[] }> = {};
+      filteredAndSortedEquipos.forEach(equipo => {
+        const servicioNombre = typeof equipo.Servicio === 'object'
+          ? (equipo.Servicio?.nombre || 'Sin Servicio')
+          : 'Sin Servicio';
+        const sedeNombre = typeof equipo.SedeId === 'object'
+          ? (equipo.SedeId?.nombreSede || 'Sin Sede')
+          : 'Sin Sede';
+        const key = `${servicioNombre}|${sedeNombre}`;
+        if (!gruposMap[key]) {
+          gruposMap[key] = { servicio: servicioNombre, sede: sedeNombre, equipos: [] };
+        }
+        gruposMap[key].equipos.push({
+          _id: equipo._id,
+          ItemId: equipo.ItemId,
+          Marca: equipo.Marca,
+          Modelo: equipo.Modelo,
+          Serie: equipo.Serie,
+          Inventario: equipo.Inventario,
+          Ubicacion: equipo.Ubicacion,
+          Estado: equipo.Estado,
+          mesesMtto: equipo.mesesMtto,
+        });
+      });
+
+      await generarCronogramaPDF({
+        cliente,
+        grupos: Object.values(gruposMap),
+      });
+
+      toast.success('PDF generado correctamente');
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Error al generar el cronograma PDF'
+      );
+    } finally {
+      setLoadingCronograma(false);
+    }
+  }, [customerData, filteredAndSortedEquipos]);
+
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab as 'list' | 'create' | 'bulk');
   }, []);
