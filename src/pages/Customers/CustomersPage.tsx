@@ -4,12 +4,27 @@ import { useCustomers, useDeleteCustomer } from '@/hooks/useCustomers';
 import DataTable from '@/components/common/DataTable';
 import AppPagination from '@/components/common/Pagination';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { customerService } from '@/services/customer.service';
 
 const CustomersPage: React.FC = () => {
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
   const { data, isLoading, error } = useCustomers({ page, limit: 10 });
   const deleteMutation = useDeleteCustomer();
   const navigate = useNavigate();
+
+  const handleExportCSV = async () => {
+    try {
+      setExporting(true);
+      await customerService.exportCSV();
+      toast.success('Clientes exportados correctamente');
+    } catch (err: any) {
+      toast.error(err.message ?? 'Error al exportar clientes');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Confirmar eliminar cliente?')) {
@@ -32,6 +47,16 @@ const CustomersPage: React.FC = () => {
           <p className="text-muted mb-0">Gestionar clientes y terceros</p>
         </Col>
         <Col className="text-end">
+          <Button
+            variant="outline-secondary"
+            className="me-2"
+            onClick={handleExportCSV}
+            disabled={exporting}
+          >
+            {exporting
+              ? <><Spinner animation="border" size="sm" className="me-1" />Exportando...</>
+              : <><i className="bi bi-download me-1" />Exportar CSV</>}
+          </Button>
           <Button variant="primary" onClick={() => navigate('/customers/new')}>
             <i className="bi bi-plus-lg me-1" /> Crear Cliente
           </Button>
