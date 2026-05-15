@@ -36,6 +36,7 @@ import ItemFormPage from '@/pages/Items/ItemFormPage';
 import ItemDetailPage from '@/pages/Items/ItemDetailPage';
 import CronogramasPage from '@/pages/Cronogramas/CronogramasPage';
 import DiarioPage from '@/pages/Diario/DiarioPage';
+import InformesPage from '@/pages/Informes/InformesPage';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -79,6 +80,9 @@ const AppRoutes: React.FC = () => {
 
         {/* cronogramas */}
         <Route path="cronogramas" element={<CronogramasPage />} />
+
+        {/* informes */}
+        <Route path="informes" element={<InformesPage />} />
 
         {/* diario */}
         <Route path="diario" element={<DiarioPage />} />
