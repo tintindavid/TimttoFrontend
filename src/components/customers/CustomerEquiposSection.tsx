@@ -5,6 +5,7 @@ import {
 } from 'react-bootstrap';
 import Select from 'react-select';
 import { FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
@@ -14,6 +15,7 @@ import EquipoBulkUpload from '@/components/equipos/EquipoBulkUpload';
 import AppPagination from '@/components/common/Pagination';
 import { Navigate, useNavigate } from 'react-router-dom';
 import DownloadInventarioModal from './DownloadInventarioModal';
+import { generarCronogramaPDF } from '@/services/cronograma.service';
 
 interface CustomerEquiposSectionProps {
   customerId: string;
@@ -29,8 +31,24 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const [page, setPage] = useState(1);
   const [limit] = useState(20); // Items por página
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [loadingCronograma, setLoadingCronograma] = useState(false);
 
   const navigate = useNavigate();
+
+  const handleImprimirCronograma = useCallback(async () => {
+    try {
+      setLoadingCronograma(true);
+      await generarCronogramaPDF({ clienteId: customerId });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Error al generar el cronograma PDF'
+      );
+    } finally {
+      setLoadingCronograma(false);
+    }
+  }, [customerId]);
 
   // Parámetros de query - solo para paginación, filtros en cliente
   const queryParams = useMemo(() => {
@@ -225,7 +243,19 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
           </Nav.Link>
         </Nav.Item>
         {equiposRaw.length > 0 && (
-          <Nav.Item className="ms-auto">
+          <Nav.Item className="ms-auto d-flex gap-2">
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={handleImprimirCronograma}
+              disabled={loadingCronograma}
+            >
+              {loadingCronograma ? (
+                <><Spinner as="span" animation="border" size="sm" className="me-1" />Generando...</>
+              ) : (
+                'Cronograma PDF'
+              )}
+            </Button>
             <Button
               variant="outline-success"
               size="sm"
