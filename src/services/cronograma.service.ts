@@ -7,18 +7,19 @@ import { getUserIdFromToken } from '@/utils/token';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 interface CronogramaPDFPayload {
-  cliente: any;
-  grupos: Array<{
-    servicio: string;
-    sede: string;
-    equipos: any[];
-  }>;
-  filtros?: any;
+  clienteId: string;
+  filtros?: {
+    sedeIds?: string[];
+    servicioIds?: string[];
+    meses?: string[];
+    ubicaciones?: string[];
+    estado?: string;
+  };
 }
 
 /**
  * Genera y descarga el PDF del cronograma de mantenimiento
- * @param payload - Datos del cronograma (cliente, grupos de equipos, filtros)
+ * @param payload - clienteId y filtros opcionales; el backend consulta los equipos en DB
  * @throws Error si la petición falla
  */
 export const generarCronogramaPDF = async (payload: CronogramaPDFPayload): Promise<void> => {
@@ -80,12 +81,9 @@ export const generarCronogramaPDF = async (payload: CronogramaPDFPayload): Promi
     const a = document.createElement('a');
     a.href = url;
     
-    // Nombre del archivo con información del cliente y fecha
-    const clienteNombre = payload.cliente?.Razonsocial 
-      ? payload.cliente.Razonsocial.replace(/[^a-zA-Z0-9]/g, '_') 
-      : 'Cliente';
+    // Nombre del archivo con fecha (el backend nombra el archivo, pero el header puede no llegar)
     const fecha = new Date().toISOString().split('T')[0];
-    a.download = `Cronograma_${clienteNombre}_${fecha}.pdf`;
+    a.download = `Cronograma_${fecha}.pdf`;
     
     document.body.appendChild(a);
     a.click();

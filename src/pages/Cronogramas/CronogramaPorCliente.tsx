@@ -126,7 +126,6 @@ export const CronogramaPorCliente: React.FC = () => {
     });
   }, [refetchEquipos]);
 
-  // Imprimir cronograma (solo lo visible)
   const handleImprimir = useCallback(async () => {
     if (!clienteSeleccionado) {
       toast.warning('Debe seleccionar un cliente');
@@ -139,63 +138,33 @@ export const CronogramaPorCliente: React.FC = () => {
     }
 
     try {
-      // Mostrar loading
       toast.info('Generando PDF del cronograma...', { autoClose: 2000 });
-      
-      // Agrupar TODOS los equipos filtrados (no solo los paginados) por servicio/sede
-      const gruposCompletos: { [key: string]: any } = {};
-      equiposFiltrados.forEach(equipo => {
-        const servicioNombre = typeof equipo.Servicio === 'object' 
-          ? (equipo.Servicio?.nombre || 'Sin Servicio') 
-          : 'Sin Servicio';
-        const sedeNombre = typeof equipo.SedeId === 'object' 
-          ? (equipo.SedeId?.nombreSede || 'Sin Sede') 
-          : 'Sin Sede';
-        
-        const grupoKey = `${servicioNombre}|${sedeNombre}`;
-        
-        if (!gruposCompletos[grupoKey]) {
-          gruposCompletos[grupoKey] = {
-            servicio: servicioNombre,
-            sede: sedeNombre,
-            equipos: []
-          };
-        }
-        
-        gruposCompletos[grupoKey].equipos.push({
-          _id: equipo._id,
-          ItemId: equipo.ItemId,
-          Marca: equipo.Marca,
-          Modelo: equipo.Modelo,
-          Serie: equipo.Serie,
-          Inventario: equipo.Inventario,
-          Ubicacion: equipo.Ubicacion,
-          Estado: equipo.Estado,
-          mesesMtto: equipo.mesesMtto
-        });
-      });
-      
-      // Preparar datos para enviar al backend con equipos agrupados
-      const cliente = customers.find(c => c._id === clienteSeleccionado);
+
+      // Enviar solo clienteId y filtros estructurales (sin grupos ni cliente completo).
+      // El backend consulta y agrupa los equipos desde DB.
       const payload = {
-        cliente: cliente,
-        grupos: Object.values(gruposCompletos), // Enviar equipos agrupados
-        filtros: filtros
+        clienteId: clienteSeleccionado,
+        filtros: {
+          ...(filtros.sedeIds?.length && { sedeIds: filtros.sedeIds }),
+          ...(filtros.servicioIds?.length && { servicioIds: filtros.servicioIds }),
+          ...(filtros.meses?.length && { meses: filtros.meses.map(m => m.toLowerCase()) }),
+          ...(filtros.ubicaciones?.length && { ubicaciones: filtros.ubicaciones }),
+          ...(filtros.estado && { estado: filtros.estado }),
+        },
       };
-      
-      // Llamar al servicio para generar el PDF
+
       await generarCronogramaPDF(payload);
-      
+
       toast.success('PDF generado correctamente');
     } catch (error) {
       console.error('Error al generar PDF:', error);
       toast.error(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : 'Error al generar el PDF del cronograma'
       );
     }
-  }, [clienteSeleccionado, equiposFiltrados, customers, filtros]);
+  }, [clienteSeleccionado, equiposFiltrados.length, filtros]);
 
   // Crear OT con equipos seleccionados
   const handleCrearOT = useCallback(async () => {
