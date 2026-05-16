@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Container, Card, Row, Col, Badge, Alert, 
   ProgressBar, ListGroup, Button 
@@ -11,6 +11,7 @@ import '@/pages/Reports/ViewReportPage.css';
 
 const ViewReportPage: React.FC = () => {
   const { reporteId } = useParams<{ reporteId: string }>();
+  const navigate = useNavigate();
   const { data: reporteData, isLoading: loadingReporte } = useReporte(reporteId || '');
   const { data: repuestosData, isLoading: loadingRepuestos } = useRepuestosByReporte(reporteId || '');
 
@@ -20,6 +21,8 @@ const ViewReportPage: React.FC = () => {
 
   const reporte = reporteData?.data;
   const repuestos = repuestosData?.data || [];
+  const repuestosPendientes = repuestos.filter((r: any) => r.EstadoSolicitud === 'En Proceso');
+  const repuestosInstalados = repuestos.filter((r: any) => r.EstadoSolicitud === 'Instalado');
 
   console.log('Reporte data:', reporte);
   // Debug: verificar estadoOperativo
@@ -224,17 +227,53 @@ const ViewReportPage: React.FC = () => {
         </Card.Body>
       </Card>
 
+      {/* Repuestos pendientes */}
+      <Card className="mb-4 shadow-sm">
+        <Card.Header className="bg-warning text-dark">
+          <h5 className="mb-0">
+            ⏳ Repuestos Pendientes ({repuestosPendientes.length})
+          </h5>
+        </Card.Header>
+        <Card.Body>
+          {repuestosPendientes.length > 0 ? (
+            <ListGroup>
+              {repuestosPendientes.map((repuesto) => (
+                <ListGroup.Item key={repuesto._id} role="button" onClick={() => navigate('/repuestos/solicitados')}>
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div className="flex-grow-1">
+                      <div className="fw-bold">{repuesto.nombre}</div>
+                      <small className="text-muted d-block mt-1">
+                        Cantidad: {repuesto.Cantidad} • Prioridad: {repuesto.Prioridad || 'N/A'}
+                      </small>
+                      <small className="text-muted d-block mt-1">
+                        Solicitado por: {[repuesto?.ResponsableSolicitud?.firstName, repuesto?.ResponsableSolicitud?.lastName].filter(Boolean).join(' ') || 'N/A'}
+                        {' '}• Fecha: {repuesto.FechaSolicitud ? new Date(repuesto.FechaSolicitud).toLocaleDateString('es-ES') : 'N/A'}
+                      </small>
+                    </div>
+                    <Badge bg="warning" text="dark">En Proceso</Badge>
+                  </div>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          ) : (
+            <Alert variant="info" className="mb-0">
+              No pending spare parts
+            </Alert>
+          )}
+        </Card.Body>
+      </Card>
+
       {/* Repuestos */}
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-warning text-dark">
           <h5 className="mb-0">
-            🔧 Repuestos Utilizados ({repuestos.length})
+            🔧 Repuestos Utilizados ({repuestosInstalados.length})
           </h5>
         </Card.Header>
         <Card.Body>
-          {repuestos.length > 0 ? (
+          {repuestosInstalados.length > 0 ? (
             <ListGroup>
-              {repuestos.map((repuesto) => (
+              {repuestosInstalados.map((repuesto) => (
                 <ListGroup.Item key={repuesto._id}>
                   <div className="d-flex justify-content-between align-items-start">
                     <div className="flex-grow-1">
@@ -249,10 +288,7 @@ const ViewReportPage: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <Badge bg={
-                      repuesto.EstadoSolicitud === 'Instalado' ? 'success' :
-                      repuesto.EstadoSolicitud === 'Aprobado' ? 'info' : 'warning'
-                    }>
+                    <Badge bg={repuesto.EstadoSolicitud === 'Instalado' ? 'success' : 'secondary'}>
                       {repuesto.EstadoSolicitud}
                     </Badge>
                   </div>
@@ -261,7 +297,7 @@ const ViewReportPage: React.FC = () => {
             </ListGroup>
           ) : (
             <Alert variant="info" className="mb-0">
-              No se utilizaron repuestos
+              No spare parts were installed for this report
             </Alert>
           )}
         </Card.Body>

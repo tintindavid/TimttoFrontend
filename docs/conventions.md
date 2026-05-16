@@ -46,6 +46,13 @@ Notas y dudas abiertas
 
 Este documento define las convenciones estrictas para el desarrollo del frontend React + TypeScript.
 
+## Repuestos e Inventario
+
+- Plan-gating por modulo: pantallas o acciones de inventario deben validar el plan del tenant y mostrar feedback claro cuando el modulo no esta habilitado.
+- Selectores de alto volumen: usar `react-select` o `react-select/creatable` para entidades grandes (tecnicos, inventario) en lugar de `select` nativo.
+- Mutaciones con feedback: acciones de estado (ej. `Solicitado -> En Proceso`) deben mostrar `toast` de exito/error y reflejar el cambio en UI sin recarga completa.
+- Filtros compartidos: listas de repuestos/inventario usan el patron `filters + pagination` en hooks (`useXList`) para mantener URLs y estado sincronizados.
+
 ---
 
 ## 🎨 Estructura de Componentes

@@ -2,6 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { repuestoService } from '@/services/repuesto.service';
 import { CreateRepuestoSolicitudDto, InstalarRepuestoDto } from '@/types/repuesto.types';
 
+export const useRepuestosList = (params: Record<string, any> = {}) => {
+  return useQuery({
+    queryKey: ['repuestos', 'list', params],
+    queryFn: () => repuestoService.list(params),
+  });
+};
+
 export const useRepuestosByReporte = (reporteId: string) => {
   return useQuery({
     queryKey: ['repuestos', 'reporte', reporteId],
@@ -97,6 +104,25 @@ export const useDeleteRepuesto = () => {
     mutationFn: repuestoService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['repuestos'] });
+    },
+  });
+};
+
+export const useCreateOtFromRepuestos = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      repuestoIds,
+      payload,
+    }: {
+      repuestoIds: string[];
+      payload: { ResponsableId: string; FechaEstimadaEntrega?: string; observacion?: string; OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente' };
+    }) => repuestoService.createOtFromSolicitudes(repuestoIds, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['repuestos'] });
+      queryClient.invalidateQueries({ queryKey: ['ots'] });
+      queryClient.invalidateQueries({ queryKey: ['maintenance-orders'] });
     },
   });
 };

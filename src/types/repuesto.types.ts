@@ -19,6 +19,8 @@ export interface Repuesto {
   Prioridad?: string;
   ReporteInstalacionId?: string;
   ReporteSolicitudId: string;
+  ClienteId?: string;
+  InventarioItemId?: string;
   ResponsableInstalacion?: {
     _id: string;
     firstName?: string;
@@ -38,6 +40,7 @@ export interface Repuesto {
 
 export interface CreateRepuestoSolicitudDto {
   nombre: string;
+  InventarioItemId?: string;
   Cantidad: string;
   Currency?: string;
   observacion?: string;
@@ -56,8 +59,9 @@ export interface InstalarRepuestoDto {
   FechaInstalacion: Date;
   ObservacionInstalacion?: string;
   ResponsableInstalacion: string;
+  PrecioRepuesto?: number;
 }
 
-export type EstadoSolicitudRepuesto = 'Solicitado' | 'Aprobado' | 'Rechazado' | 'Instalado';
+export type EstadoSolicitudRepuesto = 'Solicitado' | 'En Proceso' | 'Rechazado' | 'Instalado';
 export type PrioridadRepuesto = 'Baja' | 'Media' | 'Alta' | 'Critica';
 export type OrigenRepuesto = 'Inventario' | 'Compra' | 'Garantia' | 'Donacion' | 'Cliente';

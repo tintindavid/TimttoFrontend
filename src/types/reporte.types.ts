@@ -46,6 +46,7 @@ export interface Reporte {
   fechaFinalizado?: string;
   responsableProcesado?: string;
   actividadesRealizadas?: ActividadRealizada[];
+  duracion?: number;
   hojaDeTrabajo: string; // Nuevo campo para mostrar número de hoja de trabajo o estado como 'Cerrado'
   evidencias?: Evidencia[];
   repuestos?: RepuestoReporte[];
@@ -57,6 +58,15 @@ export interface Reporte {
   fechaCancelacion?: string;
   motivoCancelacion?: string;
   observacion?: string;
+  resumen?: {
+    actividadesCompletadas?: number;
+    totalActividades?: number;
+    porcentajeCompletado?: number;
+    cantidadRepuestos?: number;
+    observacion?: string;
+    causaEncontrada?: string;
+    motivoFueraServicio?: string;
+  };
   createdAt?: string;
   updatedAt?: string;
   estadoOperativo?: 'Operativo' | 'En Mantenimiento' | 'Fuera de Servicio' |'Dado de Baja';
@@ -76,6 +86,7 @@ export interface ActividadRealizada {
   fecha: string | null; // Puede ser null según datos reales
   observaciones?: string;
   actividadProtocoloId: string; // Requerido para coincidir con datos reales
+  duracion?: number; // Duración en minutos, opcional
 }
 
 export interface Evidencia {

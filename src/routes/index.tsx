@@ -37,6 +37,8 @@ import ItemDetailPage from '@/pages/Items/ItemDetailPage';
 import CronogramasPage from '@/pages/Cronogramas/CronogramasPage';
 import DiarioPage from '@/pages/Diario/DiarioPage';
 import InformesPage from '@/pages/Informes/InformesPage';
+import RepuestosSolicitadosPage from '@/pages/Repuestos/RepuestosSolicitadosPage';
+import InventarioRepuestosPage from '@/pages/Repuestos/InventarioRepuestosPage';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -112,6 +114,9 @@ const AppRoutes: React.FC = () => {
         <Route path="actividades/new" element={<ActividadFormPage />} />
         <Route path="actividades/:id" element={<div>Actividad detalle (pendiente)</div>} />
         <Route path="actividades/:id/edit" element={<ActividadFormPage />} />
+
+        <Route path="repuestos/solicitados" element={<RepuestosSolicitadosPage />} />
+        <Route path="repuestos/inventario" element={<InventarioRepuestosPage />} />
 
         {/* Tenants management pages */}
         <Route path="tenants" element={<TenantsPage />} />

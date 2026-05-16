@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert } from 'react-bootstrap';
+import CreatableSelect from 'react-select/creatable';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaPlus } from 'react-icons/fa';
 import { CreateRepuestoSolicitudDto, PrioridadRepuesto, OrigenRepuesto } from '@/types/repuesto.types';
 import { useCreateRepuestoSolicitud } from '@/hooks/useRepuestos';
+import { useInventarioList } from '@/hooks/useInventarioRepuestos';
 import { useAuth } from '@/context/AuthContext';
 
 interface SolicitarRepuestoModalProps {
@@ -33,9 +35,12 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
   otId,
   equipoId
 }) => {
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, token } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [inventarioSeleccionadoId, setInventarioSeleccionadoId] = useState<string | undefined>(undefined);
   const createRepuestoMutation = useCreateRepuestoSolicitud();
+  const hasInventarioPlan = (localStorage.getItem('tenantPlan') || '').toLowerCase().includes('inventario');
+  const { data: inventarioData } = useInventarioList({ page: 1, limit: 200, search: '' });
   
   const {
     control,
@@ -85,6 +90,7 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
         equipoId,
         data: {
           ...data,
+          InventarioItemId: inventarioSeleccionadoId,
           ResponsableSolicitud: userId
         }
       });
@@ -103,7 +109,6 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
   };
 
   const prioridadOptions: PrioridadRepuesto[] = ['Baja', 'Media', 'Alta', 'Critica'];
-  const origenOptions: OrigenRepuesto[] = ['Inventario', 'Compra', 'Garantia', 'Donacion','Cliente'];
 
   return (
     <Modal show={show} onHide={handleClose} size="lg">
@@ -129,16 +134,44 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
                 <Controller
                   name="nombre"
                   control={control}
-                  render={({ field }) => (
-                    <Form.Control
-                      {...field}
-                      type="text"
-                      placeholder="Ej: Filtro de aceite, Bomba hidráulica..."
-                      isInvalid={!!errors.nombre}
-                    />
-                  )}
+                  render={({ field }) => {
+                    if (!hasInventarioPlan) {
+                      return (
+                        <Form.Control
+                          {...field}
+                          type="text"
+                          placeholder="Ej: Filtro de aceite, Bomba hidráulica..."
+                          isInvalid={!!errors.nombre}
+                        />
+                      );
+                    }
+
+                    const options = (inventarioData?.data || []).map((it: any) => ({
+                      value: it._id,
+                      label: it.nombre,
+                    }));
+
+                    return (
+                      <CreatableSelect
+                        isClearable
+                        options={options}
+                        placeholder="Seleccionar o crear nombre de repuesto"
+                        value={field.value ? { value: inventarioSeleccionadoId || field.value, label: field.value } : null}
+                        onChange={(selected: any) => {
+                          const label = selected?.label || '';
+                          const value = selected?.value || undefined;
+                          field.onChange(label);
+                          setInventarioSeleccionadoId(value && options.some((op: any) => op.value === value) ? value : undefined);
+                        }}
+                        onCreateOption={(inputValue: string) => {
+                          field.onChange(inputValue);
+                          setInventarioSeleccionadoId(undefined);
+                        }}
+                      />
+                    );
+                  }}
                 />
-                <Form.Control.Feedback type="invalid">
+                <Form.Control.Feedback type="invalid" style={{ display: errors.nombre ? 'block' : 'none' }}>
                   {errors.nombre?.message}
                 </Form.Control.Feedback>
               </Form.Group>
