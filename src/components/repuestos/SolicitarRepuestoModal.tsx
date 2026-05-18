@@ -16,6 +16,7 @@ interface SolicitarRepuestoModalProps {
   reporteId: string;
   otId: string;
   equipoId: string;
+  clienteId?: string;
 }
 
 const schema = yup.object().shape({
@@ -33,7 +34,8 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
   onHide,
   reporteId,
   otId,
-  equipoId
+  equipoId,
+  clienteId
 }) => {
   const { user, token } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -90,6 +92,7 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
         equipoId,
         data: {
           ...data,
+          ClienteId: clienteId,
           InventarioItemId: inventarioSeleccionadoId,
           ResponsableSolicitud: userId
         }

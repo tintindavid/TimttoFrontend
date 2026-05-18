@@ -1229,7 +1229,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                 <FaCog className="me-2" />
                 Gestión de Repuestos
               </h6>
-              {!editedReporte.procesado && (
+
+              {(editedReporte.estado === 'Pendiente' || editedReporte.estado === 'Procesado') && (
                 <div className="d-flex gap-2">
                   <Button 
                     variant="primary" 
@@ -1611,6 +1612,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           reporteId={editedReporte._id || ''}
           otId={editedReporte.orden._id}
           equipoId={editedReporte.Equipo._id}
+          clienteId={editedReporte.Equipo?.ClienteId}
         />
       )}
 
@@ -1632,6 +1634,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           reporteId={editedReporte._id || ''}
           otId={editedReporte.orden._id}
           equipoId={editedReporte.Equipo._id}
+          clienteId={editedReporte.Equipo?.ClienteId}
         />
       )}
       {/* Modal para Editar Equipo */}

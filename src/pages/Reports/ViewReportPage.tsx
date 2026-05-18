@@ -4,7 +4,8 @@ import {
   Container, Card, Row, Col, Badge, Alert, 
   ProgressBar, ListGroup, Button 
 } from 'react-bootstrap';
-import { FaCheckCircle, FaPrint, FaSpinner } from 'react-icons/fa';
+import { FaCheckCircle, FaFilePdf, FaSpinner } from 'react-icons/fa';
+import { downloadReportPDF } from '@/services/descargarPdf.service';
 import { useReporte } from '@/hooks/useReportes';
 import { useRepuestosByReporte } from '@/hooks/useRepuestos';
 import '@/pages/Reports/ViewReportPage.css';
@@ -18,6 +19,8 @@ const ViewReportPage: React.FC = () => {
   const [actividadesCompletadas, setActividadesCompletadas] = useState(0);
   const [totalActividades, setTotalActividades] = useState(0);
   const [progresoActividades, setProgresoActividades] = useState(0);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const reporte = reporteData?.data;
   const repuestos = repuestosData?.data || [];
@@ -32,6 +35,19 @@ const ViewReportPage: React.FC = () => {
       console.log('Reporte completo:', reporte);
     }
   }, [reporte]);
+
+  const handleDownloadPdf = async () => {
+    if (!reporteId) return;
+    setDownloadingPdf(true);
+    setPdfError(null);
+    try {
+      await downloadReportPDF(reporteId);
+    } catch (error) {
+      setPdfError(error instanceof Error ? error.message : 'Error al generar el PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     if (reporte?.actividadesRealizadas) {
@@ -67,18 +83,123 @@ const ViewReportPage: React.FC = () => {
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h3>📋 Reporte de Mantenimiento</h3>
+          <h3>📋 Reporte de Mantenimiento <strong>{reporte.tipoMtto}</strong> </h3>
           <p className="text-muted mb-0">
             Equipo: {reporte.equipoSnapshot?.ItemText || 'N/A'}
           </p>
         </div>
-        <Button variant="primary" onClick={() => window.print()}>
-          <FaPrint className="me-2" />
-          Imprimir
-        </Button>
+        {/**Boton para redirigir a la pagina de hoja de vida del equipo hv-equipo/69fa35657d19fe44f233bd47 */}
+        <div className="d-flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => window.open(`/hv-equipo/${reporte.Equipo?._id}`, '_blank')}
+          >
+            Ver HV
+          </Button>
+          <Button variant="danger" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+            {downloadingPdf ? (
+              <><FaSpinner className="fa-spin me-2" />Generando PDF...</>
+            ) : (
+              <><FaFilePdf className="me-2" />Descargar PDF</>
+            )}
+          </Button>
+        </div>
       </div>
 
-      {/* Información General */}
+      {pdfError && (
+        <Alert variant="danger" dismissible onClose={() => setPdfError(null)} className="mb-4">
+          {pdfError}
+        </Alert>
+      )}
+
+            {/* Sección de Información General del Reporte */}
+      <Row className="mb-4 g-3">
+        <Col md={4}>
+          <Card className="h-100 border-0 shadow-sm">
+            <Card.Body className="text-center">
+              <div className="text-muted mb-2">
+                <small className="text-uppercase fw-semibold">Consecutivo</small>
+              </div>
+              <div className="display-6 fw-bold text-primary">
+                {reporte.consecutivo || 'N/A'}
+              </div>
+              <div className="text-muted mt-1">
+                <small>ID: {reporte._id?.slice(-8) || 'N/A'}</small>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+        
+        <Col md={4}>
+          <Card className="h-100 border-0 shadow-sm">
+            <Card.Body className="text-center">
+              <div className="text-muted mb-2">
+                <small className="text-uppercase fw-semibold">Estado del Reporte</small>
+              </div>
+              <div className="mt-2">
+                <Badge 
+                  bg={
+                    reporte.estado === 'Cerrado' ? 'success' :
+                    reporte.estado === 'Procesado' ? 'info' :
+                    reporte.estado === 'Cancelado' ? 'danger' :
+                    'warning'
+                  }
+                  className="fs-4 py-2 px-3"
+                  style={{ minWidth: '120px' }}
+                >
+                  {reporte.estado}
+                </Badge>
+              </div>
+              {reporte.fechaProcesado && (
+                <div className="text-muted mt-2">
+                  <small>
+                    Procesado: {new Date(reporte.fechaProcesado).toLocaleDateString('es-ES')}
+                  </small>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+        
+        <Col md={4}>
+          <Card 
+            className="h-100 border-0 shadow-sm"
+            style={{
+              backgroundColor: 
+                reporte.estadoOperativo === 'Operativo' ? '#d4edda' :
+                reporte.estadoOperativo === 'En Mantenimiento' ? '#fff3cd' :
+                reporte.estadoOperativo === 'Fuera de Servicio' ? '#f8d7da' :
+                reporte.estadoOperativo === 'Dado de Baja' ? '#e2e3e5' :
+                '#f8f9fa'
+            }}
+          >
+            <Card.Body className="text-center">
+              <div className="text-muted mb-2">
+                <small className="text-uppercase fw-semibold">Estado Operativo</small>
+              </div>
+              <div className="fs-4 fw-bold mt-2" style={{ 
+                color: 
+                  reporte.estadoOperativo === 'Operativo' ? '#155724' :
+                  reporte.estadoOperativo === 'En Mantenimiento' ? '#856404' :
+                  reporte.estadoOperativo === 'Fuera de Servicio' ? '#721c24' :
+                  reporte.estadoOperativo === 'Dado de Baja' ? '#383d41' :
+                  '#495057'
+              }}>
+                {reporte.estadoOperativo === 'Operativo' && '✅'}
+                {reporte.estadoOperativo === 'En Mantenimiento' && '🔧'}
+                {reporte.estadoOperativo === 'Fuera de Servicio' && '⚠️'}
+                {reporte.estadoOperativo === 'Dado de Baja' && '🔴'}
+                {!reporte.estadoOperativo && '❓'}
+                <div className="mt-1">
+                  {reporte.estadoOperativo || 'No especificado'}
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Responsable y actividades */}
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-info text-white">
           <h5 className="mb-0">📋 Información General</h5>
@@ -86,67 +207,16 @@ const ViewReportPage: React.FC = () => {
         <Card.Body>
           <Row>
             <Col md={6}>
-              <div className="mb-3">
-                <strong>Estado:</strong>{' '}
-                <Badge bg={reporte.procesado ? 'success' : 'warning'}>
-                  {reporte.estado}
-                </Badge>
-              </div>
-              <div className="mb-3">
-                <strong>Fecha de Creación:</strong>{' '}
-                {reporte.createdAt ? new Date(reporte.createdAt).toLocaleString('es-ES') : 'N/A'}
-              </div>
-              <div className="mb-3">
-                <strong>Fecha de Procesado:</strong>{' '}
-                {reporte.fechaProcesado ? new Date(reporte.fechaProcesado).toLocaleString('es-ES') : 'No procesado'}
-              </div>
+    
+                <div className="mb-3">
+                  <strong>Responsable:</strong>{' '} {reporte.ResponsableMtto?.firstName || ''} {reporte.ResponsableMtto?.lastName || ''}
+
+                </div>
+                <div className="mb-3">
+                  <strong>Cargo:</strong> {' '} {reporte.ResponsableMtto?.role || ''}
+                </div>
             </Col>
             <Col md={6}>
-              {/* Estado Operativo Destacado - SIEMPRE VISIBLE */}
-              <div className="mb-4 p-3 rounded" style={{
-                backgroundColor: 
-                  reporte.estadoOperativo === 'Operativo' ? '#d4edda' :
-                  reporte.estadoOperativo === 'En Mantenimiento' ? '#fff3cd' :
-                  reporte.estadoOperativo === 'Fuera de Servicio' ? '#f8d7da' :
-                  reporte.estadoOperativo === 'Dado de Baja' ? '#e2e3e5' :
-                  '#f8f9fa',
-                border: '2px solid ' + (
-                  reporte.estadoOperativo === 'Operativo' ? '#28a745' :
-                  reporte.estadoOperativo === 'En Mantenimiento' ? '#ffc107' :
-                  reporte.estadoOperativo === 'Fuera de Servicio' ? '#dc3545' :
-                  reporte.estadoOperativo === 'Dado de Baja' ? '#6c757d' :
-                  '#dee2e6'
-                )
-              }}>
-                <div className="text-center">
-                  <small className="text-muted d-block mb-1">Estado Final del Equipo</small>
-                  <h4 className="mb-0" style={{
-                    color: 
-                      reporte.estadoOperativo === 'Operativo' ? '#155724' :
-                      reporte.estadoOperativo === 'En Mantenimiento' ? '#856404' :
-                      reporte.estadoOperativo === 'Fuera de Servicio' ? '#721c24' :
-                      reporte.estadoOperativo === 'Dado de Baja' ? '#383d41' :
-                      '#6c757d',
-                    fontWeight: 'bold'
-                  }}>
-                    {reporte.estadoOperativo === 'Operativo' ? '✅' :
-                     reporte.estadoOperativo === 'En Mantenimiento' ? '🔧' :
-                     reporte.estadoOperativo === 'Fuera de Servicio' ? '⚠️' :
-                     reporte.estadoOperativo === 'Dado de Baja' ? '🔴' :
-                     '❓'}
-                    {' '}{reporte.estadoOperativo || 'No especificado'}
-                  </h4>
-                </div>
-              </div>
-              {reporte.ResponsableMtto && (
-                <div className="mb-3">
-                  <strong>Responsable:</strong>{' '}
-                  {typeof reporte.ResponsableMtto === 'object' 
-                    ? `${reporte.ResponsableMtto.firstName} ${reporte.ResponsableMtto.lastName}`
-                    : reporte.ResponsableMtto
-                  }
-                </div>
-              )}
               <div className="mb-3">
                 <strong>Progreso de Actividades:</strong>
                 <ProgressBar 
@@ -161,6 +231,27 @@ const ViewReportPage: React.FC = () => {
                 </small>
               </div>
             </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+      {/* Información del Cliente */}
+      <Card className="mb-4 shadow-sm">
+        <Card.Header className="bg-info text-white">
+          <h5 className="mb-0">🏢 Información del Cliente</h5>
+        </Card.Header>
+        <Card.Body>
+          <Row>
+            <Col md={6}>
+              <div className="mb-2"><strong>Cliente:</strong> {reporte.ClienteId?.Razonsocial || 'N/A'}</div>
+              <div className="mb-2"><strong>Nit:</strong> {reporte.ClienteId?.Nit || 'N/A'}</div>
+              <div className="mb-2"><strong>Ciudad:</strong> {reporte.ClienteId?.Ciudad || ''} - {reporte.ClienteId?.Direccion || ''}</div>
+            </Col>
+            <Col md={6}>
+              <div className="mb-2"><strong>Sede:</strong> {reporte.equipoSnapshot?.Sede || 'N/A'}</div>
+              <div className="mb-2"><strong>Contacto:</strong> {reporte.ClienteId?.UserContacto || 'N/A'}</div>
+              <div className="mb-2"><strong>Teléfono:</strong> {reporte.ClienteId?.TelContacto || 'N/A'}</div>
+            </Col>
+
           </Row>
         </Card.Body>
       </Card>
@@ -179,8 +270,8 @@ const ViewReportPage: React.FC = () => {
             </Col>
             <Col md={6}>
               <div className="mb-2"><strong>Serie:</strong> {reporte.equipoSnapshot?.Serie || 'N/A'}</div>
-              <div className="mb-2"><strong>Servicio:</strong> {reporte.equipoSnapshot?.Servicio || 'N/A'}</div>
-              <div className="mb-2"><strong>Ubicación:</strong> {reporte.equipoSnapshot?.Ubicacion || 'N/A'}</div>
+              <div className="mb-2"><strong>Inventario:</strong> {reporte.equipoSnapshot?.Inventario || 'N/A'}</div>
+              <div className="mb-2"><strong>Ubicación:</strong>  {reporte.equipoSnapshot?.Servicio || 'N/A'} -{reporte.equipoSnapshot?.Ubicacion || 'N/A'}</div>
             </Col>
           </Row>
         </Card.Body>

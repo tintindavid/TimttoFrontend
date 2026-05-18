@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reporteService } from '@/services/reporte.service';
+import { repuestoService } from '@/services/repuesto.service';
 import { sheetworkService } from '@/services/sheetwork.service';
 import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '@/types/reporte.types';
 
@@ -20,10 +21,33 @@ export const useReportes = (params?: { otId?: string }) => {
 };
 
 // Get reportes by Equipo
+
 export const useReportesByEquipo = (equipoId: string, params?: { page?: number; limit?: number }) => {
   return useQuery({
     queryKey: ['reportes', 'equipo', equipoId, params],
     queryFn: () => reporteService.getReportesByEquipo(equipoId, params),
+    enabled: !!equipoId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+// Get repuestos by Equipo
+export const useRepuestosByEquipo = (equipoId: string, estado?: string) => {
+  return useQuery({
+    queryKey: ['repuestos', 'equipo', equipoId, estado],
+    queryFn: () => repuestoService.getByEquipo(equipoId, estado),
+    enabled: !!equipoId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+  });
+};
+
+// Get all repuestos by Equipo without filtering by estado
+export const useRepuestosByEquipoAll = (equipoId: string) => {
+  return useQuery({
+    queryKey: ['repuestos', 'equipo', equipoId, 'all'],
+    queryFn: () => repuestoService.getByEquipoAll(equipoId),
     enabled: !!equipoId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes

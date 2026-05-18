@@ -28,6 +28,8 @@ const RepuestosSolicitadosPage: React.FC = () => {
   const repuestos = repuestosQuery.data?.data || [];
   const pagination = repuestosQuery.data?.pagination;
 
+  console.log('Repuestos:', repuestos);
+  
   const selectableIds = useMemo(
     () => repuestos.filter((r: any) => (r.EstadoSolicitud || 'Solicitado') === 'Solicitado').map((r: any) => String(r._id)),
     [repuestos]

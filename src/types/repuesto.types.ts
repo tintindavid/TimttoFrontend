@@ -40,6 +40,7 @@ export interface Repuesto {
 
 export interface CreateRepuestoSolicitudDto {
   nombre: string;
+  ClienteId?: string;
   InventarioItemId?: string;
   Cantidad: string;
   Currency?: string;

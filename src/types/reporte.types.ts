@@ -2,12 +2,22 @@
 export interface Reporte {
   _id?: string;
   OtId?: string;
+  ClienteId:{
+    Ciudad: String,
+    Departamento: String,
+    Direccion: String,
+    Razonsocial: String,
+    TelContacto: String,
+    Nit: String,
+    UserContacto: String,
+  }
   consecutivo?: string; // Nuevo campo para mostrar número de reporte o estado como 'Cerrado'
   numeroHoja: string; // Puede ser 'Cerrado' para reportes cerrados
   observacionEstadoFinal?: string;
   ResponsableMtto: {
     firstName: string;
     lastName: string;
+    role?: string;
     _id: string;
   };
   fechaFinalizdo?: string;
@@ -41,9 +51,9 @@ export interface Reporte {
   };
   estado: 'Pendiente' | 'En_Progreso' | 'Cerrado' | 'Cancelado' | 'Procesado';
   procesado: boolean;
-  fechaProcesado?: string;
-  fechaMtto?: string;
-  fechaFinalizado?: string;
+  fechaProcesado?: Date;
+  fechaMtto?: Date;
+  fechaFinalizado?: Date;
   responsableProcesado?: string;
   actividadesRealizadas?: ActividadRealizada[];
   duracion?: number;
@@ -55,7 +65,7 @@ export interface Reporte {
   accionTomada?: string;
   causaEncontrada?: string;
   motivoFueraServicio?: string;
-  fechaCancelacion?: string;
+  fechaCancelacion?: Date;
   motivoCancelacion?: string;
   observacion?: string;
   resumen?: {
@@ -67,8 +77,8 @@ export interface Reporte {
     causaEncontrada?: string;
     motivoFueraServicio?: string;
   };
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
   estadoOperativo?: 'Operativo' | 'En Mantenimiento' | 'Fuera de Servicio' |'Dado de Baja';
   orden?: {
     _id: string;

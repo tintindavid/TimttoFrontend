@@ -14,6 +14,12 @@ export const repuestoService = {
     return response.data;
   },
 
+  // Obtener todos los repuestos por Equipo sin filtrar por estado
+  getByEquipoAll: async (equipoId: string) => {
+    const response = await api.get<ApiResponse<Repuesto[]>>(`/repuestos/equipo/${equipoId}/all`);
+    return response.data;
+  },
+
   // Obtener repuestos por reporte
   getByReporte: async (reporteId: string) => {
     const response = await api.get<ApiResponse<Repuesto[]>>(`/repuestos/reporte/${reporteId}`);
