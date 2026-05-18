@@ -115,6 +115,7 @@ const ReportesCerradosTab: React.FC = () => {
   const reportes = reportesData?.data || [];
   const totalPages = reportesData?.pagination?.pages || 1;
 
+  console.log('Reportes cerrados:', reportes);
   // Handlers
   const handleClearFilters = () => {
     setClienteId('');
@@ -333,7 +334,7 @@ const ReportesCerradosTab: React.FC = () => {
                     <th>Cliente</th>
                     <th>Tipo Mtto</th>
                     <th>Estado Operativo</th>
-                    <th>Fecha Finalizado</th>
+                    <th>Cierre HT</th>
                     <th>Responsable</th>
                     <th>Acciones</th>
                   </tr>
@@ -354,7 +355,7 @@ const ReportesCerradosTab: React.FC = () => {
                         </small>
                       </td>
                       <td>
-                        <div>{(reporte as any).cliente?.Razonsocial || 'N/A'}</div>
+                        <div>{(reporte as any).ClienteId?.Razonsocial || 'N/A'}</div>
                         <small className="text-muted">{reporte.equipoSnapshot?.Sede || ''}</small>
                       </td>
                       <td>
@@ -366,11 +367,11 @@ const ReportesCerradosTab: React.FC = () => {
                         </Badge>
                       </td>
                       <td>
-                        {reporte.fechaFinalizado ? (
+                        {reporte.fechaFinalizdo ? (
                           <>
-                            {format(new Date(reporte.fechaFinalizado), 'dd/MM/yyyy', { locale: es })}
+                            {format(new Date(reporte.fechaFinalizdo), 'dd/MM/yyyy', { locale: es })}
                             <div className="small text-muted">
-                              {format(new Date(reporte.fechaFinalizado), 'HH:mm', { locale: es })}
+                              {format(new Date(reporte.fechaFinalizdo), 'HH:mm', { locale: es })}
                             </div>
                           </>
                         ) : (

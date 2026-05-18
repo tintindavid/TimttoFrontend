@@ -16,9 +16,11 @@ import {
   useUpdateHVEquipo
 } from '@/hooks/useHVEquipo';
 import { useEquipoItem, useEquipoItemPopulated } from '@/hooks/useEquipoItems';
-import { useReportesByEquipo } from '@/hooks/useReportes';
+import { useReportesByEquipo, useRepuestosByEquipo, useRepuestosByEquipoAll } from '@/hooks/useReportes';
 import { hvEquipoService } from '@/services/hvEquipo.service';
 import { Reporte } from '@/types/reporte.types';
+import {Repuesto} from '@/types/repuesto.types';
+
 import { CreateHVEquipoDto, UpdateHVEquipoDto } from '@/types/hvEquipo.types';
 import Swal from 'sweetalert2';
 import './HVEquipoPage.css';
@@ -51,12 +53,28 @@ const HVEquipoPage: React.FC = () => {
     { page: 1, limit: 100 }
   );
 
+  // Get repuestos by equipoId (separate API call)
+  const { data: repuestos, isLoading: loadingRepuestos } = useRepuestosByEquipoAll(
+    equipoId || ''
+  );
+
+  console.log('Repuestos asociados al equipo:', repuestos?.data);
+
   // Mutations
   const createHVMutation = useCreateHVEquipo();
   const updateHVMutation = useUpdateHVEquipo();
   
   const reportes: Reporte[] = reportesData?.data || [];
+  const repuestosData: Repuesto[] = repuestos?.data || [];
+
+  const getRepuestoEstado = (repuesto: Repuesto): string =>
+    (repuesto as any).EstadoSolicitudRepuesto || repuesto.EstadoSolicitud || '';
+
+  const getRepuestoCosto = (repuesto: Repuesto): number =>
+    (repuesto as any).costo || repuesto.PrecioRepuesto || 0;
   
+
+  console.log('repuestosData en HVEquipoPage:', repuestosData);
   const hvEquipo = hvData?.data || null; // Asumimos que el backend devuelve un array, tomamos el primer elemento o null si no hay HV
   const equipo = equipoData?.data;
   const equipoInfo = typeof equipo === 'object' ? equipo : null;
@@ -211,15 +229,7 @@ const HVEquipoPage: React.FC = () => {
     return cambios;
   }, [reportes]);
   // Repuestos data
-  const repuestosHistorial = useMemo(() => {
-    return reportes
-      .filter(r => r.repuestos && r.repuestos.length > 0)
-      .flatMap(r => r.repuestos?.map(rep => ({
-        ...rep,
-        reporteId: r._id,
-        fechaReporte: r.fechaMtto
-      })) || []);
-  }, [reportes]);
+
 
   const handlePrint = async () => {
     if (!hvEquipo?._id) {
@@ -717,7 +727,7 @@ const HVEquipoPage: React.FC = () => {
               )}
             </div>
             <div className="flex-grow-1">
-              <h1 className="mb-1">Hoja de Vida de Equipo Biomédico</h1>
+              <h1 className="mb-1">Hoja de Vida del Equipo </h1>
               <div className="d-flex flex-wrap gap-2 align-items-center">
                 <Badge bg="primary">{equipoInfo?.ItemId?.Nombre || 'Equipo'}</Badge>
                 <Badge bg="secondary">{equipoInfo?.Marca || 'N/A'} {equipoInfo?.Modelo || ''}</Badge>
@@ -1923,12 +1933,14 @@ const HVEquipoPage: React.FC = () => {
                       <th>Actividades</th>
                       <th>Estado Operativo</th>
                       <th>Observaciones</th>
+                      <th>Ver</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportesPreventivos.map((reporte) => (
                       <tr key={reporte._id}>
-                        <td>{formatDate(reporte.fechaProcesado)}</td>
+
+                        <td>{reporte.fechaProcesado ? new Date(reporte.fechaProcesado).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' }) : 'N/A'}</td>
                         <td>
                           <Badge bg="primary">{reporte.consecutivo || 'N/A'}</Badge>
                         </td>
@@ -1960,6 +1972,16 @@ const HVEquipoPage: React.FC = () => {
                         </td>
                         <td>
                           <small>{reporte.observacion?.substring(0, 50) || '-'}</small>
+                        </td>
+                        {/** Boton para ver abrir nueva pestañana con detalles del reporte /reports/{id}/view */}
+                        <td className="text-center">
+                          <Button
+                            variant="info"
+                            size="sm"
+                            onClick={() => window.open(`/reports/${reporte._id}/view`, '_blank')}
+                          >
+                            Ver
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -2129,21 +2151,22 @@ const HVEquipoPage: React.FC = () => {
                   <thead>
                     <tr>
                       <th>Fecha</th>
-                      <th>Tipo</th>
+                      <th>Responsable</th>
                       <th>Consecutivo</th>
                       <th>Estado</th>
                       <th>Falla Reportada</th>
                       <th>Diagnóstico</th>
                       <th>Acción Tomada</th>
                       <th>Estado Final</th>
+                      <th>Ver</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportesCorrectivos.map((reporte) => (
                       <tr key={reporte._id}>
-                        <td>{formatDate(reporte.fechaProcesado)}</td>
+                        <td>{reporte.fechaProcesado ? new Date(reporte.fechaProcesado).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' }) : 'N/A'}</td>
                         <td>
-                          <Badge bg="warning" text="dark">{reporte.tipoMtto || 'Correctivo'}</Badge>
+                         <strong>{reporte.ResponsableMtto?.firstName || 'N/A'} {reporte.ResponsableMtto?.lastName || 'N/A'}</strong>
                         </td>
                         <td>
                           <Badge bg="primary">{reporte.consecutivo || 'N/A'}</Badge>
@@ -2175,6 +2198,15 @@ const HVEquipoPage: React.FC = () => {
                             {reporte.estadoOperativo || 'N/A'}
                           </Badge>
                         </td>
+                        <td>
+                          <Button
+                            variant="info"
+                            size="sm"
+                            onClick={() => window.open(`/reports/${reporte._id}/view`, '_blank')}
+                          >
+                            Ver
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2191,7 +2223,7 @@ const HVEquipoPage: React.FC = () => {
             <span>
               <FaCog className="me-2" />
               Repuestos
-              <Badge bg="success" className="ms-2">{repuestosHistorial.length}</Badge>
+              <Badge bg="success" className="ms-2">{repuestosData?.length || 0}</Badge>
             </span>
           }
         >
@@ -2203,7 +2235,7 @@ const HVEquipoPage: React.FC = () => {
               </h5>
             </Card.Header>
             <Card.Body>
-              {repuestosHistorial.length === 0 ? (
+              {repuestosData?.length === 0 ? (
                 <Alert variant="info">
                   No hay registros de repuestos utilizados en este equipo.
                 </Alert>
@@ -2214,7 +2246,7 @@ const HVEquipoPage: React.FC = () => {
                       <Card bg="light">
                         <Card.Body>
                           <h6>Total Repuestos</h6>
-                          <h3>{repuestosHistorial.length}</h3>
+                          <h3>{repuestosData?.length || 0}</h3>
                         </Card.Body>
                       </Card>
                     </Col>
@@ -2223,7 +2255,7 @@ const HVEquipoPage: React.FC = () => {
                         <Card.Body>
                           <h6>Instalados</h6>
                           <h3>
-                            {repuestosHistorial.filter(r => r.estado === 'Instalado').length}
+                            {repuestosData?.filter(r => getRepuestoEstado(r) === 'Instalado').length || 0}
                           </h3>
                         </Card.Body>
                       </Card>
@@ -2233,9 +2265,9 @@ const HVEquipoPage: React.FC = () => {
                         <Card.Body>
                           <h6>Pendientes</h6>
                           <h3>
-                            {repuestosHistorial.filter(r => 
-                              r.estado === 'Solicitado' || r.estado === 'Aprobado'
-                            ).length}
+                            {repuestosData?.filter(r => 
+                              getRepuestoEstado(r) === 'Solicitado' || getRepuestoEstado(r) === 'Aprobado'
+                            ).length || 0}
                           </h3>
                         </Card.Body>
                       </Card>
@@ -2246,7 +2278,7 @@ const HVEquipoPage: React.FC = () => {
                           <h6>Costo Total</h6>
                           <h3>
                             {formatCurrency(
-                              repuestosHistorial.reduce((sum, r) => sum + (r.costo || 0), 0)
+                              repuestosData?.reduce((sum, r) => sum + getRepuestoCosto(r), 0) || 0
                             )}
                           </h3>
                         </Card.Body>
@@ -2268,29 +2300,51 @@ const HVEquipoPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {repuestosHistorial.map((repuesto: any, index) => (
+                      {repuestosData?.map((repuesto: Repuesto, index) => (
                         <tr key={repuesto._id || index}>
-                          <td>{formatDate(repuesto.fechaSolicitud)}</td>
-                          <td>{formatDate(repuesto.fechaInstalacion)}</td>
+                          <td> {/* colcoar la fecha y responsable de la solictiud abajo de la fecha en letra pequeña small y en formato dd/mm/yyyy */}
+                            {formatDate((repuesto as any).fechaSolicitud || repuesto.FechaSolicitud)}
+                            <br />
+                            <small>
+                              {(repuesto as any).ResponsableSolicitud ? `${(repuesto as any).ResponsableSolicitud.firstName.charAt(0)}. ${(repuesto as any).ResponsableSolicitud.lastName}` : '-'}
+                            </small>
+                          </td>
+                          <td>
+                            {formatDate((repuesto as any).fechaInstalacion || repuesto.FechaInstalacion)}
+                            <br />
+                            <small>
+                              {(repuesto as any).ResponsableInstalacion ? `${(repuesto as any).ResponsableInstalacion.firstName.charAt(0)}. ${(repuesto as any).ResponsableInstalacion.lastName}` : '-'}
+                            </small>
+                          </td>
                           <td><strong>{repuesto.nombre}</strong></td>
-                          <td className="text-center">{repuesto.cantidad}</td>
+                          <td className="text-center">{(repuesto as any).cantidad || repuesto.Cantidad}</td>
                           <td>
                             <Badge bg={
-                              repuesto.estado === 'Instalado' ? 'success' :
-                              repuesto.estado === 'Aprobado' ? 'info' :
-                              repuesto.estado === 'Solicitado' ? 'warning' : 'danger'
+                              getRepuestoEstado(repuesto) === 'Instalado' ? 'success' :
+                              getRepuestoEstado(repuesto) === 'Aprobado' ? 'info' :
+                              getRepuestoEstado(repuesto) === 'Solicitado' ? 'warning' : 'danger'
                             }>
-                              {repuesto.estado}
+                              {getRepuestoEstado(repuesto) || 'Sin estado'}
                             </Badge>
                           </td>
                           <td className="text-end">
-                            {repuesto.costo ? formatCurrency(repuesto.costo) : '-'}
+                            {getRepuestoCosto(repuesto) ? formatCurrency(getRepuestoCosto(repuesto)) : '-'}
                           </td>
                           <td>
-                            <small>{repuesto.motivo?.substring(0, 40) || '-'}</small>
+                            <small>{(repuesto as any).motivo?.substring(0, 40) || repuesto.observacion?.substring(0, 40) || '-'}</small>
                           </td>
                           <td>
-                            <Badge bg="primary">{repuesto.reporteId?.substring(0, 8) || 'N/A'}</Badge>
+                            {/**Boton para ver el reporte en una nueva ventana por el que viene en ReporteSolicitudId*/}
+                            {repuesto.ReporteSolicitudId ? (
+                              <Button
+                                variant="info"
+                                onClick={() => window.open(`/reports/${repuesto.ReporteSolicitudId}/view`, '_blank')}
+                              >
+                                Ver
+                              </Button>
+                            ) : (
+                              <Badge bg="secondary">N/A</Badge>
+                            )}
                           </td>
                         </tr>
                       ))}

@@ -14,6 +14,7 @@ interface InstalarRepuestoDirectoModalProps {
   reporteId: string;
   otId: string;
   equipoId: string;
+  clienteId?: string;
 }
 
 const schema = yup.object().shape({
@@ -30,7 +31,8 @@ export const InstalarRepuestoDirectoModal: React.FC<InstalarRepuestoDirectoModal
   onHide,
   reporteId,
   otId,
-  equipoId
+  equipoId,
+  clienteId
 }) => {
   const { user, token, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -78,6 +80,7 @@ export const InstalarRepuestoDirectoModal: React.FC<InstalarRepuestoDirectoModal
       // Crear el repuesto con los datos básicos de solicitud
       const repuestoData: CreateRepuestoSolicitudDto = {
         ...data,
+        ClienteId: clienteId,
         ResponsableSolicitud: userId,
         EstadoSolicitud: 'Instalado', // Marcar como instalado directamente
         FechaInstalacion: new Date(), // Fecha de instalación actual

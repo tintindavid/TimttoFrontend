@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { 
   Card, Row, Col, Form, Button, Badge, Alert, 
   ProgressBar, Tab, Tabs, ListGroup, Modal 
@@ -46,7 +46,6 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
     });
   }, [reporte]);
 
-  console.log('editedReporte: ', editedReporte)
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('equipment');
@@ -81,6 +80,57 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
     }
     return new Date().toISOString().split('T')[0];
   });
+  const [duracionActividad, setDuracionActividad] = useState<string>('0045');
+  const durationHasCustomValueRef = useRef(false);
+
+  const formatDurationValue = (value: string): string => {
+    const digitsOnly = value.replace(/\D/g, '').slice(-4);
+    const padded = digitsOnly.padStart(4, '0');
+    return `${padded.slice(0, 2)}:${padded.slice(2, 4)}`;
+  };
+
+  const handleDurationKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const isDigit = /^[0-9]$/.test(event.key);
+
+    if (isDigit) {
+      event.preventDefault();
+      durationHasCustomValueRef.current = true;
+      setDuracionActividad(prevValue => {
+        const currentDigits = prevValue.replace(/\D/g, '').slice(-4);
+        if (!durationHasCustomValueRef.current || currentDigits === '0045') {
+          return event.key;
+        }
+        return `${currentDigits}${event.key}`.slice(-4);
+      });
+      return;
+    }
+
+    if (event.key === 'Backspace' || event.key === 'Delete') {
+      event.preventDefault();
+      durationHasCustomValueRef.current = true;
+      setDuracionActividad(prevValue => prevValue.replace(/\D/g, '').slice(0, -1));
+      return;
+    }
+
+    if (
+      event.key === 'Tab' ||
+      event.key === 'ArrowLeft' ||
+      event.key === 'ArrowRight' ||
+      event.key === 'Home' ||
+      event.key === 'End'
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+  };
+
+  const handleDurationPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    const pastedDigits = event.clipboardData.getData('text').replace(/\D/g, '').slice(-4);
+    durationHasCustomValueRef.current = true;
+    setDuracionActividad(pastedDigits);
+  };
 
   const estadoOptions = ['Operativo', 'En mantenimiento', 'Fuera de servicio'];
   // Hooks para autenticación
@@ -90,9 +140,12 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   const { data: protocolo, isLoading: loadingProtocol } = useProtocol(protocoloId);
 
   // Obtener repuestos del equipo y del reporte
-  const { data: repuestosEquipo, isLoading: loadingRepuestosEquipo } = useRepuestosByEquipo(editedReporte.Equipo?._id || '', 'Solicitado');
+  const { data: repuestosEquipo, isLoading: loadingRepuestosEquipo } = useRepuestosByEquipo(editedReporte.Equipo?._id || '');
   const { data: repuestosReporte, isLoading: loadingRepuestosReporte } = useRepuestosByReporte(editedReporte._id || '');
   
+  console.log('Repuestos del equipo:', repuestosEquipo);
+  console.log('Repuestos del reporte:', repuestosReporte);
+
   // Hooks para editar y eliminar repuestos
   const updateRepuestoMutation = useUpdateRepuesto();
   const deleteRepuestoMutation = useDeleteRepuesto();
@@ -317,6 +370,26 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       }
     };
     const userId = user?._id || (token ? getUserIdFromToken(token) : null);
+
+    const parseDurationToMinutes = (duration: string): number => {
+      const normalizedDuration = formatDurationValue(duration).trim();
+      const durationMatch = /^([0-9]{1,2}):([0-5][0-9])$/.exec(normalizedDuration);
+
+      if (!durationMatch) {
+        return 45;
+      }
+
+      const [, hoursPart, minutesPart] = durationMatch;
+      const hours = Number.parseInt(hoursPart, 10);
+      const minutes = Number.parseInt(minutesPart, 10);
+
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return 45;
+      }
+
+      return (hours * 60) + minutes;
+    };
+    const duracionEnMinutos = parseDurationToMinutes(duracionActividad);
   
     if (!userId) {
       await Swal.fire({
@@ -407,6 +480,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
         causaEncontrada: editedReporte.causaEncontrada?.trim() || '',
         motivoFueraServicio: editedReporte.motivoFueraServicio?.trim() || ''
       }
+      ,
+      duracion: duracionEnMinutos
     };
     
     // Activar spinner
@@ -1154,7 +1229,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                 <FaCog className="me-2" />
                 Gestión de Repuestos
               </h6>
-              {!editedReporte.procesado && (
+
+              {(editedReporte.estado === 'Pendiente' || editedReporte.estado === 'Procesado') && (
                 <div className="d-flex gap-2">
                   <Button 
                     variant="primary" 
@@ -1369,6 +1445,22 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                 Seleccione la fecha en que se realizó el mantenimiento
               </Form.Text>
             </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Duración de la actividad</Form.Label>
+              <Form.Control
+                type="text"
+                inputMode="numeric"
+                placeholder="00:45"
+                maxLength={5}
+                value={formatDurationValue(duracionActividad)}
+                onKeyDown={handleDurationKeyDown}
+                onPaste={handleDurationPaste}
+                onChange={() => {}}
+              />
+              <Form.Text className="text-muted">
+                Escribe dígitos y se completará como HH:MM. Valor por defecto: 00:45.
+              </Form.Text>
+            </Form.Group>
             {/* Indicar observacion obligatoria si estadooperativo es "En mantenimiento","Fuera de Servicio" o "Dado de Baja" */}
             {(editedReporte.estadoOperativo === 'En Mantenimiento' || editedReporte.estadoOperativo === 'Fuera de Servicio' || editedReporte.estadoOperativo === 'Dado de Baja') && (
               <Form.Group className="mb-3">
@@ -1520,6 +1612,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           reporteId={editedReporte._id || ''}
           otId={editedReporte.orden._id}
           equipoId={editedReporte.Equipo._id}
+          clienteId={editedReporte.Equipo?.ClienteId}
         />
       )}
 
@@ -1541,6 +1634,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           reporteId={editedReporte._id || ''}
           otId={editedReporte.orden._id}
           equipoId={editedReporte.Equipo._id}
+          clienteId={editedReporte.Equipo?.ClienteId}
         />
       )}
       {/* Modal para Editar Equipo */}

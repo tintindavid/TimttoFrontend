@@ -2,12 +2,22 @@
 export interface Reporte {
   _id?: string;
   OtId?: string;
+  ClienteId:{
+    Ciudad: String,
+    Departamento: String,
+    Direccion: String,
+    Razonsocial: String,
+    TelContacto: String,
+    Nit: String,
+    UserContacto: String,
+  }
   consecutivo?: string; // Nuevo campo para mostrar número de reporte o estado como 'Cerrado'
   numeroHoja: string; // Puede ser 'Cerrado' para reportes cerrados
   observacionEstadoFinal?: string;
   ResponsableMtto: {
     firstName: string;
     lastName: string;
+    role?: string;
     _id: string;
   };
   fechaFinalizdo?: string;
@@ -41,11 +51,12 @@ export interface Reporte {
   };
   estado: 'Pendiente' | 'En_Progreso' | 'Cerrado' | 'Cancelado' | 'Procesado';
   procesado: boolean;
-  fechaProcesado?: string;
-  fechaMtto?: string;
-  fechaFinalizado?: string;
+  fechaProcesado?: Date;
+  fechaMtto?: Date;
+  fechaFinalizado?: Date;
   responsableProcesado?: string;
   actividadesRealizadas?: ActividadRealizada[];
+  duracion?: number;
   hojaDeTrabajo: string; // Nuevo campo para mostrar número de hoja de trabajo o estado como 'Cerrado'
   evidencias?: Evidencia[];
   repuestos?: RepuestoReporte[];
@@ -54,11 +65,20 @@ export interface Reporte {
   accionTomada?: string;
   causaEncontrada?: string;
   motivoFueraServicio?: string;
-  fechaCancelacion?: string;
+  fechaCancelacion?: Date;
   motivoCancelacion?: string;
   observacion?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  resumen?: {
+    actividadesCompletadas?: number;
+    totalActividades?: number;
+    porcentajeCompletado?: number;
+    cantidadRepuestos?: number;
+    observacion?: string;
+    causaEncontrada?: string;
+    motivoFueraServicio?: string;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
   estadoOperativo?: 'Operativo' | 'En Mantenimiento' | 'Fuera de Servicio' |'Dado de Baja';
   orden?: {
     _id: string;
@@ -76,6 +96,7 @@ export interface ActividadRealizada {
   fecha: string | null; // Puede ser null según datos reales
   observaciones?: string;
   actividadProtocoloId: string; // Requerido para coincidir con datos reales
+  duracion?: number; // Duración en minutos, opcional
 }
 
 export interface Evidencia {

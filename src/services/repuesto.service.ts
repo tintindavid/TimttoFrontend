@@ -1,9 +1,25 @@
 import { api } from './api';
 import { Repuesto, CreateRepuestoSolicitudDto, InstalarRepuestoDto } from '@/types/repuesto.types';
 import { ApiResponse } from '@/types/api.types';
-import { es } from 'date-fns/locale';
+
+const compactParams = (params: Record<string, any>) =>
+  Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== '' && value !== null && value !== undefined)
+  );
 
 export const repuestoService = {
+  // Obtener listado global de repuestos con filtros
+  list: async (params: Record<string, any> = {}) => {
+    const response = await api.get<ApiResponse<Repuesto[]>>('/repuestos', { params: compactParams(params) });
+    return response.data;
+  },
+
+  // Obtener todos los repuestos por Equipo sin filtrar por estado
+  getByEquipoAll: async (equipoId: string) => {
+    const response = await api.get<ApiResponse<Repuesto[]>>(`/repuestos/equipo/${equipoId}/all`);
+    return response.data;
+  },
+
   // Obtener repuestos por reporte
   getByReporte: async (reporteId: string) => {
     const response = await api.get<ApiResponse<Repuesto[]>>(`/repuestos/reporte/${reporteId}`);
@@ -46,6 +62,7 @@ export const repuestoService = {
       CantidadInstalacion: data.CantidadInstalacion,
       FechaInstalacion: data.FechaInstalacion,
       ObservacionInstalacion: data.ObservacionInstalacion,
+      PrecioRepuesto: data.PrecioRepuesto,
       ResponsableInstalacion: data.ResponsableInstalacion,
       ReporteInstalacionId: reporteId,
       EstadoSolicitud: 'Instalado'
@@ -63,6 +80,18 @@ export const repuestoService = {
   // Actualizar repuesto
   update: async (id: string, data: Partial<Repuesto>) => {
     const response = await api.put<ApiResponse<Repuesto>>(`/repuestos/${id}`, data);
+    return response.data;
+  },
+
+  // Crear OT desde solicitudes seleccionadas
+  createOtFromSolicitudes: async (
+    repuestoIds: string[],
+    payload: { ResponsableId: string; FechaEstimadaEntrega?: string; observacion?: string; OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente' }
+  ) => {
+    const response = await api.post<ApiResponse<any>>('/repuestos/ot-from-solicitudes', {
+      repuestoIds,
+      ...payload,
+    });
     return response.data;
   },
 

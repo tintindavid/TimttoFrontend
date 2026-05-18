@@ -12,7 +12,12 @@ type MenuItem = {
   subItems?: MenuItem[];
 };
 
-const menu: MenuItem[] = [
+const hasInventarioPlan = () => {
+  const plan = (localStorage.getItem('tenantPlan') || '').toLowerCase();
+  return plan.includes('inventario');
+};
+
+const baseMenu: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', path: '/', icon: <FaList /> },
   {
     id: 'tecnica',
@@ -34,6 +39,15 @@ const menu: MenuItem[] = [
       { id: 'ots-new', label: 'Crear OT', path: '/maintenance-orders/new' },
     ],
   },
+  {
+    id: 'repuestos',
+    label: 'Repuestos',
+    icon: <FaCogs />,
+    subItems: [
+      { id: 'repuestos-solicitados', label: 'Solicitados', path: '/repuestos/solicitados' },
+      { id: 'repuestos-inventario', label: 'Inventario', path: '/repuestos/inventario' },
+    ],
+  },
   { id: 'cronogramas', label: 'Cronogramas', path: '/cronogramas', icon: <FaCalendarAlt /> },
   { id: 'informes', label: 'Informes', path: '/informes', icon: <FaFileAlt /> },
   { id: 'diario', label: 'Diario', path: '/diario', icon: <FaBook /> },
@@ -50,6 +64,14 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }) => {
   const [openId, setOpenId] = useState<string | null>(null);
   const location = useLocation();
+  const inventoryEnabled = hasInventarioPlan();
+  const menu = baseMenu.map((item) => {
+    if (item.id !== 'repuestos' || !item.subItems) return item;
+    return {
+      ...item,
+      subItems: item.subItems.filter((s) => s.id !== 'repuestos-inventario' || inventoryEnabled),
+    };
+  });
 
   const handleMouseEnter = (id: string) => setOpenId(id);
   const handleMouseLeave = () => setOpenId(null);

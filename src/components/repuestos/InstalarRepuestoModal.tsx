@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Badge } from 'react-bootstrap';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, Resolver } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaWrench, FaCalendarAlt } from 'react-icons/fa';
@@ -15,10 +15,17 @@ interface InstalarRepuestoModalProps {
   reporteId: string;
 }
 
+type InstalarRepuestoFormValues = Omit<InstalarRepuestoDto, '_id' | 'FechaInstalacion' | 'ResponsableInstalacion'> & {
+  PrecioRepuesto: number;
+};
+
 const schema = yup.object().shape({
   CantidadInstalacion: yup.number()
     .min(1, 'La cantidad debe ser mayor a 0')
     .required('La cantidad instalada es obligatoria'),
+  PrecioRepuesto: yup.number()
+    .min(0, 'El precio debe ser mayor o igual a 0')
+    .required('El precio del repuesto es obligatorio'),
   ObservacionInstalacion: yup.string().optional(),
 });
 
@@ -43,10 +50,11 @@ export const InstalarRepuestoModal: React.FC<InstalarRepuestoModalProps> = ({
     watch,
     setValue,
     formState: { errors }
-  } = useForm<Omit<InstalarRepuestoDto, '_id' | 'FechaInstalacion' | 'ResponsableInstalacion'>>({
-    resolver: yupResolver(schema),
+  } = useForm<InstalarRepuestoFormValues>({
+    resolver: yupResolver(schema) as Resolver<InstalarRepuestoFormValues>,
     defaultValues: {
       CantidadInstalacion: 1,
+      PrecioRepuesto: 0,
       ObservacionInstalacion: '',
     }
   });
@@ -56,12 +64,13 @@ export const InstalarRepuestoModal: React.FC<InstalarRepuestoModalProps> = ({
       // Resetear el formulario cuando se abre el modal
       reset({
         CantidadInstalacion: 1,
+        PrecioRepuesto: 0,
         ObservacionInstalacion: '',
       });
     }
   }, [show, repuesto, reset]);
 
-  const onSubmit = async (formData: Omit<InstalarRepuestoDto, '_id' | 'FechaInstalacion' | 'ResponsableInstalacion'>) => {
+  const onSubmit = async (formData: InstalarRepuestoFormValues) => {
     console.log('DEBUG Instalar Modal - user:', user);
     console.log('DEBUG Instalar Modal - user?._id:', user?._id);
     console.log('DEBUG Instalar Modal - token:', token);
@@ -97,6 +106,7 @@ export const InstalarRepuestoModal: React.FC<InstalarRepuestoModalProps> = ({
         CantidadInstalacion: formData.CantidadInstalacion,
         FechaInstalacion: new Date(),
         ObservacionInstalacion: formData.ObservacionInstalacion,
+        PrecioRepuesto: formData.PrecioRepuesto,
         ResponsableInstalacion: userId
       };
 
@@ -203,6 +213,28 @@ export const InstalarRepuestoModal: React.FC<InstalarRepuestoModalProps> = ({
                   <FaCalendarAlt className="me-1" />
                   Se registrará automáticamente
                 </Form.Text>
+              </Form.Group>
+            </Col>
+            {/**Input de precio */}
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Precio *</Form.Label>
+                <Controller
+                  name="PrecioRepuesto"
+                  control={control}
+                  render={({ field }) => (
+                    <Form.Control
+                      {...field}
+                      type="number"
+                      min="0"
+                      placeholder="Precio del repuesto"
+                      isInvalid={!!errors.PrecioRepuesto}
+                    />
+                  )}
+                />
+                <Form.Control.Feedback type="invalid">
+                  {errors.PrecioRepuesto?.message}
+                </Form.Control.Feedback>
               </Form.Group>
             </Col>
           </Row>

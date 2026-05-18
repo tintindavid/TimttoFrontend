@@ -209,6 +209,42 @@ export const checkPdfMicroservice = async (): Promise<any> => {
   }
 };
 
+/**
+ * Descarga el PDF de un reporte individual y lo abre en una nueva pestaña.
+ * Si el browser bloquea la nueva pestaña, hace fallback a descarga directa.
+ * @param reportId - ID del reporte
+ * @throws Error si la petición falla
+ */
+export const downloadReportPDF = async (reportId: string): Promise<void> => {
+  const headers: HeadersInit = {};
+
+  const tenantId = localStorage.getItem('tenantId');
+  if (tenantId) headers['x-tenant-id'] = tenantId;
+
+  const token = localStorage.getItem('token');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_URL}/reports/${reportId}/pdf`, { headers });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error((errorData as any).message || `Error ${response.status}: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const opened = window.open(url, '_blank');
+  if (!opened) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${reportId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
 /* 
  * ============================================
  * EJEMPLOS DE USO
