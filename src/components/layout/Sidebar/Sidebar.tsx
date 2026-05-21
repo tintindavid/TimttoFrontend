@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes } from 'react-icons/fa';
+import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
 import './Sidebar.css';
 
@@ -53,6 +53,7 @@ const baseMenu: MenuItem[] = [
   { id: 'diario', label: 'Diario', path: '/diario', icon: <FaBook /> },
   { id: 'customers', label: 'Clientes', path: '/customers', icon: <FaBuilding /> },
   { id: 'users', label: 'Usuarios', path: '/users', icon: <FaUsers /> },
+  { id: 'roles', label: 'Roles', path: '/roles', icon: <FaUserShield /> },
   { id: 'settings', label: 'Configuración', path: '/settings', icon: <FaCog /> },
 ];
 

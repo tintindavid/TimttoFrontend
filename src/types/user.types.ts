@@ -9,6 +9,7 @@ export interface User {
   username?: string;
   email: string;
   role: UserRole;
+  roleId?: string | null;
   phone?: string;
   city?: string;
   registroInvima?: string;
@@ -25,6 +26,7 @@ export interface CreateUserDto {
   email: string;
   password: string;
   role: UserRole;
+  roleId?: string | null;
   tenantId?: string;
 }
 
@@ -33,6 +35,7 @@ export interface UpdateUserDto {
   lastName?: string;
   email?: string;
   role?: UserRole;
+  roleId?: string | null;
   phone?: string;
   city?: string;
 }

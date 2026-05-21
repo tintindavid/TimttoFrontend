@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Button } from 'react-bootstrap';
 import { useUser, useCreateUser, useUpdateUser } from '@/hooks/useUsers';
+import { useRoles } from '@/hooks/useRoles';
 
 const UserFormPage: React.FC = () => {
   const { id } = useParams();
@@ -9,8 +10,10 @@ const UserFormPage: React.FC = () => {
   const navigate = useNavigate();
 
   const { data } = useUser(id || '');
+  const { data: rolesData } = useRoles({ page: 1, limit: 100 });
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
+  const roles = rolesData?.data || [];
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
@@ -52,6 +55,16 @@ const UserFormPage: React.FC = () => {
             <option value="admin">admin</option>
             <option value="technician">technician</option>
             <option value="user">user</option>
+          </select>
+        </div>
+
+        <div className="mb-3">
+          <label>Role assignment</label>
+          <select name="roleId" defaultValue={data?.data?.roleId || ''} className="form-select">
+            <option value="">Sin rol asignado</option>
+            {roles.map((role) => (
+              <option key={role._id} value={role._id}>{role.name}</option>
+            ))}
           </select>
         </div>
 
