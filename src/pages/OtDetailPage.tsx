@@ -32,7 +32,7 @@ import { reporteService } from '../services/reporte.service';
 import Swal from 'sweetalert2';
 
 // Types
-import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '../types/reporte.types';
+import { Reporte, ActividadRealizada, RepuestoReporte } from '../types/reporte.types';
 import { OT } from '../types/ot.types';
 
 const OtDetailPage: React.FC = () => {
@@ -151,19 +151,6 @@ const OtDetailPage: React.FC = () => {
       await refetchReportes();
     } catch (error) {
       console.error('Error adding actividad:', error);
-      throw error;
-    }
-  }, [refetchReportes]);
-
-  const handleAddEvidencia = useCallback(async (
-    reporteId: string,
-    evidencia: Omit<Evidencia, '_id' | 'fechaSubida'>
-  ) => {
-    try {
-      await reporteService.addEvidencia(reporteId, evidencia);
-      await refetchReportes();
-    } catch (error) {
-      console.error('Error adding evidencia:', error);
       throw error;
     }
   }, [refetchReportes]);
