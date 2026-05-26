@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reporteService } from '@/services/reporte.service';
 import { repuestoService } from '@/services/repuesto.service';
 import { sheetworkService } from '@/services/sheetwork.service';
-import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '@/types/reporte.types';
+import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte, VerificationParam } from '@/types/reporte.types';
 
 // Get reportes by OT
 export const useReportes = (params?: { otId?: string }) => {
@@ -205,6 +205,25 @@ export const useDeleteEvidencia = () => {
   return useMutation({
     mutationFn: ({ reporteId, evidenciaId }: { reporteId: string; evidenciaId: string }) =>
       reporteService.deleteEvidencia(reporteId, evidenciaId),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
+      queryClient.invalidateQueries({ queryKey: ['reportes'] });
+    },
+  });
+};
+
+// Replace the full verificationParam[] array on a Report
+export const useUpdateVerificationParams = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reporteId,
+      verificationParam,
+    }: {
+      reporteId: string;
+      verificationParam: VerificationParam[];
+    }) => reporteService.updateVerificationParams(reporteId, verificationParam),
     onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
       queryClient.invalidateQueries({ queryKey: ['reportes'] });

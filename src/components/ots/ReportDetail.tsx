@@ -15,6 +15,7 @@ import { InstalarRepuestoModal } from '@/components/repuestos/InstalarRepuestoMo
 import { InstalarRepuestoDirectoModal } from '@/components/repuestos/InstalarRepuestoDirectoModal';
 import EditEquipoModal from './EditEquipoModal';
 import EvidenceUploader from '@/components/common/EvidenceUploader';
+import VerificationParamsEditor from '@/components/ots/VerificationParamsEditor';
 import Swal from 'sweetalert2';
 
 interface ReportDetailProps {
@@ -84,13 +85,19 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   const [duracionActividad, setDuracionActividad] = useState<string>('0045');
   const durationHasCustomValueRef = useRef(false);
   const [hasUnsavedEvidence, setHasUnsavedEvidence] = useState(false);
+  const [hasUnsavedVerificationParams, setHasUnsavedVerificationParams] = useState(false);
 
   const guardedOnBack = useCallback(() => {
-    if (hasUnsavedEvidence) {
+    if (hasUnsavedEvidence || hasUnsavedVerificationParams) {
+      const detail = hasUnsavedEvidence && hasUnsavedVerificationParams
+        ? 'evidencias y parámetros de verificación'
+        : hasUnsavedEvidence
+          ? 'evidencias'
+          : 'parámetros de verificación';
       Swal.fire({
         icon: 'warning',
-        title: 'Evidencias sin guardar',
-        text: '¿Desea salir sin guardar las fotos cargadas?',
+        title: 'Cambios sin guardar',
+        text: `¿Desea salir sin guardar ${detail}?`,
         showCancelButton: true,
         confirmButtonText: 'Salir sin guardar',
         cancelButtonText: 'Cancelar',
@@ -101,7 +108,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       return;
     }
     onBack();
-  }, [hasUnsavedEvidence, onBack]);
+  }, [hasUnsavedEvidence, hasUnsavedVerificationParams, onBack]);
 
   const formatDurationValue = (value: string): string => {
     const digitsOnly = value.replace(/\D/g, '').slice(-4);
@@ -1220,7 +1227,26 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           )}
         </Tab>
 
-        {/* Tab 4: Repuestos */}
+        {/* Tab 4: Verificación de Parámetros */}
+        <Tab eventKey="verification-params" title="📐 Ver. Parámetros">
+          {editedReporte._id ? (
+            <VerificationParamsEditor
+              reporteId={editedReporte._id}
+              value={editedReporte.verificationParam ?? []}
+              disabled={Boolean(editedReporte.procesado)}
+              onDirtyChange={setHasUnsavedVerificationParams}
+              onSaved={(nuevos) =>
+                setEditedReporte((prev) => ({ ...prev, verificationParam: nuevos }))
+              }
+            />
+          ) : (
+            <Alert variant="info" className="mt-3">
+              Guarda el reporte primero para registrar parámetros.
+            </Alert>
+          )}
+        </Tab>
+
+        {/* Tab 5: Repuestos */}
         <Tab eventKey="parts" title="🔧 Repuestos">
           <Card className="mt-3">
             <Card.Header className="d-flex justify-content-between align-items-center">

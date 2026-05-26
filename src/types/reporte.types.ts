@@ -59,6 +59,7 @@ export interface Reporte {
   duracion?: number;
   hojaDeTrabajo: string; // Nuevo campo para mostrar número de hoja de trabajo o estado como 'Cerrado'
   evidencias?: Evidencia[];
+  verificationParam?: VerificationParam[];
   repuestos?: RepuestoReporte[];
   fallaReportada?: string;
   diagnostico?: string;
@@ -121,6 +122,21 @@ export const EVIDENCE_LIMITS = {
   ALLOWED_ACCEPT: 'image/jpeg,image/png',
   MAX_DESCRIPTION_LENGTH: 120,
 };
+
+export interface VerificationParam {
+  _id?: string;
+  magnitud: string;
+  unidad: string;
+  valorReferencia: number | null;
+  valorMedido: number | null;
+  patron: string;
+}
+
+export const VERIFICATION_PARAM_LIMITS = {
+  MAX_MAGNITUD_LENGTH: 80,
+  MAX_UNIDAD_LENGTH: 20,
+  MAX_PATRON_LENGTH: 100,
+} as const;
 
 export interface RepuestoReporte {
   _id?: string;
