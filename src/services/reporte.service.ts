@@ -1,10 +1,11 @@
 import { ApiResponse } from '@/types';
 import { api } from './api';
-import { 
-  Reporte, 
-  ActividadRealizada, 
-  Evidencia, 
-  RepuestoReporte 
+import {
+  Reporte,
+  ActividadRealizada,
+  Evidencia,
+  RepuestoReporte,
+  VerificationParam,
 } from '@/types/reporte.types';
 
 
@@ -130,6 +131,18 @@ export const reporteService = {
   deleteEvidencia: async (reporteId: string, evidenciaId: string) => {
     const response = await api.delete<ApiResponse<{ evidencias: Evidencia[] }>>(
       `/reports/${reporteId}/evidencias/${evidenciaId}`
+    );
+    return response.data;
+  },
+
+  // Replace the full verificationParam[] array on a Report.
+  updateVerificationParams: async (
+    reporteId: string,
+    verificationParam: VerificationParam[]
+  ) => {
+    const response = await api.patch<ApiResponse<Reporte>>(
+      `/reports/${reporteId}/verification-params`,
+      { verificationParam }
     );
     return response.data;
   },

@@ -9,6 +9,7 @@ import { downloadReportPDF } from '@/services/descargarPdf.service';
 import { useReporte } from '@/hooks/useReportes';
 import { useRepuestosByReporte } from '@/hooks/useRepuestos';
 import ImageGalleryModal from '@/components/common/ImageGalleryModal';
+import VerificationParamsView from '@/components/ots/VerificationParamsView';
 import '@/pages/Reports/ViewReportPage.css';
 
 const ViewReportPage: React.FC = () => {
@@ -503,6 +504,9 @@ const ViewReportPage: React.FC = () => {
           </Card.Body>
         </Card>
       )}
+
+      {/* Verificación de Parámetros */}
+      <VerificationParamsView value={reporte.verificationParam ?? []} />
 
       <ImageGalleryModal
         show={galleryStartIndex !== null}
