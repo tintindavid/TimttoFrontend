@@ -156,20 +156,43 @@ export const useDeleteActividad = () => {
   });
 };
 
-// Add evidencia
-export const useAddEvidencia = () => {
+// Upload evidences (1..N images in a single multipart request, optional per-file descripciones)
+export const useUploadEvidencias = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ 
-      reporteId, 
-      evidencia 
-    }: { 
-      reporteId: string; 
-      evidencia: Omit<Evidencia, '_id' | 'fechaSubida'> 
-    }) => reporteService.addEvidencia(reporteId, evidencia),
-    onSuccess: (response, variables) => {
-      queryClient.setQueryData(['reportes', variables.reporteId], response);
+    mutationFn: ({
+      reporteId,
+      files,
+      descripciones,
+    }: {
+      reporteId: string;
+      files: File[];
+      descripciones?: string[];
+    }) => reporteService.uploadEvidencias(reporteId, files, descripciones),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
+      queryClient.invalidateQueries({ queryKey: ['reportes'] });
+    },
+  });
+};
+
+// Update evidencia descripcion on a saved evidence
+export const useUpdateEvidencia = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reporteId,
+      evidenciaId,
+      descripcion,
+    }: {
+      reporteId: string;
+      evidenciaId: string;
+      descripcion: string;
+    }) => reporteService.updateEvidencia(reporteId, evidenciaId, descripcion),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
       queryClient.invalidateQueries({ queryKey: ['reportes'] });
     },
   });
@@ -178,11 +201,11 @@ export const useAddEvidencia = () => {
 // Delete evidencia
 export const useDeleteEvidencia = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ reporteId, evidenciaId }: { reporteId: string; evidenciaId: string }) => 
+    mutationFn: ({ reporteId, evidenciaId }: { reporteId: string; evidenciaId: string }) =>
       reporteService.deleteEvidencia(reporteId, evidenciaId),
-    onSuccess: (response, variables) => {
+    onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
       queryClient.invalidateQueries({ queryKey: ['reportes'] });
     },

@@ -8,6 +8,7 @@ import { FaCheckCircle, FaFilePdf, FaSpinner } from 'react-icons/fa';
 import { downloadReportPDF } from '@/services/descargarPdf.service';
 import { useReporte } from '@/hooks/useReportes';
 import { useRepuestosByReporte } from '@/hooks/useRepuestos';
+import ImageGalleryModal from '@/components/common/ImageGalleryModal';
 import '@/pages/Reports/ViewReportPage.css';
 
 const ViewReportPage: React.FC = () => {
@@ -21,6 +22,7 @@ const ViewReportPage: React.FC = () => {
   const [progresoActividades, setProgresoActividades] = useState(0);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [galleryStartIndex, setGalleryStartIndex] = useState<number | null>(null);
 
   const reporte = reporteData?.data;
   const repuestos = repuestosData?.data || [];
@@ -469,17 +471,27 @@ const ViewReportPage: React.FC = () => {
           <Card.Body>
             <Row>
               {reporte.evidencias.map((evidencia, index) => (
-                <Col md={4} key={index} className="mb-3">
+                <Col md={4} key={evidencia._id || index} className="mb-3">
                   <Card className="shadow-sm">
-                    <Card.Img 
-                      variant="top" 
-                      src={evidencia.url} 
+                    <Card.Img
+                      variant="top"
+                      src={evidencia.url}
                       style={{ height: '200px', objectFit: 'cover', cursor: 'pointer' }}
-                      onClick={() => window.open(evidencia.url, '_blank')}
-                      alt={evidencia.nombre}
+                      onClick={() => setGalleryStartIndex(index)}
+                      loading="lazy"
+                      alt={evidencia.descripcion || evidencia.nombre}
                     />
                     <Card.Body className="p-2">
-                      <small className="text-muted d-block">{evidencia.nombre}</small>
+                      {evidencia.descripcion ? (
+                        <small
+                          className="text-dark d-block text-truncate"
+                          title={evidencia.descripcion}
+                        >
+                          {evidencia.descripcion}
+                        </small>
+                      ) : (
+                        <small className="text-muted fst-italic d-block">Sin descripción</small>
+                      )}
                       <small className="text-muted">
                         {new Date(evidencia.fechaSubida).toLocaleDateString('es-ES')}
                       </small>
@@ -491,6 +503,18 @@ const ViewReportPage: React.FC = () => {
           </Card.Body>
         </Card>
       )}
+
+      <ImageGalleryModal
+        show={galleryStartIndex !== null}
+        images={(reporte.evidencias ?? []).map((e) => ({
+          url: e.url,
+          nombre: e.nombre,
+          descripcion: e.descripcion,
+        }))}
+        startIndex={galleryStartIndex ?? 0}
+        onClose={() => setGalleryStartIndex(null)}
+        title="Evidencias"
+      />
     </Container>
   );
 };

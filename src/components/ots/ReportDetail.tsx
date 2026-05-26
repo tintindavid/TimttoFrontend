@@ -3,10 +3,10 @@ import {
   Card, Row, Col, Form, Button, Badge, Alert, 
   ProgressBar, Tab, Tabs, ListGroup, Modal 
 } from 'react-bootstrap';
-import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '@/types/reporte.types';
+import { Reporte, ActividadRealizada, RepuestoReporte } from '@/types/reporte.types';
 import { Repuesto } from '@/types/repuesto.types';
 import { ActividadMtto } from '@/types/actividad.types';
-import { FaSave, FaCheck, FaTimes, FaArrowLeft, FaCamera, FaTools, FaEdit, FaList, FaCheckCircle, FaPlus, FaWrench, FaCog, FaEye } from 'react-icons/fa';
+import { FaSave, FaCheck, FaTimes, FaArrowLeft, FaTools, FaEdit, FaList, FaCheckCircle, FaPlus, FaWrench, FaCog, FaEye } from 'react-icons/fa';
 import { useProtocol } from '@/hooks/useProtocols';
 import { useRepuestosByEquipo, useRepuestosByReporte, useUpdateRepuesto, useDeleteRepuesto } from '@/hooks/useRepuestos';
 import { useAuth } from '@/context/AuthContext';
@@ -14,6 +14,7 @@ import { SolicitarRepuestoModal } from '@/components/repuestos/SolicitarRepuesto
 import { InstalarRepuestoModal } from '@/components/repuestos/InstalarRepuestoModal';
 import { InstalarRepuestoDirectoModal } from '@/components/repuestos/InstalarRepuestoDirectoModal';
 import EditEquipoModal from './EditEquipoModal';
+import EvidenceUploader from '@/components/common/EvidenceUploader';
 import Swal from 'sweetalert2';
 
 interface ReportDetailProps {
@@ -82,6 +83,25 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   });
   const [duracionActividad, setDuracionActividad] = useState<string>('0045');
   const durationHasCustomValueRef = useRef(false);
+  const [hasUnsavedEvidence, setHasUnsavedEvidence] = useState(false);
+
+  const guardedOnBack = useCallback(() => {
+    if (hasUnsavedEvidence) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Evidencias sin guardar',
+        text: '¿Desea salir sin guardar las fotos cargadas?',
+        showCancelButton: true,
+        confirmButtonText: 'Salir sin guardar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#d33',
+      }).then((result) => {
+        if (result.isConfirmed) onBack();
+      });
+      return;
+    }
+    onBack();
+  }, [hasUnsavedEvidence, onBack]);
 
   const formatDurationValue = (value: string): string => {
     const digitsOnly = value.replace(/\D/g, '').slice(-4);
@@ -509,7 +529,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       });
       
       // Ejecutar onBack para volver
-      onBack();
+      guardedOnBack();
     } catch (error) {
       console.error('Error al procesar reporte:', error);
       
@@ -1183,42 +1203,21 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
 
         {/* Tab 3: Evidencias */}
         <Tab eventKey="evidences" title="📷 Evidencias">
-          <Card className="mt-3">
-            <Card.Header className="d-flex justify-content-between align-items-center">
-              <h6 className="mb-0">Evidencias Fotográficas</h6>
-              {!editedReporte.procesado && (
-                <Button variant="primary" size="sm">
-                  <FaCamera className="me-1" />
-                  Subir Foto
-                </Button>
-              )}
-            </Card.Header>
-            <Card.Body>
-              {editedReporte?.evidencias?.length === 0 ? (
-                <Alert variant="info" className="text-center">
-                  <FaCamera size={32} className="mb-2 text-muted" />
-                  <div>No hay evidencias registradas</div>
-                  <small>Las fotos ayudan a documentar el estado del equipo</small>
-                </Alert>
-              ) : (
-                <Row>
-                  {editedReporte?.evidencias?.map((evidencia, index) => (
-                    <Col md={4} key={index} className="mb-3">
-                      <Card>
-                        <Card.Img variant="top" src={evidencia.url} style={{ height: '150px', objectFit: 'cover' }} />
-                        <Card.Body className="p-2">
-                          <small className="text-muted">{evidencia.nombre}</small>
-                          <div className="small text-muted">
-                            {new Date(evidencia.fechaSubida).toLocaleDateString('es-ES')}
-                          </div>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              )}
-            </Card.Body>
-          </Card>
+          {editedReporte._id ? (
+            <EvidenceUploader
+              reporteId={editedReporte._id}
+              evidencias={editedReporte.evidencias ?? []}
+              disabled={Boolean(editedReporte.procesado)}
+              onDirtyChange={setHasUnsavedEvidence}
+              onSaved={(nuevas) =>
+                setEditedReporte((prev) => ({ ...prev, evidencias: nuevas }))
+              }
+            />
+          ) : (
+            <Alert variant="info" className="mt-3">
+              Save the report first to attach evidences.
+            </Alert>
+          )}
         </Tab>
 
         {/* Tab 4: Repuestos */}

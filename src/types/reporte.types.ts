@@ -102,12 +102,25 @@ export interface ActividadRealizada {
 export interface Evidencia {
   _id?: string;
   url: string;
+  storagePath?: string;
   nombre: string;
-  tipo: 'imagen' | 'documento';
-  descripcion: string;
-  archivo?: File; // For upload purposes
+  tipo: 'imagen';
+  mimetype?: 'image/jpeg' | 'image/png';
+  size?: number;
+  descripcion?: string;
   fechaSubida: string;
+  uploadedBy?: string;
+  archivo?: File;       // local-only, for pre-save previews
+  isPending?: boolean;  // local-only flag
 }
+
+export const EVIDENCE_LIMITS = {
+  MAX_COUNT: 3,
+  MAX_SIZE_BYTES: 5 * 1024 * 1024,
+  ALLOWED_MIME: ['image/jpeg', 'image/png'] as const,
+  ALLOWED_ACCEPT: 'image/jpeg,image/png',
+  MAX_DESCRIPTION_LENGTH: 120,
+};
 
 export interface RepuestoReporte {
   _id?: string;
