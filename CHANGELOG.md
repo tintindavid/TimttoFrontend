@@ -1,0 +1,11 @@
+# 1.0.0 (2026-06-29)
+
+
+### Features
+
+* agregar carga y gestion de evidencias en reportes (SCRUM-4) ([84c1aff](https://github.com/tintindavid/TimttoFrontend/commit/84c1aff2394585f5b00a6b20031b09da08f351d4))
+* **customers:** add Cronograma PDF download button to CustomerEquiposSection ([ab1ff09](https://github.com/tintindavid/TimttoFrontend/commit/ab1ff09e21bac7ddffa8eae77b0ab2c2a5e76f94))
+* **customers:** add CSV export button to CustomersPage (TICKET-002) ([6fe3da2](https://github.com/tintindavid/TimttoFrontend/commit/6fe3da2e44eade374e04cb7bff7b2e5a7ede1b31))
+* **reports:** add Ver. Parámetros tab and read-only view (SCRUM-5) ([311b573](https://github.com/tintindavid/TimttoFrontend/commit/311b57313959fca5ae851b19ee58c31b36421524))
+* **TICKET-001:** add inventory download button and modal ([6de4fb7](https://github.com/tintindavid/TimttoFrontend/commit/6de4fb7c6c8ad32152344d17219e0945ad1cd875))
+* **tickets:** add ticket lifecycle UI + QR-gated public intake (admin-only rollout) ([1e81eb8](https://github.com/tintindavid/TimttoFrontend/commit/1e81eb8b36efee43ef93800d7d25106badaa3aeb))
