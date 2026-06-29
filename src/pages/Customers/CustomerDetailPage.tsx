@@ -7,11 +7,15 @@ import CustomerSedesSection from '@/components/customers/CustomerSedesSection';
 import CustomerServiciosSection from '@/components/customers/CustomerServiciosSection';
 import CustomerEquiposSection from '@/components/customers/CustomerEquiposSection';
 import CustomerOTsSection from '@/components/customers/CustomerOTsSection';
+import CustomerQrsSection from '@/components/customers/CustomerQrsSection';
+import { useAuth } from '@/context/AuthContext';
 import { dataQueryOptions } from '@/config/queryClient';
 
 const CustomerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   
   // Query optimizada con configuración específica
   const { data, isLoading, error } = useCustomer(id || '', {
@@ -129,6 +133,13 @@ const CustomerDetailPage: React.FC = () => {
             <Tab eventKey="ots" title="Órdenes de Trabajo">
               <CustomerOTsSection customerId={customer._id!} />
             </Tab>
+
+            {/* QRs — admin-only, mirrors visibility of /configuracion/qr-services */}
+            {isAdmin && (
+              <Tab eventKey="qrs" title="QRs">
+                <CustomerQrsSection customerId={customer._id!} />
+              </Tab>
+            )}
           </Tabs>
         </Card.Body>
       </Card>

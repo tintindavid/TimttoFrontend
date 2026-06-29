@@ -13,3 +13,5 @@ export * from './protocol.types';
 export * from './actividad.types';
 export * from './report.types';
 export * from './hvEquipo.types';
+export * from './ticket.types';
+export * from './serviceQr.types';
