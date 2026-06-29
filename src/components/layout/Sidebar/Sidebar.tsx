@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes } from 'react-icons/fa';
+import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaTicketAlt, FaQrcode } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
+import { useAuth } from '@/context/AuthContext';
 import './Sidebar.css';
 
 type MenuItem = {
@@ -56,6 +57,12 @@ const baseMenu: MenuItem[] = [
   { id: 'settings', label: 'Configuración', path: '/settings', icon: <FaCog /> },
 ];
 
+// Admin-only entries injected at the end of the menu.
+const adminMenu: MenuItem[] = [
+  { id: 'tickets', label: 'Tickets', path: '/tickets', icon: <FaTicketAlt /> },
+  { id: 'service-qrs', label: 'QR de Servicios', path: '/configuracion/qr-services', icon: <FaQrcode /> },
+];
+
 interface SidebarProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -64,14 +71,17 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }) => {
   const [openId, setOpenId] = useState<string | null>(null);
   const location = useLocation();
+  const { user } = useAuth();
   const inventoryEnabled = hasInventarioPlan();
-  const menu = baseMenu.map((item) => {
+  const baseAdjusted = baseMenu.map((item) => {
     if (item.id !== 'repuestos' || !item.subItems) return item;
     return {
       ...item,
       subItems: item.subItems.filter((s) => s.id !== 'repuestos-inventario' || inventoryEnabled),
     };
   });
+  // rollout admin-only — widen role list when feature opens to technician/user
+  const menu = user?.role === 'admin' ? [...baseAdjusted, ...adminMenu] : baseAdjusted;
 
   const handleMouseEnter = (id: string) => setOpenId(id);
   const handleMouseLeave = () => setOpenId(null);

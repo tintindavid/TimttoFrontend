@@ -39,11 +39,24 @@ import DiarioPage from '@/pages/Diario/DiarioPage';
 import InformesPage from '@/pages/Informes/InformesPage';
 import RepuestosSolicitadosPage from '@/pages/Repuestos/RepuestosSolicitadosPage';
 import InventarioRepuestosPage from '@/pages/Repuestos/InventarioRepuestosPage';
+import TicketsPage from '@/pages/Tickets/TicketsPage';
+import TicketDetailPage from '@/pages/Tickets/TicketDetailPage';
+import TicketBatchView from '@/pages/Tickets/TicketBatchView';
+import ServiceQrsPage from '@/pages/Configuracion/ServiceQrsPage';
+import PublicLayout from '@/components/layout/PublicLayout/PublicLayout';
+import PublicTicketLoginPage from '@/pages/Public/PublicTicketLoginPage';
+import PublicTicketDashboard from '@/pages/Public/PublicTicketDashboard';
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Public ticket app (QR-gated). Lives outside the PrivateRoute / MainLayout. */}
+      <Route path="/public/ticket/:qrToken" element={<PublicLayout />}>
+        <Route index element={<PublicTicketLoginPage />} />
+        <Route path="dashboard" element={<PublicTicketDashboard />} />
+      </Route>
 
       <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
         <Route index element={<DashboardPage />} />
@@ -137,6 +150,14 @@ const AppRoutes: React.FC = () => {
 
         {/* hoja de vida de equipos */}
         <Route path="/hv-equipo/:equipoId" element={<HVEquipoPage />} />
+
+        {/* Tickets (panel) — rollout admin-only — widen role list when feature opens to technician/user */}
+        <Route path="tickets" element={<PrivateRoute roles={['admin']}><TicketsPage /></PrivateRoute>} />
+        <Route path="tickets/batch/:batchId" element={<PrivateRoute roles={['admin']}><TicketBatchView /></PrivateRoute>} />
+        <Route path="tickets/:id" element={<PrivateRoute roles={['admin']}><TicketDetailPage /></PrivateRoute>} />
+
+        {/* QR de Servicios — rollout admin-only — widen role list when feature opens to technician/user */}
+        <Route path="configuracion/qr-services" element={<PrivateRoute roles={['admin']}><ServiceQrsPage /></PrivateRoute>} />
       </Route>
 
       <Route path="*" element={<div>404 - Not Found</div>} />

@@ -39,6 +39,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
     estadoOperativo: reporte.estadoOperativo || 'Operativo',
   });
 
+  console.log('Reporte recibido en ReportDetail:', reporte);
+
   // Sincronizar el estado interno cuando cambia la prop reporte (por ejemplo, después de editar el equipo)
   useEffect(() => {
     setEditedReporte({
