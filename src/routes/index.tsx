@@ -6,6 +6,7 @@ import EquipoItemsPage from '@/pages/EquipoItems/EquipoItemsPage';
 import EquipoItemDetailPage from '@/pages/EquipoItems/EquipoItemDetailPage';
 import EquipoItemFormPage from '@/pages/EquipoItems/EquipoItemFormPage';
 import MainLayout from '@/components/layout/MainLayout/MainLayout';
+import AdminLayout from '@/components/layout/AdminLayout/AdminLayout';
 import PrivateRoute from './PrivateRoute';
 import UserFormPage from '@/pages/Users/UserFormPage';
 import UsersPage from '@/pages/Users/UsersPage';
@@ -19,6 +20,12 @@ import TenantsPage from '@/pages/Tenants/TenantsPage';
 import TenantDetailPage from '@/pages/Tenants/TenantDetailPage';
 import TenantFormPage from '@/pages/Tenants/TenantFormPage';
 import MyTenantPage from '@/pages/Tenants/MyTenantPage';
+// Platform (SuperAdmin) pages — E1
+import PlatformTenantsPage from '@/pages/Platform/Tenants/PlatformTenantsPage';
+import PlatformTenantDetailPage from '@/pages/Platform/Tenants/PlatformTenantDetailPage';
+import OnboardingWizardPage from '@/pages/Platform/Tenants/OnboardingWizard/OnboardingWizardPage';
+// My-organization redirect helper
+import { useAuth } from '@/context/AuthContext';
 import CustomersPage from '@/pages/Customers/CustomersPage';
 import CustomerFormPage from '@/pages/Customers/CustomerFormPage';
 import CustomerDetailPage from '@/pages/Customers/CustomerDetailPage';
@@ -47,6 +54,17 @@ import PublicLayout from '@/components/layout/PublicLayout/PublicLayout';
 import PublicTicketLoginPage from '@/pages/Public/PublicTicketLoginPage';
 import PublicTicketDashboard from '@/pages/Public/PublicTicketDashboard';
 
+/**
+ * /my-organization redirect:
+ * - superadmin → /admin/tenants (platform console)
+ * - others     → MyTenantPage  (own tenant view)
+ */
+const MyOrgRoute: React.FC = () => {
+  const { user } = useAuth();
+  if (user?.role === 'superadmin') return <Navigate to="/admin/tenants" replace />;
+  return <MyTenantPage />;
+};
+
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -56,6 +74,22 @@ const AppRoutes: React.FC = () => {
       <Route path="/public/ticket/:qrToken" element={<PublicLayout />}>
         <Route index element={<PublicTicketLoginPage />} />
         <Route path="dashboard" element={<PublicTicketDashboard />} />
+      </Route>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Platform Console — SuperAdmin only (/admin/*)                      */}
+      {/* ------------------------------------------------------------------ */}
+      <Route
+        path="/admin"
+        element={
+          <PrivateRoute roles={['superadmin']}>
+            <AdminLayout />
+          </PrivateRoute>
+        }
+      >
+        <Route path="tenants" element={<PlatformTenantsPage />} />
+        <Route path="tenants/new" element={<OnboardingWizardPage />} />
+        <Route path="tenants/:id" element={<PlatformTenantDetailPage />} />
       </Route>
 
       <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
@@ -137,8 +171,9 @@ const AppRoutes: React.FC = () => {
         <Route path="tenants/:id" element={<TenantDetailPage />} />
         <Route path="tenants/:id/edit" element={<TenantFormPage />} />
         
-        {/* My Organization / Current Tenant */}
-        <Route path="my-organization" element={<MyTenantPage />} />
+        {/* My Organization / Current Tenant
+            superadmin → redirect to /admin/tenants; others → own tenant view */}
+        <Route path="my-organization" element={<MyOrgRoute />} />
         <Route path="my-tenant" element={<MyTenantPage />} />
 
 

@@ -1,0 +1,100 @@
+/* AdminLayout — Platform Console
+   Uses a distinct secondary (dark-teal) theme to differentiate
+   from the tenant-scoped MainLayout (primary blue). */
+
+.admin-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Top bar */
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #1a3a4a;
+  color: #fff;
+  padding: 0 1.25rem;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.admin-topbar-brand {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7ee8d4;
+}
+
+.admin-topbar-sub {
+  font-size: 0.75rem;
+  color: #adb5bd;
+  margin-left: 0.5rem;
+}
+
+/* Body */
+.admin-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.admin-sidebar {
+  width: 220px;
+  background-color: #1e2d3b;
+  color: #c8d6df;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.admin-sidebar-header {
+  padding: 1rem 1rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7ee8d4;
+  border-bottom: 1px solid #2e4457;
+}
+
+.admin-nav-link {
+  color: #c8d6df !important;
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  border-left: 3px solid transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  text-decoration: none;
+}
+
+.admin-nav-link:hover {
+  background-color: #2e4457;
+  color: #fff !important;
+}
+
+.admin-nav-link.active {
+  background-color: #2e4457;
+  border-left-color: #7ee8d4;
+  color: #7ee8d4 !important;
+  font-weight: 600;
+}
+
+.admin-nav-link--disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Main content */
+.admin-content {
+  flex: 1;
+  padding: 1.5rem;
+  overflow: auto;
+  background: #f0f4f7;
+}
