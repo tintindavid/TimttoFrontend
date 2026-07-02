@@ -15,20 +15,8 @@ interface AdminMenuItem {
 
 const adminNavItems: AdminMenuItem[] = [
   { id: 'tenants', label: 'Tenants', path: '/admin/tenants', icon: <FaBuilding /> },
-  {
-    id: 'users',
-    label: 'Usuarios (E2)',
-    path: '/admin/users',
-    icon: <FaUsers />,
-    disabled: true,
-  },
-  {
-    id: 'audit',
-    label: 'Auditoría (E2)',
-    path: '/admin/audit',
-    icon: <FaClipboardList />,
-    disabled: true,
-  },
+  { id: 'users', label: 'Usuarios', path: '/admin/users', icon: <FaUsers /> },
+  { id: 'audit', label: 'Auditoría', path: '/admin/audit', icon: <FaClipboardList /> },
 ];
 
 const AdminSidebar: React.FC = () => {

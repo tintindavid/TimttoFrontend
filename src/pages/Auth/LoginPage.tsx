@@ -10,14 +10,21 @@ export const LoginPage: React.FC = () => {
 
   const [tenantId, setLocalTenantId] = useState<string>(localStorage.getItem('tenantId') || '');
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: { email: string; password: string }) => {
     try {
       if (tenantId) setTenantId(tenantId);
-      await login(data.email, data.password, tenantId || undefined);
-      navigate('/');
-    } catch (e: any) {
-      console.error('Login error', e?.response?.data || e);
-      const message = e?.response?.data?.message || 'Error al iniciar sesión';
+      const result = await login(data.email, data.password, tenantId || undefined);
+      // If the user must change their temporary password, redirect before anything else
+      if (result?.mustChangePassword) {
+        navigate('/change-password');
+      } else {
+        navigate('/');
+      }
+    } catch (e: unknown) {
+      console.error('Login error', (e as { response?: { data?: unknown } })?.response?.data || e);
+      const message =
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Error al iniciar sesión';
       alert(message);
     }
   };
