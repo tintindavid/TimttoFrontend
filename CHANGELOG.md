@@ -1,3 +1,15 @@
+# [1.2.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.1.0...v1.2.0) (2026-07-02)
+
+
+### Bug Fixes
+
+* **platform-users:** add parens to nullish/logical mix ([5185d3b](https://github.com/tintindavid/TimttoFrontend/commit/5185d3b0418f7a79c7dbb7b6545aec302b2891da))
+
+
+### Features
+
+* **platform:** view-as + change-password + admin users/audit UI (E2) ([cda3ab9](https://github.com/tintindavid/TimttoFrontend/commit/cda3ab9f79e197f6643ea890c307223c0a342f86)), closes [#13](https://github.com/tintindavid/TimttoFrontend/issues/13)
+
 # [1.1.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.0.0...v1.1.0) (2026-07-02)
 
 
