@@ -160,7 +160,7 @@ const PlatformUsersPage: React.FC = () => {
               {data.data.map((u) => (
                 <tr key={u._id}>
                   <td>{u.email}</td>
-                  <td>{u.fullName ?? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || '—'}</td>
+                  <td>{(u.fullName ?? `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim()) || '—'}</td>
                   <td>
                     <code>{u.tenantId}</code>
                   </td>
