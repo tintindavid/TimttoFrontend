@@ -15,3 +15,4 @@ export * from './report.types';
 export * from './hvEquipo.types';
 export * from './ticket.types';
 export * from './serviceQr.types';
+export * from './platformTenant.types';
