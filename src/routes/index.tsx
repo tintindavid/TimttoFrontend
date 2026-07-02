@@ -24,6 +24,10 @@ import MyTenantPage from '@/pages/Tenants/MyTenantPage';
 import PlatformTenantsPage from '@/pages/Platform/Tenants/PlatformTenantsPage';
 import PlatformTenantDetailPage from '@/pages/Platform/Tenants/PlatformTenantDetailPage';
 import OnboardingWizardPage from '@/pages/Platform/Tenants/OnboardingWizard/OnboardingWizardPage';
+// Platform (SuperAdmin) pages — E2
+import PlatformUsersPage from '@/pages/Platform/Users/PlatformUsersPage';
+import PlatformAuditPage from '@/pages/Platform/Audit/PlatformAuditPage';
+import ChangePasswordPage from '@/pages/Auth/ChangePasswordPage';
 // My-organization redirect helper
 import { useAuth } from '@/context/AuthContext';
 import CustomersPage from '@/pages/Customers/CustomersPage';
@@ -90,7 +94,20 @@ const AppRoutes: React.FC = () => {
         <Route path="tenants" element={<PlatformTenantsPage />} />
         <Route path="tenants/new" element={<OnboardingWizardPage />} />
         <Route path="tenants/:id" element={<PlatformTenantDetailPage />} />
+        {/* E2: Users and Audit management */}
+        <Route path="users" element={<PlatformUsersPage />} />
+        <Route path="audit" element={<PlatformAuditPage />} />
       </Route>
+
+      {/* Change password — authenticated but no role gate */}
+      <Route
+        path="/change-password"
+        element={
+          <PrivateRoute>
+            <ChangePasswordPage />
+          </PrivateRoute>
+        }
+      />
 
       <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
         <Route index element={<DashboardPage />} />

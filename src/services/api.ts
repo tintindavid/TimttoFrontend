@@ -17,17 +17,20 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
-    
-    // Extraer userId del token JWT
+
+    // Extract userId from JWT for server-side logging
     const userId = getUserIdFromToken(token);
     if (userId) {
       config.headers['x-user-id'] = userId;
     }
   }
 
-  const tenant = localStorage.getItem('tenantId');
-  if (tenant && config.headers) {
-    config.headers['x-tenant-id'] = tenant;
+  // View-as takes precedence over own tenantId (D1: sessionStorage anti-contamination)
+  const viewAsTenantId = sessionStorage.getItem('viewAsTenantId');
+  const ownTenantId = localStorage.getItem('tenantId');
+  const effectiveTenantId = viewAsTenantId || ownTenantId;
+  if (effectiveTenantId && config.headers) {
+    config.headers['x-tenant-id'] = effectiveTenantId;
   }
 
   // Si es FormData, eliminar Content-Type para que Axios lo configure automáticamente
@@ -38,6 +41,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Leave response interceptor to authService.attachInterceptors (refresh logic)
+// Response interceptor: handle 428 MUST_CHANGE_PASSWORD globally
+api.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  (error: AxiosError<ApiErrorResponse>) => {
+    if (
+      error.response?.status === 428 &&
+      error.response?.data?.error?.code === 'MUST_CHANGE_PASSWORD'
+    ) {
+      window.location.href = '/change-password';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Leave refresh-token logic to authService.attachInterceptors
 
 export default api;

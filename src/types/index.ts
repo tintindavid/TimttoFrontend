@@ -16,3 +16,5 @@ export * from './hvEquipo.types';
 export * from './ticket.types';
 export * from './serviceQr.types';
 export * from './platformTenant.types';
+export * from './platformUser.types';
+export * from './platformAudit.types';
