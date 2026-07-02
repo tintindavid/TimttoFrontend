@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.0.0...v1.1.0) (2026-07-02)
+
+
+### Features
+
+* **platform:** admin console for tenant lifecycle (E1) + E0 test coverage ([7c94bd1](https://github.com/tintindavid/TimttoFrontend/commit/7c94bd17ef4ca6a41b76de5087995174119a3e6b))
+
 # 1.0.0 (2026-06-29)
 
 
