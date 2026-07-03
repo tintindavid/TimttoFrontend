@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.3.0...v1.4.0) (2026-07-03)
+
+
+### Features
+
+* **platform:** analytics dashboard UI with charts + CSV export (E4) ([baf90c4](https://github.com/tintindavid/TimttoFrontend/commit/baf90c45fef1750f9b4f73b9e79dfb457364bc4a)), closes [#16](https://github.com/tintindavid/TimttoFrontend/issues/16)
+
 # [1.3.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.2.0...v1.3.0) (2026-07-03)
 
 
