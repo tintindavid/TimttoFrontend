@@ -18,3 +18,4 @@ export * from './serviceQr.types';
 export * from './platformTenant.types';
 export * from './platformUser.types';
 export * from './platformAudit.types';
+export * from './platformAnalytics.types';
