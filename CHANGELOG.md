@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.2.0...v1.3.0) (2026-07-03)
+
+
+### Features
+
+* **platform:** emailSent banner in credentials modals (E3) ([9f092b0](https://github.com/tintindavid/TimttoFrontend/commit/9f092b0cd8d9e7297adbf228b531833e1e907a88))
+
 # [1.2.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.1.0...v1.2.0) (2026-07-02)
 
 
