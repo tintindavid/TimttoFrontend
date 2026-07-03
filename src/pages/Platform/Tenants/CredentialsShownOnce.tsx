@@ -9,6 +9,10 @@ interface CredentialsShownOnceProps {
   credentials: CreateTenantWithAdminResponse;
   /** Called when the user confirms they've saved the credentials and closes the modal */
   onClose: () => void;
+  /** When true the backend sent credentials by email (E3). Renders an info banner. */
+  emailSent?: boolean;
+  /** Email address the notification was sent to (shown inside the info banner). */
+  adminEmail?: string;
 }
 
 /**
@@ -19,6 +23,8 @@ interface CredentialsShownOnceProps {
 const CredentialsShownOnce: React.FC<CredentialsShownOnceProps> = ({
   credentials,
   onClose,
+  emailSent,
+  adminEmail,
 }) => {
   const [saved, setSaved] = useState(false);
 
@@ -57,6 +63,16 @@ const CredentialsShownOnce: React.FC<CredentialsShownOnceProps> = ({
           <strong>¡Atención!</strong> Esta es la única vez que se muestra la contraseña
           temporal. Guárdala antes de cerrar.
         </Alert>
+
+        {/* Email notification banner — only rendered when the backend confirms dispatch (E3) */}
+        {emailSent && adminEmail && (
+          <Alert variant="info" className="mb-3">
+            <strong>También enviado por email a {adminEmail}.</strong>
+            <br />
+            Si no lo recibe, revise la carpeta de spam o comparta las credenciales manualmente
+            desde este modal.
+          </Alert>
+        )}
 
         {/* Credentials display */}
         <div

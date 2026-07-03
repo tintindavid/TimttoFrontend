@@ -79,6 +79,8 @@ export interface CreateTenantWithAdminResponse {
   tenant: PlatformTenant;
   admin: CreatedAdminInfo;
   temporaryPassword: string;
+  /** True when the backend successfully dispatched the credentials email (E3) */
+  emailSent?: boolean;
 }
 
 // Payload for the suspend endpoint

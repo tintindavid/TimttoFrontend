@@ -21,6 +21,8 @@ const UserPasswordResetModal: React.FC<Props> = ({ user, onHide }) => {
   const [temporaryPassword, setTemporaryPassword] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [savedConfirmed, setSavedConfirmed] = useState(false);
+  /** Tracks whether the backend confirmed sending a credentials email (E3). */
+  const [emailSent, setEmailSent] = useState(false);
 
   const resetMutation = useResetUserPassword();
 
@@ -31,6 +33,7 @@ const UserPasswordResetModal: React.FC<Props> = ({ user, onHide }) => {
     try {
       const result = await resetMutation.mutateAsync(user._id);
       setTemporaryPassword(result.temporaryPassword);
+      setEmailSent(result.emailSent ?? false);
       setPhase('result');
     } catch {
       // Error toast is handled by the hook's onError
@@ -50,6 +53,7 @@ const UserPasswordResetModal: React.FC<Props> = ({ user, onHide }) => {
     setTemporaryPassword('');
     setCopied(false);
     setSavedConfirmed(false);
+    setEmailSent(false);
     onHide();
   };
 
@@ -81,6 +85,16 @@ const UserPasswordResetModal: React.FC<Props> = ({ user, onHide }) => {
               Contraseña reseteada correctamente. Esta es la <strong>única vez</strong> que se
               mostrará.
             </Alert>
+
+            {/* Email notification banner — only rendered when the backend confirms dispatch (E3) */}
+            {emailSent && user && (
+              <Alert variant="info" className="mb-3">
+                <strong>También enviado por email a {user.email}.</strong>
+                <br />
+                Si no lo recibe, revise la carpeta de spam o comparta manualmente desde este
+                modal.
+              </Alert>
+            )}
 
             <div className="d-flex align-items-center gap-2 mb-3">
               <code
