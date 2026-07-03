@@ -30,4 +30,6 @@ export interface PlatformUsersPaginatedResponse {
 
 export interface ResetPasswordResponse {
   temporaryPassword: string;
+  /** True when the backend successfully dispatched the credentials email (E3) */
+  emailSent?: boolean;
 }

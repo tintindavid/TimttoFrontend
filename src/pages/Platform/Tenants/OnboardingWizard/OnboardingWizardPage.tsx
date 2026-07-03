@@ -160,6 +160,8 @@ const OnboardingWizardPage: React.FC = () => {
         <CredentialsShownOnce
           credentials={credentials}
           onClose={handleCredentialsClose}
+          emailSent={credentials.emailSent}
+          adminEmail={credentials.admin.email}
         />
       )}
     </Container>
