@@ -8,6 +8,7 @@ interface LoginResponse {
   token: string;
   refreshToken?: string;
   user: User;
+  mustChangePassword?: boolean;
 }
 
 class AuthService {

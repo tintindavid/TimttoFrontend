@@ -20,10 +20,10 @@ export const EquipoItemDetailPage: React.FC = () => {
         <Card.Body>
           <Card.Title>Detalle Equipo</Card.Title>
           <Card.Text>
-            <div><strong>Equipo:</strong> {item.Equipment}</div>
+            <div><strong>Equipo:</strong> {item.ItemId?.Nombre || item.item}</div>
             <div><strong>Marca:</strong> {item.Marca}</div>
             <div><strong>Serie:</strong> {item.Serie}</div>
-            <div><strong>Status:</strong> {item.Status}</div>
+            <div><strong>Estado:</strong> {item.Estado}</div>
           </Card.Text>
 
           <div className="mt-3">
