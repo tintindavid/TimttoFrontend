@@ -27,6 +27,8 @@ import OnboardingWizardPage from '@/pages/Platform/Tenants/OnboardingWizard/Onbo
 // Platform (SuperAdmin) pages — E2
 import PlatformUsersPage from '@/pages/Platform/Users/PlatformUsersPage';
 import PlatformAuditPage from '@/pages/Platform/Audit/PlatformAuditPage';
+// Platform (SuperAdmin) pages — E4
+import PlatformAnalyticsPage from '@/pages/Platform/Analytics/PlatformAnalyticsPage';
 import ChangePasswordPage from '@/pages/Auth/ChangePasswordPage';
 // My-organization redirect helper
 import { useAuth } from '@/context/AuthContext';
@@ -97,6 +99,8 @@ const AppRoutes: React.FC = () => {
         {/* E2: Users and Audit management */}
         <Route path="users" element={<PlatformUsersPage />} />
         <Route path="audit" element={<PlatformAuditPage />} />
+        {/* E4: Platform Analytics */}
+        <Route path="analytics" element={<PlatformAnalyticsPage />} />
       </Route>
 
       {/* Change password — authenticated but no role gate */}

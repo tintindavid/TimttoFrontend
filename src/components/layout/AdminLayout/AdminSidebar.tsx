@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Nav } from 'react-bootstrap';
 import { FaBuilding, FaUsers, FaClipboardList, FaSignOutAlt } from 'react-icons/fa';
+import { BsGraphUp } from 'react-icons/bs';
 import { useAuth } from '@/context/AuthContext';
 
 interface AdminMenuItem {
@@ -15,6 +16,7 @@ interface AdminMenuItem {
 
 const adminNavItems: AdminMenuItem[] = [
   { id: 'tenants', label: 'Tenants', path: '/admin/tenants', icon: <FaBuilding /> },
+  { id: 'analytics', label: 'Analytics', path: '/admin/analytics', icon: <BsGraphUp /> },
   { id: 'users', label: 'Usuarios', path: '/admin/users', icon: <FaUsers /> },
   { id: 'audit', label: 'Auditoría', path: '/admin/audit', icon: <FaClipboardList /> },
 ];
