@@ -51,9 +51,9 @@ export interface Reporte {
   };
   estado: 'Pendiente' | 'En_Progreso' | 'Cerrado' | 'Cancelado' | 'Procesado';
   procesado: boolean;
-  fechaProcesado?: Date;
-  fechaMtto?: Date;
-  fechaFinalizado?: Date;
+  fechaProcesado?: string;
+  fechaMtto?: string;
+  fechaFinalizado?: string;
   responsableProcesado?: string;
   actividadesRealizadas?: ActividadRealizada[];
   duracion?: number;
@@ -66,7 +66,7 @@ export interface Reporte {
   accionTomada?: string;
   causaEncontrada?: string;
   motivoFueraServicio?: string;
-  fechaCancelacion?: Date;
+  fechaCancelacion?: string;
   motivoCancelacion?: string;
   observacion?: string;
   resumen?: {

@@ -17,7 +17,7 @@ const TenantFormPage: React.FC = () => {
   React.useEffect(() => {
     if (tenantData?.data) {
       const t = tenantData.data;
-      reset({ name: t.name, slug: t.slug, contactEmail: t.contactEmail, phone: t.phone });
+      reset({ name: t.name, slug: t.slug, email: t.email, telefono: t.telefono });
     }
   }, [tenantData, reset]);
 
@@ -52,14 +52,14 @@ const TenantFormPage: React.FC = () => {
               <Form.Control placeholder="slug" {...register('slug')} />
             </Form.Group>
 
-            <Form.Group className="mb-3" controlId="contactEmail">
+            <Form.Group className="mb-3" controlId="email">
               <Form.Label>Contacto (email)</Form.Label>
-              <Form.Control type="email" placeholder="email@ejemplo.com" {...register('contactEmail')} />
+              <Form.Control type="email" placeholder="email@ejemplo.com" {...register('email')} />
             </Form.Group>
 
-            <Form.Group className="mb-3" controlId="phone">
+            <Form.Group className="mb-3" controlId="telefono">
               <Form.Label>Teléfono</Form.Label>
-              <Form.Control placeholder="Teléfono" {...register('phone')} />
+              <Form.Control placeholder="Teléfono" {...register('telefono')} />
             </Form.Group>
 
             <div className="d-flex">

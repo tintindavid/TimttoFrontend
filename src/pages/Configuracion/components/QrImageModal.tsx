@@ -59,7 +59,9 @@ const downloadQrPdf = (qr: ServiceQr): void => {
   // Subtle separator marking the half-page boundary (helps when printing
   // to cut the page in half for posting).
   doc.setDrawColor(200);
-  doc.setLineDashPattern([2, 2], 0);
+  // jsPDF type defs don't expose setLineDashPattern but the method exists at runtime.
+  (doc as unknown as { setLineDashPattern: (pattern: number[], phase: number) => void })
+    .setLineDashPattern([2, 2], 0);
   doc.line(10, halfHeight, pageWidth - 10, halfHeight);
 
   doc.save(buildPdfFilename(qr));
