@@ -30,6 +30,8 @@ import PlatformAuditPage from '@/pages/Platform/Audit/PlatformAuditPage';
 // Platform (SuperAdmin) pages — E4
 import PlatformAnalyticsPage from '@/pages/Platform/Analytics/PlatformAnalyticsPage';
 import ChangePasswordPage from '@/pages/Auth/ChangePasswordPage';
+import ForgotPasswordPage from '@/pages/Auth/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/Auth/ResetPasswordPage';
 // My-organization redirect helper
 import { useAuth } from '@/context/AuthContext';
 import CustomersPage from '@/pages/Customers/CustomersPage';
@@ -75,6 +77,8 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Public ticket app (QR-gated). Lives outside the PrivateRoute / MainLayout. */}
       <Route path="/public/ticket/:qrToken" element={<PublicLayout />}>
