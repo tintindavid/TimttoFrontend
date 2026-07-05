@@ -120,6 +120,14 @@ class AuthService {
     );
   }
 
+  async validateResetToken(token: string, tenantId: string): Promise<void> {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+    await axios.get(`${base}/auth/validate-reset-token`, {
+      params: { token, tenantId },
+      headers: { Accept: 'application/json', 'x-tenant-id': tenantId },
+    });
+  }
+
   async forgotPassword(email: string, tenantId: string): Promise<ApiResponse<void>> {
     const base = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
     const response = await axios.post<ApiResponse<void>>(
