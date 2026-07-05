@@ -1,3 +1,14 @@
+# [1.5.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.4.0...v1.5.0) (2026-07-05)
+
+
+### Features
+
+* **auth:** add forgotPassword and resetPassword to frontend authService ([2aae5d9](https://github.com/tintindavid/TimttoFrontend/commit/2aae5d9f4aec25e8f73d39ff70c334f32e666169))
+* **auth:** add ForgotPasswordPage with anti-enumeration confirmation ([88d2f02](https://github.com/tintindavid/TimttoFrontend/commit/88d2f02e8ef687eb4212aae297b7901647b1188b))
+* **auth:** add ResetPasswordPage with token-expired handling ([05646fb](https://github.com/tintindavid/TimttoFrontend/commit/05646fb1bfb48d9e4790991d39a5fdb8df029aa1))
+* **auth:** password visibility toggle, strength checklist and token preflight ([a27fde9](https://github.com/tintindavid/TimttoFrontend/commit/a27fde961957534b13e4c69b2df739f0506a98c5))
+* **auth:** wire up forgot-password link in LoginForm and public routes ([45203e0](https://github.com/tintindavid/TimttoFrontend/commit/45203e063ed67bff74c95f003bd1f2c3cde86928))
+
 # [1.4.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.3.0...v1.4.0) (2026-07-03)
 
 
