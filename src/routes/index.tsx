@@ -6,6 +6,7 @@ import EquipoItemsPage from '@/pages/EquipoItems/EquipoItemsPage';
 import EquipoItemDetailPage from '@/pages/EquipoItems/EquipoItemDetailPage';
 import EquipoItemFormPage from '@/pages/EquipoItems/EquipoItemFormPage';
 import MainLayout from '@/components/layout/MainLayout/MainLayout';
+import AdminLayout from '@/components/layout/AdminLayout/AdminLayout';
 import PrivateRoute from './PrivateRoute';
 import UserFormPage from '@/pages/Users/UserFormPage';
 import UsersPage from '@/pages/Users/UsersPage';
@@ -19,6 +20,20 @@ import TenantsPage from '@/pages/Tenants/TenantsPage';
 import TenantDetailPage from '@/pages/Tenants/TenantDetailPage';
 import TenantFormPage from '@/pages/Tenants/TenantFormPage';
 import MyTenantPage from '@/pages/Tenants/MyTenantPage';
+// Platform (SuperAdmin) pages — E1
+import PlatformTenantsPage from '@/pages/Platform/Tenants/PlatformTenantsPage';
+import PlatformTenantDetailPage from '@/pages/Platform/Tenants/PlatformTenantDetailPage';
+import OnboardingWizardPage from '@/pages/Platform/Tenants/OnboardingWizard/OnboardingWizardPage';
+// Platform (SuperAdmin) pages — E2
+import PlatformUsersPage from '@/pages/Platform/Users/PlatformUsersPage';
+import PlatformAuditPage from '@/pages/Platform/Audit/PlatformAuditPage';
+// Platform (SuperAdmin) pages — E4
+import PlatformAnalyticsPage from '@/pages/Platform/Analytics/PlatformAnalyticsPage';
+import ChangePasswordPage from '@/pages/Auth/ChangePasswordPage';
+import ForgotPasswordPage from '@/pages/Auth/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/Auth/ResetPasswordPage';
+// My-organization redirect helper
+import { useAuth } from '@/context/AuthContext';
 import CustomersPage from '@/pages/Customers/CustomersPage';
 import CustomerFormPage from '@/pages/Customers/CustomerFormPage';
 import CustomerDetailPage from '@/pages/Customers/CustomerDetailPage';
@@ -40,11 +55,68 @@ import DiarioPage from '@/pages/Diario/DiarioPage';
 import InformesPage from '@/pages/Informes/InformesPage';
 import RepuestosSolicitadosPage from '@/pages/Repuestos/RepuestosSolicitadosPage';
 import InventarioRepuestosPage from '@/pages/Repuestos/InventarioRepuestosPage';
+import TicketsPage from '@/pages/Tickets/TicketsPage';
+import TicketDetailPage from '@/pages/Tickets/TicketDetailPage';
+import TicketBatchView from '@/pages/Tickets/TicketBatchView';
+import ServiceQrsPage from '@/pages/Configuracion/ServiceQrsPage';
+import PublicLayout from '@/components/layout/PublicLayout/PublicLayout';
+import PublicTicketLoginPage from '@/pages/Public/PublicTicketLoginPage';
+import PublicTicketDashboard from '@/pages/Public/PublicTicketDashboard';
+
+/**
+ * /my-organization redirect:
+ * - superadmin → /admin/tenants (platform console)
+ * - others     → MyTenantPage  (own tenant view)
+ */
+const MyOrgRoute: React.FC = () => {
+  const { user } = useAuth();
+  if (user?.role === 'superadmin') return <Navigate to="/admin/tenants" replace />;
+  return <MyTenantPage />;
+};
 
 const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+      {/* Public ticket app (QR-gated). Lives outside the PrivateRoute / MainLayout. */}
+      <Route path="/public/ticket/:qrToken" element={<PublicLayout />}>
+        <Route index element={<PublicTicketLoginPage />} />
+        <Route path="dashboard" element={<PublicTicketDashboard />} />
+      </Route>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Platform Console — SuperAdmin only (/admin/*)                      */}
+      {/* ------------------------------------------------------------------ */}
+      <Route
+        path="/admin"
+        element={
+          <PrivateRoute roles={['superadmin']}>
+            <AdminLayout />
+          </PrivateRoute>
+        }
+      >
+        <Route path="tenants" element={<PlatformTenantsPage />} />
+        <Route path="tenants/new" element={<OnboardingWizardPage />} />
+        <Route path="tenants/:id" element={<PlatformTenantDetailPage />} />
+        {/* E2: Users and Audit management */}
+        <Route path="users" element={<PlatformUsersPage />} />
+        <Route path="audit" element={<PlatformAuditPage />} />
+        {/* E4: Platform Analytics */}
+        <Route path="analytics" element={<PlatformAnalyticsPage />} />
+      </Route>
+
+      {/* Change password — authenticated but no role gate */}
+      <Route
+        path="/change-password"
+        element={
+          <PrivateRoute>
+            <ChangePasswordPage />
+          </PrivateRoute>
+        }
+      />
 
       <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
         <Route index element={<DashboardPage />} />
@@ -126,8 +198,9 @@ const AppRoutes: React.FC = () => {
         <Route path="tenants/:id" element={<TenantDetailPage />} />
         <Route path="tenants/:id/edit" element={<TenantFormPage />} />
         
-        {/* My Organization / Current Tenant */}
-        <Route path="my-organization" element={<MyTenantPage />} />
+        {/* My Organization / Current Tenant
+            superadmin → redirect to /admin/tenants; others → own tenant view */}
+        <Route path="my-organization" element={<MyOrgRoute />} />
         <Route path="my-tenant" element={<MyTenantPage />} />
 
 
@@ -139,6 +212,14 @@ const AppRoutes: React.FC = () => {
 
         {/* hoja de vida de equipos */}
         <Route path="/hv-equipo/:equipoId" element={<HVEquipoPage />} />
+
+        {/* Tickets (panel) — rollout admin-only — widen role list when feature opens to technician/user */}
+        <Route path="tickets" element={<PrivateRoute roles={['admin']}><TicketsPage /></PrivateRoute>} />
+        <Route path="tickets/batch/:batchId" element={<PrivateRoute roles={['admin']}><TicketBatchView /></PrivateRoute>} />
+        <Route path="tickets/:id" element={<PrivateRoute roles={['admin']}><TicketDetailPage /></PrivateRoute>} />
+
+        {/* QR de Servicios — rollout admin-only — widen role list when feature opens to technician/user */}
+        <Route path="configuracion/qr-services" element={<PrivateRoute roles={['admin']}><ServiceQrsPage /></PrivateRoute>} />
       </Route>
 
       <Route path="*" element={<div>404 - Not Found</div>} />

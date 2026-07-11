@@ -28,6 +28,10 @@ export interface OT {
   OtPrioridad?: string;
   urgencia?: string; // Alias for OtPrioridad
   ResponsableId?: string;
+  /** True when this OT was generated from one or more tickets. */
+  isFromTicket?: boolean;
+  /** Backwards-compat alias some endpoints use; treat both as equivalent. */
+  fromTicket?: boolean;
   isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;

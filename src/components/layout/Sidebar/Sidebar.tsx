@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield } from 'react-icons/fa';
+import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield, FaTicketAlt, FaQrcode, FaLayerGroup, FaCity } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
+import { useAuth } from '@/context/AuthContext';
 import './Sidebar.css';
 
 type MenuItem = {
@@ -57,6 +58,20 @@ const baseMenu: MenuItem[] = [
   { id: 'settings', label: 'Configuración', path: '/settings', icon: <FaCog /> },
 ];
 
+// Admin-only entries (role='admin') injected at the end of the menu.
+const adminMenu: MenuItem[] = [
+  { id: 'tickets', label: 'Tickets', path: '/tickets', icon: <FaTicketAlt /> },
+  { id: 'service-qrs', label: 'QR de Servicios', path: '/configuracion/qr-services', icon: <FaQrcode /> },
+  // "Mi organización" link for tenant admins (not superadmin — they go to /admin)
+  { id: 'my-organization', label: 'Mi Organización', path: '/my-organization', icon: <FaCity /> },
+];
+
+// SuperAdmin-only entries — Platform Console links.
+// Non-superadmin users must NOT see these.
+const superadminMenu: MenuItem[] = [
+  { id: 'platform-tenants', label: 'Tenants', path: '/admin/tenants', icon: <FaLayerGroup /> },
+];
+
 interface SidebarProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -65,14 +80,24 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }) => {
   const [openId, setOpenId] = useState<string | null>(null);
   const location = useLocation();
+  const { user } = useAuth();
   const inventoryEnabled = hasInventarioPlan();
-  const menu = baseMenu.map((item) => {
+  const baseAdjusted = baseMenu.map((item) => {
     if (item.id !== 'repuestos' || !item.subItems) return item;
     return {
       ...item,
       subItems: item.subItems.filter((s) => s.id !== 'repuestos-inventario' || inventoryEnabled),
     };
   });
+  // rollout admin-only — widen role list when feature opens to technician/user
+  // superadmin gets platform nav links only (they use AdminLayout for daily work,
+  // but may still land on MainLayout for profile/dashboard)
+  const menu =
+    user?.role === 'superadmin'
+      ? [...baseAdjusted, ...superadminMenu]
+      : user?.role === 'admin'
+      ? [...baseAdjusted, ...adminMenu]
+      : baseAdjusted;
 
   const handleMouseEnter = (id: string) => setOpenId(id);
   const handleMouseLeave = () => setOpenId(null);

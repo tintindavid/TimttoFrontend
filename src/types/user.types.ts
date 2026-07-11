@@ -1,4 +1,5 @@
-export type UserRole = 'admin' | 'technician' | 'user';
+// 'superadmin' added in E1 (saas-platform-tenant-lifecycle); lives in tenantId='__platform__'
+export type UserRole = 'superadmin' | 'admin' | 'technician' | 'user';
 
 export interface User {
   _id?: string;

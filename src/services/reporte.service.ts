@@ -1,10 +1,11 @@
 import { ApiResponse } from '@/types';
 import { api } from './api';
-import { 
-  Reporte, 
-  ActividadRealizada, 
-  Evidencia, 
-  RepuestoReporte 
+import {
+  Reporte,
+  ActividadRealizada,
+  Evidencia,
+  RepuestoReporte,
+  VerificationParam,
 } from '@/types/reporte.types';
 
 
@@ -101,34 +102,47 @@ export const reporteService = {
     return response.data;
   },
 
-  // Add evidence
-  addEvidencia: async (reporteId: string, evidencia: Omit<Evidencia, '_id' | 'fechaSubida'>) => {
+  // Upload 1..N evidences in a single multipart request.
+  // `descripciones`, when provided, must be a parallel array of strings (use '' for none).
+  uploadEvidencias: async (reporteId: string, files: File[], descripciones?: string[]) => {
     const formData = new FormData();
-    
-    // Handle file upload
-    if (evidencia.archivo instanceof File) {
-      formData.append('archivo', evidencia.archivo);
-    }
-    
-    formData.append('tipo', evidencia.tipo);
-    formData.append('descripcion', evidencia.descripcion);
-    
-    const response = await api.post<ApiResponse<Reporte>>(
-      `/reportes/${reporteId}/evidencias`, 
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+    files.forEach((file, i) => {
+      formData.append('evidencias', file);
+      // Always append a value (possibly empty) for each file so server-side indices line up.
+      formData.append('descripciones', (descripciones?.[i] ?? '').toString());
+    });
+    const response = await api.post<ApiResponse<{ evidencias: Evidencia[] }>>(
+      `/reports/${reporteId}/evidencias`,
+      formData
     );
     return response.data;
   },
 
-  // Delete evidence
+  // Update the descripcion of one already-saved evidence
+  updateEvidencia: async (reporteId: string, evidenciaId: string, descripcion: string) => {
+    const response = await api.patch<ApiResponse<{ evidencias: Evidencia[] }>>(
+      `/reports/${reporteId}/evidencias/${evidenciaId}`,
+      { descripcion }
+    );
+    return response.data;
+  },
+
+  // Delete a single evidence
   deleteEvidencia: async (reporteId: string, evidenciaId: string) => {
-    const response = await api.delete<ApiResponse<null>>(
-      `/reportes/${reporteId}/evidencias/${evidenciaId}`
+    const response = await api.delete<ApiResponse<{ evidencias: Evidencia[] }>>(
+      `/reports/${reporteId}/evidencias/${evidenciaId}`
+    );
+    return response.data;
+  },
+
+  // Replace the full verificationParam[] array on a Report.
+  updateVerificationParams: async (
+    reporteId: string,
+    verificationParam: VerificationParam[]
+  ) => {
+    const response = await api.patch<ApiResponse<Reporte>>(
+      `/reports/${reporteId}/verification-params`,
+      { verificationParam }
     );
     return response.data;
   },

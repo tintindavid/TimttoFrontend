@@ -51,21 +51,22 @@ export interface Reporte {
   };
   estado: 'Pendiente' | 'En_Progreso' | 'Cerrado' | 'Cancelado' | 'Procesado';
   procesado: boolean;
-  fechaProcesado?: Date;
-  fechaMtto?: Date;
-  fechaFinalizado?: Date;
+  fechaProcesado?: string;
+  fechaMtto?: string;
+  fechaFinalizado?: string;
   responsableProcesado?: string;
   actividadesRealizadas?: ActividadRealizada[];
   duracion?: number;
   hojaDeTrabajo: string; // Nuevo campo para mostrar número de hoja de trabajo o estado como 'Cerrado'
   evidencias?: Evidencia[];
+  verificationParam?: VerificationParam[];
   repuestos?: RepuestoReporte[];
   fallaReportada?: string;
   diagnostico?: string;
   accionTomada?: string;
   causaEncontrada?: string;
   motivoFueraServicio?: string;
-  fechaCancelacion?: Date;
+  fechaCancelacion?: string;
   motivoCancelacion?: string;
   observacion?: string;
   resumen?: {
@@ -102,12 +103,40 @@ export interface ActividadRealizada {
 export interface Evidencia {
   _id?: string;
   url: string;
+  storagePath?: string;
   nombre: string;
-  tipo: 'imagen' | 'documento';
-  descripcion: string;
-  archivo?: File; // For upload purposes
+  tipo: 'imagen';
+  mimetype?: 'image/jpeg' | 'image/png';
+  size?: number;
+  descripcion?: string;
   fechaSubida: string;
+  uploadedBy?: string;
+  archivo?: File;       // local-only, for pre-save previews
+  isPending?: boolean;  // local-only flag
 }
+
+export const EVIDENCE_LIMITS = {
+  MAX_COUNT: 3,
+  MAX_SIZE_BYTES: 5 * 1024 * 1024,
+  ALLOWED_MIME: ['image/jpeg', 'image/png'] as const,
+  ALLOWED_ACCEPT: 'image/jpeg,image/png',
+  MAX_DESCRIPTION_LENGTH: 120,
+};
+
+export interface VerificationParam {
+  _id?: string;
+  magnitud: string;
+  unidad: string;
+  valorReferencia: number | null;
+  valorMedido: number | null;
+  patron: string;
+}
+
+export const VERIFICATION_PARAM_LIMITS = {
+  MAX_MAGNITUD_LENGTH: 80,
+  MAX_UNIDAD_LENGTH: 20,
+  MAX_PATRON_LENGTH: 100,
+} as const;
 
 export interface RepuestoReporte {
   _id?: string;

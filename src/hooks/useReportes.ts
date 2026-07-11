@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { reporteService } from '@/services/reporte.service';
 import { repuestoService } from '@/services/repuesto.service';
 import { sheetworkService } from '@/services/sheetwork.service';
-import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '@/types/reporte.types';
+import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte, VerificationParam } from '@/types/reporte.types';
 
 // Get reportes by OT
 export const useReportes = (params?: { otId?: string }) => {
@@ -156,20 +156,43 @@ export const useDeleteActividad = () => {
   });
 };
 
-// Add evidencia
-export const useAddEvidencia = () => {
+// Upload evidences (1..N images in a single multipart request, optional per-file descripciones)
+export const useUploadEvidencias = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ 
-      reporteId, 
-      evidencia 
-    }: { 
-      reporteId: string; 
-      evidencia: Omit<Evidencia, '_id' | 'fechaSubida'> 
-    }) => reporteService.addEvidencia(reporteId, evidencia),
-    onSuccess: (response, variables) => {
-      queryClient.setQueryData(['reportes', variables.reporteId], response);
+    mutationFn: ({
+      reporteId,
+      files,
+      descripciones,
+    }: {
+      reporteId: string;
+      files: File[];
+      descripciones?: string[];
+    }) => reporteService.uploadEvidencias(reporteId, files, descripciones),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
+      queryClient.invalidateQueries({ queryKey: ['reportes'] });
+    },
+  });
+};
+
+// Update evidencia descripcion on a saved evidence
+export const useUpdateEvidencia = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reporteId,
+      evidenciaId,
+      descripcion,
+    }: {
+      reporteId: string;
+      evidenciaId: string;
+      descripcion: string;
+    }) => reporteService.updateEvidencia(reporteId, evidenciaId, descripcion),
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
       queryClient.invalidateQueries({ queryKey: ['reportes'] });
     },
   });
@@ -178,11 +201,30 @@ export const useAddEvidencia = () => {
 // Delete evidencia
 export const useDeleteEvidencia = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ reporteId, evidenciaId }: { reporteId: string; evidenciaId: string }) => 
+    mutationFn: ({ reporteId, evidenciaId }: { reporteId: string; evidenciaId: string }) =>
       reporteService.deleteEvidencia(reporteId, evidenciaId),
-    onSuccess: (response, variables) => {
+    onSuccess: (_response, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
+      queryClient.invalidateQueries({ queryKey: ['reportes'] });
+    },
+  });
+};
+
+// Replace the full verificationParam[] array on a Report
+export const useUpdateVerificationParams = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reporteId,
+      verificationParam,
+    }: {
+      reporteId: string;
+      verificationParam: VerificationParam[];
+    }) => reporteService.updateVerificationParams(reporteId, verificationParam),
+    onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({ queryKey: ['reportes', variables.reporteId] });
       queryClient.invalidateQueries({ queryKey: ['reportes'] });
     },

@@ -32,7 +32,7 @@ import { reporteService } from '../services/reporte.service';
 import Swal from 'sweetalert2';
 
 // Types
-import { Reporte, ActividadRealizada, Evidencia, RepuestoReporte } from '../types/reporte.types';
+import { Reporte, ActividadRealizada, RepuestoReporte } from '../types/reporte.types';
 import { OT } from '../types/ot.types';
 
 const OtDetailPage: React.FC = () => {
@@ -151,19 +151,6 @@ const OtDetailPage: React.FC = () => {
       await refetchReportes();
     } catch (error) {
       console.error('Error adding actividad:', error);
-      throw error;
-    }
-  }, [refetchReportes]);
-
-  const handleAddEvidencia = useCallback(async (
-    reporteId: string,
-    evidencia: Omit<Evidencia, '_id' | 'fechaSubida'>
-  ) => {
-    try {
-      await reporteService.addEvidencia(reporteId, evidencia);
-      await refetchReportes();
-    } catch (error) {
-      console.error('Error adding evidencia:', error);
       throw error;
     }
   }, [refetchReportes]);
@@ -382,6 +369,15 @@ const OtDetailPage: React.FC = () => {
             </Button>
             <h1 className="h3 mb-0 flex-grow-1">
               Detalle OT - {ot.numeroOT || ot.Consecutivo}
+              {(ot as unknown as { isFromTicket?: boolean })?.isFromTicket && (
+                <span
+                  className="badge bg-info text-dark ms-2"
+                  style={{ fontSize: '0.6em', verticalAlign: 'middle' }}
+                  title="Esta OT fue generada desde tickets y tiene acciones bloqueadas (Agregar Equipo, cambiar TipoServicio, eliminar Reports)."
+                >
+                  OT desde Ticket
+                </span>
+              )}
             </h1>
             {porcentajeProcesados === 100 && reportes.length > 0 && (
               <Button 
@@ -432,18 +428,23 @@ const OtDetailPage: React.FC = () => {
                   </Button>
                 </OverlayTrigger>
 
-                <OverlayTrigger
-                  placement="top"
-                  overlay={renderTooltip('Agregar Equipo a la OT', 'tooltip-agregar')}
-                >
-                  <Button 
-                    variant="outline-success"
-                    onClick={() => setShowAddEquipoModal(true)}
+                {/* D18/D19: Hide "Agregar Equipo" when the OT was created from tickets.
+                    Adding equipos to a ticket-sourced OT is blocked at the backend
+                    with 409 OT_LOCKED_FROM_TICKET. */}
+                {!(ot as unknown as { isFromTicket?: boolean })?.isFromTicket && (
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={renderTooltip('Agregar Equipo a la OT', 'tooltip-agregar')}
                   >
-                    <FaPlus className="me-1" />
-                    Agregar Equipo
-                  </Button>
-                </OverlayTrigger>
+                    <Button
+                      variant="outline-success"
+                      onClick={() => setShowAddEquipoModal(true)}
+                    >
+                      <FaPlus className="me-1" />
+                      Agregar Equipo
+                    </Button>
+                  </OverlayTrigger>
+                )}
 
                 <OverlayTrigger
                   placement="top"
