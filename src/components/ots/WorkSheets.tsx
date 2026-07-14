@@ -19,6 +19,13 @@ interface WorkSheetsProps {
   onCreateSheet: (equiposIds: string[], datosRecepcion?: { recibe: string; cargo: string; firma: string; responsable: string ; cargoResponsable?: string; fullName?: string; firmaResponsableFile?: string; clienteId?: string }) => void;
   onSignSheet: (sheetId: string, firma: string) => void;
   clienteId: string;
+  /**
+   * When true, the "Create sheet" modal opens automatically on mount. Used by
+   * the parent's "Cerrar HT" quick action so the user lands ready to sign
+   * instead of having to click Create manually.
+   */
+  autoOpenCreate?: boolean;
+  onAutoOpenHandled?: () => void;
 }
 const WorkSheets: React.FC<WorkSheetsProps> = ({
   otId,
@@ -26,6 +33,8 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   onCreateSheet,
   onSignSheet,
   clienteId,
+  autoOpenCreate,
+  onAutoOpenHandled,
 }) => {
   // Obtener usuario en sesión (useCurrentUserData ya maneja el caching con React Query)
   const { token } = useAuth();
@@ -48,11 +57,26 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [recibeNombre, setRecibeNombre] = useState('');
   const [recibeCargo, setRecibeCargo] = useState('');
   const signaturePadRef = useRef<SignatureCanvas>(null);
+  const signatureContainerRef = useRef<HTMLDivElement>(null);
+  // Persist the drawn signature as a data URL. react-signature-canvas clears the
+  // <canvas> bitmap whenever the element resizes — which happens on mobile every
+  // time the user scrolls inside the modal or the on-screen keyboard opens. We
+  // save on stroke end and restore on resize / re-open so the signature never
+  // disappears from under the user.
+  const [savedSignatureDataURL, setSavedSignatureDataURL] = useState<string>('');
 
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMarca, setFilterMarca] = useState('');
   const [filterModelo, setFilterModelo] = useState('');
+
+  // When the parent's "Cerrar HT" quick action activates the tab, jump straight
+  // into the Create-sheet modal instead of forcing the user to click Create.
+  useEffect(() => {
+    if (!autoOpenCreate) return;
+    setShowCreateModal(true);
+    onAutoOpenHandled?.();
+  }, [autoOpenCreate, onAutoOpenHandled]);
 
   // Obtener tenant data para el PDF
   useEffect(() => {
@@ -188,7 +212,10 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       alert('El campo "Cargo" es obligatorio');
       return;
     }
-    if (signaturePadRef.current?.isEmpty()) {
+    // Prefer the persisted data URL — the visible canvas may have been wiped by
+    // a resize (mobile scroll / keyboard) even though the user did draw.
+    const canvasEmpty = signaturePadRef.current?.isEmpty();
+    if (canvasEmpty && !savedSignatureDataURL) {
       alert('Debe firmar para crear la hoja de trabajo');
       return;
     }
@@ -200,8 +227,11 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       return;
     }
 
-    // Obtener firma como imagen base64
-    const firmaBase64 = signaturePadRef.current?.toDataURL();    
+    // Obtener firma como imagen base64: si el canvas fue vaciado por resize,
+    // usar la copia persistida en state.
+    const firmaBase64 = !canvasEmpty
+      ? signaturePadRef.current?.toDataURL()
+      : savedSignatureDataURL;
     // Enviar equipos con datos de recepción
     onCreateSheet(selectedEquipos, {
       recibe: recibeNombre,
@@ -224,11 +254,43 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
     setRecibeNombre('');
     setRecibeCargo('');
     signaturePadRef.current?.clear();
+    setSavedSignatureDataURL('');
   };
 
   const handleClearSignature = () => {
     signaturePadRef.current?.clear();
+    setSavedSignatureDataURL('');
   };
+
+  // Guardar la firma cada vez que el usuario termina un trazo.
+  const handleSignatureEnd = () => {
+    const pad = signaturePadRef.current;
+    if (!pad || pad.isEmpty()) return;
+    setSavedSignatureDataURL(pad.toDataURL());
+  };
+
+  // Restore the persisted signature into the canvas whenever the container
+  // resizes (mobile scroll, keyboard opening) — signature-canvas wipes the
+  // bitmap on resize otherwise.
+  useEffect(() => {
+    if (!showSignCreateModal) return;
+    const container = signatureContainerRef.current;
+    if (!container) return;
+
+    const restore = () => {
+      const pad = signaturePadRef.current;
+      if (!pad) return;
+      if (pad.isEmpty() && savedSignatureDataURL) {
+        pad.fromDataURL(savedSignatureDataURL);
+      }
+    };
+
+    const observer = new ResizeObserver(restore);
+    observer.observe(container);
+    // Also run once after mount so a reopened modal shows the last signature.
+    restore();
+    return () => observer.disconnect();
+  }, [showSignCreateModal, savedSignatureDataURL]);
 
   const handleSignSheet = () => {
     if (!selectedSheet || !firmaCliente.trim()) {
@@ -798,15 +860,17 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
               <Form.Label>
                 Firma <span className="text-danger">*</span>
               </Form.Label>
-              <div 
+              <div
+                ref={signatureContainerRef}
                 className="signature-container border rounded bg-white p-2"
-                style={{ 
+                style={{
                   position: 'relative',
                   touchAction: 'none'
                 }}
               >
                 <SignatureCanvas
                   ref={signaturePadRef}
+                  onEnd={handleSignatureEnd}
                   canvasProps={{
                     className: 'signature-canvas',
                     style: {

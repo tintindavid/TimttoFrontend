@@ -1,8 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Card, Table, Form, Button, Alert, Spinner } from 'react-bootstrap';
-import { FaPlus, FaSave, FaTrash } from 'react-icons/fa';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Card, Table, Form, Button, Alert, Spinner, Badge } from 'react-bootstrap';
+import { FaPlus, FaSave, FaTrash, FaMagic } from 'react-icons/fa';
 import { VerificationParam, VERIFICATION_PARAM_LIMITS } from '@/types/reporte.types';
 import { useUpdateVerificationParams } from '@/hooks/useReportes';
+import { verificationParamsService } from '@/services/verificationParams.service';
+import {
+  SI_MAGNITUDES,
+  OTHER_MAGNITUDE_LABEL,
+  findMagnitude,
+} from '@/constants/siMagnitudes';
 
 interface VerificationParamsEditorProps {
   reporteId: string;
@@ -10,6 +16,12 @@ interface VerificationParamsEditorProps {
   disabled?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
   onSaved?: (value: VerificationParam[]) => void;
+  /**
+   * When set, the editor auto-suggests parameters from the last report of
+   * this equipment on first mount if the current value is empty. Also enables
+   * the "Cargar del último reporte" button for on-demand reload.
+   */
+  equipoId?: string;
 }
 
 interface RowDraft {
@@ -77,10 +89,16 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
   disabled = false,
   onDirtyChange,
   onSaved,
+  equipoId,
 }) => {
   const [drafts, setDrafts] = useState<RowDraft[]>(() => value.map(toDraft));
   const [baseline, setBaseline] = useState<string>(() => serialize(value.map(toDraft)));
   const [error, setError] = useState<string | null>(null);
+  const [suggestionSource, setSuggestionSource] = useState<{ consecutivo?: string; fecha?: string } | null>(null);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  // Track whether we already ran the auto-suggest for this reporte so a user
+  // who deletes all rows on purpose doesn't get them re-populated.
+  const autoSuggestedRef = useRef<string | null>(null);
 
   // Reset only when the *content* of `value` actually changes — not when the
   // parent re-renders and creates a new array reference with the same content.
@@ -94,6 +112,49 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
 
   const updateMutation = useUpdateVerificationParams();
   const isSaving = updateMutation.isLoading;
+
+  /**
+   * Loads the last report's verification params as a template. `mode='auto'`
+   * is silent (runs once when the editor mounts empty), `mode='manual'` is
+   * user-triggered via the button and shows an alert if nothing exists yet.
+   */
+  const loadSuggestion = useCallback(
+    async (mode: 'auto' | 'manual') => {
+      if (!equipoId) return;
+      if (disabled && mode === 'auto') return;
+      setLoadingSuggestion(true);
+      try {
+        const result = await verificationParamsService.suggest(equipoId, reporteId);
+        if (!result?.suggestions?.length) {
+          if (mode === 'manual') {
+            setError('No hay reportes anteriores con parámetros para sugerir.');
+          }
+          return;
+        }
+        const fresh = result.suggestions.map((row) => toDraft({ ...row, _id: undefined }));
+        setDrafts(fresh);
+        setSuggestionSource(result.source);
+      } catch (err) {
+        console.error('Error suggesting verification params:', err);
+        if (mode === 'manual') setError('No fue posible cargar los parámetros del reporte anterior.');
+      } finally {
+        setLoadingSuggestion(false);
+      }
+    },
+    [equipoId, reporteId, disabled],
+  );
+
+  // Auto-suggest when the editor first sees an empty value for this reporte.
+  useEffect(() => {
+    if (!equipoId || !reporteId) return;
+    if (autoSuggestedRef.current === reporteId) return;
+    if (value && value.length > 0) {
+      autoSuggestedRef.current = reporteId;
+      return;
+    }
+    autoSuggestedRef.current = reporteId;
+    loadSuggestion('auto');
+  }, [equipoId, reporteId, value, loadSuggestion]);
 
   const isDirty = serialize(drafts) !== baseline;
   useEffect(() => {
@@ -175,6 +236,43 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
             {error}
           </Alert>
         )}
+        {equipoId && (
+          <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-2 mb-3">
+            <div className="small text-muted">
+              {suggestionSource ? (
+                <>
+                  Prellenado desde el reporte{' '}
+                  <Badge bg="info" text="dark" className="fw-normal">
+                    {suggestionSource.consecutivo || 'anterior'}
+                  </Badge>
+                  {suggestionSource.fecha && (
+                    <span className="ms-1">del {new Date(suggestionSource.fecha).toLocaleDateString('es-CO')}</span>
+                  )}
+                  . Revisa y actualiza los valores medidos.
+                </>
+              ) : (
+                <>Puedes cargar como plantilla los parámetros del último reporte del equipo.</>
+              )}
+            </div>
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={() => loadSuggestion('manual')}
+              disabled={disabled || loadingSuggestion}
+            >
+              {loadingSuggestion ? (
+                <>
+                  <Spinner size="sm" animation="border" className="me-1" /> Cargando…
+                </>
+              ) : (
+                <>
+                  <FaMagic className="me-1" />
+                  Cargar del último reporte
+                </>
+              )}
+            </Button>
+          </div>
+        )}
         <div className="table-responsive">
           <Table bordered hover size="sm" className="align-middle">
             <thead className="table-light">
@@ -195,29 +293,86 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
                   </td>
                 </tr>
               )}
-              {drafts.map((row) => (
+              {drafts.map((row) => {
+                // Match the persisted string against the catalog. If it doesn't
+                // resolve (custom / historical), the row falls into "Otro" mode
+                // and we surface free-text inputs so nothing gets lost.
+                const catalogMag = findMagnitude(row.magnitud);
+                const isCustomMagnitud = row.magnitud !== '' && !catalogMag;
+                const availableUnits = catalogMag?.units || [];
+                const unitInCatalog = availableUnits.some((u) => u.symbol === row.unidad);
+                const showFreeUnitInput = isCustomMagnitud || (row.magnitud !== '' && !unitInCatalog);
+                return (
                 <tr key={row.localId}>
                   <td>
-                    <Form.Control
-                      type="text"
-                      size="sm"
-                      value={row.magnitud}
-                      onChange={(e) => handleChangeRow(row.localId, 'magnitud', e.target.value)}
-                      maxLength={VERIFICATION_PARAM_LIMITS.MAX_MAGNITUD_LENGTH}
-                      disabled={disabled}
-                      aria-label="Magnitud"
-                    />
+                    <div className="d-flex gap-1 align-items-center">
+                      <Form.Select
+                        size="sm"
+                        value={isCustomMagnitud ? '__other__' : (catalogMag?.label ?? '')}
+                        onChange={(e) => {
+                          const selected = e.target.value;
+                          if (selected === '__other__') {
+                            handleChangeRow(row.localId, 'magnitud', '');
+                            handleChangeRow(row.localId, 'unidad', '');
+                            return;
+                          }
+                          const def = SI_MAGNITUDES.find((m) => m.label === selected);
+                          handleChangeRow(row.localId, 'magnitud', def?.label || '');
+                          // Auto-pick first unit so the pair stays coherent.
+                          handleChangeRow(row.localId, 'unidad', def?.units[0]?.symbol || '');
+                        }}
+                        disabled={disabled}
+                        aria-label="Magnitud"
+                      >
+                        <option value="">— Seleccionar —</option>
+                        {SI_MAGNITUDES.map((m) => (
+                          <option key={m.key} value={m.label}>{m.label}</option>
+                        ))}
+                        <option value="__other__">{OTHER_MAGNITUDE_LABEL}</option>
+                      </Form.Select>
+                    </div>
+                    {isCustomMagnitud && (
+                      <Form.Control
+                        type="text"
+                        size="sm"
+                        className="mt-1"
+                        placeholder="Magnitud personalizada"
+                        value={row.magnitud}
+                        onChange={(e) => handleChangeRow(row.localId, 'magnitud', e.target.value)}
+                        maxLength={VERIFICATION_PARAM_LIMITS.MAX_MAGNITUD_LENGTH}
+                        disabled={disabled}
+                        aria-label="Magnitud personalizada"
+                      />
+                    )}
                   </td>
                   <td>
-                    <Form.Control
-                      type="text"
-                      size="sm"
-                      value={row.unidad}
-                      onChange={(e) => handleChangeRow(row.localId, 'unidad', e.target.value)}
-                      maxLength={VERIFICATION_PARAM_LIMITS.MAX_UNIDAD_LENGTH}
-                      disabled={disabled}
-                      aria-label="Unidad"
-                    />
+                    {showFreeUnitInput ? (
+                      <Form.Control
+                        type="text"
+                        size="sm"
+                        placeholder="Unidad"
+                        value={row.unidad}
+                        onChange={(e) => handleChangeRow(row.localId, 'unidad', e.target.value)}
+                        maxLength={VERIFICATION_PARAM_LIMITS.MAX_UNIDAD_LENGTH}
+                        disabled={disabled}
+                        aria-label="Unidad"
+                      />
+                    ) : (
+                      <Form.Select
+                        size="sm"
+                        value={row.unidad}
+                        onChange={(e) => handleChangeRow(row.localId, 'unidad', e.target.value)}
+                        disabled={disabled || availableUnits.length === 0}
+                        aria-label="Unidad"
+                      >
+                        {availableUnits.length === 0 && <option value="">— Elige magnitud primero —</option>}
+                        {availableUnits.map((u) => (
+                          <option key={u.symbol} value={u.symbol}>
+                            {u.symbol} — {u.label}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    )}
                   </td>
                   <td>
                     <Form.Control
@@ -265,7 +420,8 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
                     </Button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </Table>
         </div>

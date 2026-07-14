@@ -62,8 +62,16 @@ export const reporteService = {
   },
 
   // Update reporte
-  updateReporte: async (id: string, data: Partial<Reporte>) => { 
+  updateReporte: async (id: string, data: Partial<Reporte>) => {
     const response = await api.put<ApiResponse<Reporte>>(`/reportes/${id}`, data);
+    return response.data;
+  },
+
+  // Revert a processed reporte back to Pendiente. Dedicated endpoint because
+  // the generic PUT rejects null on fechaProcesado / ResponsableMtto — the
+  // backend uses $unset to actually clear those fields.
+  unprocessReporte: async (id: string) => {
+    const response = await api.put<ApiResponse<Reporte>>(`/reports/${id}/unprocess`);
     return response.data;
   },
 
@@ -104,6 +112,11 @@ export const reporteService = {
 
   // Upload 1..N evidences in a single multipart request.
   // `descripciones`, when provided, must be a parallel array of strings (use '' for none).
+  //
+  // Override the global 10s axios timeout: mobile uploads with several 5MB
+  // photos routinely take 20-60s. Under the default the request timed out
+  // client-side while the backend still finished the write, causing the user
+  // to retry and produce duplicate evidences.
   uploadEvidencias: async (reporteId: string, files: File[], descripciones?: string[]) => {
     const formData = new FormData();
     files.forEach((file, i) => {
@@ -113,7 +126,8 @@ export const reporteService = {
     });
     const response = await api.post<ApiResponse<{ evidencias: Evidencia[] }>>(
       `/reports/${reporteId}/evidencias`,
-      formData
+      formData,
+      { timeout: 120000 },
     );
     return response.data;
   },

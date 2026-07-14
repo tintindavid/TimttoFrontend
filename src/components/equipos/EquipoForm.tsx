@@ -19,7 +19,13 @@ interface EquipoFormProps {
   customerId: string;
   sedes: Sede[];
   servicios: Servicio[];
-  onSuccess?: () => void;
+  /**
+   * Called after the equipo is created. Receives the freshly created equipo
+   * (as returned by the backend) so callers can chain follow-up actions like
+   * attaching it to an OT. Existing callers that ignore the argument keep
+   * working unchanged.
+   */
+  onSuccess?: (created?: { _id?: string; [key: string]: unknown }) => void | Promise<void>;
   onCancel?: () => void;
 }
 
@@ -157,8 +163,9 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
         Precio: formData.Precio || 0
       };
 
-      await createMutation.mutateAsync(payload);
-      onSuccess?.();
+      const response = await createMutation.mutateAsync(payload);
+      const created = (response as { data?: { _id?: string } })?.data;
+      await onSuccess?.(created);
     } catch (error) {
       console.error('Error al crear equipo:', error);
     }

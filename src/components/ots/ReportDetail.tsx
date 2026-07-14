@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { 
-  Card, Row, Col, Form, Button, Badge, Alert, 
-  ProgressBar, Tab, Tabs, ListGroup, Modal 
+import {
+  Card, Row, Col, Form, Button, Badge, Alert,
+  ProgressBar, Tab, Tabs, ListGroup, Modal, OverlayTrigger, Tooltip,
 } from 'react-bootstrap';
 import { Reporte, ActividadRealizada, RepuestoReporte } from '@/types/reporte.types';
 import { Repuesto } from '@/types/repuesto.types';
 import { ActividadMtto } from '@/types/actividad.types';
-import { FaSave, FaCheck, FaTimes, FaArrowLeft, FaTools, FaEdit, FaList, FaCheckCircle, FaPlus, FaWrench, FaCog, FaEye } from 'react-icons/fa';
+import { FaSave, FaCheck, FaTimes, FaArrowLeft, FaTools, FaEdit, FaList, FaCheckCircle, FaPlus, FaWrench, FaCog, FaEye, FaCamera, FaExternalLinkAlt } from 'react-icons/fa';
 import { useProtocol } from '@/hooks/useProtocols';
 import { useRepuestosByEquipo, useRepuestosByReporte, useUpdateRepuesto, useDeleteRepuesto } from '@/hooks/useRepuestos';
 import { useAuth } from '@/context/AuthContext';
@@ -16,6 +16,7 @@ import { InstalarRepuestoDirectoModal } from '@/components/repuestos/InstalarRep
 import EditEquipoModal from './EditEquipoModal';
 import EvidenceUploader from '@/components/common/EvidenceUploader';
 import VerificationParamsEditor from '@/components/ots/VerificationParamsEditor';
+import { reporteService } from '@/services/reporte.service';
 import Swal from 'sweetalert2';
 
 interface ReportDetailProps {
@@ -52,7 +53,10 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('equipment');
+  const [activeTab, setActiveTab] = useState<string>('activities');
+  // Flipped to true by the camera shortcut in the report header. <EvidenceUploader>
+  // consumes it, opens the native file picker, then clears it via onAutoOpenHandled.
+  const [autoOpenEvidencePicker, setAutoOpenEvidencePicker] = useState(false);
   const [observacionEstadoFinal, setObservacionEstadoFinal] = useState<string>(editedReporte.observacionEstadoFinal || '');
   
   // Estados para modales de repuestos
@@ -316,10 +320,65 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
 
   const handleSave = () => {
 
-    
+
     onSave(editedReporte);
     setIsEditing(false);
   }; // aqui finaliza handle save
+
+  /**
+   * Reverts a processed report back to Pendiente. Talks to a dedicated backend
+   * endpoint that uses $unset to clear fechaProcesado / ResponsableMtto / …
+   * — the generic PUT rejects null on those fields (VALIDATION_ERROR).
+   */
+  const handleUnprocessReport = async () => {
+    if (editedReporte.estado !== 'Procesado') {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'No es posible anular',
+        text: 'Solo reportes en estado Procesado pueden anularse.',
+        confirmButtonColor: '#f0ad4e',
+      });
+      return;
+    }
+    if (!editedReporte._id) return;
+
+    const confirmation = await Swal.fire({
+      icon: 'question',
+      title: '¿Anular procesamiento?',
+      text: 'El reporte volverá a estado Pendiente y se limpiarán la fecha, duración, responsable y observaciones de procesado. Podrás volver a procesarlo cuando quieras.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, anular',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+    });
+    if (!confirmation.isConfirmed) return;
+
+    try {
+      setIsProcessing(true);
+      await reporteService.unprocessReporte(editedReporte._id);
+      setObservacionEstadoFinal('');
+      onRefreshData?.();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Procesamiento anulado',
+        text: 'El reporte volvió a Pendiente.',
+        confirmButtonColor: '#28a745',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error('Error anulando procesamiento:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No fue posible anular el procesamiento. Intenta de nuevo.',
+        confirmButtonColor: '#d33',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
 
   // Funciones para manejar repuestos
@@ -743,7 +802,134 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           </Card>
         </Col>
       </Row>
-      
+
+      {/*
+        Sticky equipment info card. Moved out of the tabs so the technician
+        always sees which equipment they're operating on, no matter which tab
+        is active. Edit affordance is a small icon in the top-right corner
+        (kept subtle so it doesn't compete with the tab controls below).
+      */}
+      <Card className="mb-4 border-0 shadow-sm">
+        <Card.Header className="bg-white d-flex justify-content-between align-items-center py-2">
+          <div>
+            <small className="text-uppercase fw-semibold text-muted">Equipo</small>
+            <div className="fw-semibold">
+              {editedReporte.Equipo?._id ? (
+                <OverlayTrigger
+                  placement="right"
+                  overlay={<Tooltip id="open-hv-tooltip">Abrir Hoja de Vida en nueva pestaña</Tooltip>}
+                >
+                  <a
+                    href={`/hv-equipo/${editedReporte.Equipo._id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-decoration-none text-primary"
+                  >
+                    {editedReporte.equipoSnapshot.ItemText || 'Sin nombre'}
+                    <FaExternalLinkAlt className="ms-2" style={{ fontSize: '0.75em' }} />
+                  </a>
+                </OverlayTrigger>
+              ) : (
+                editedReporte.equipoSnapshot.ItemText || 'Sin nombre'
+              )}
+            </div>
+          </div>
+          {!editedReporte.procesado && (
+            <OverlayTrigger placement="left" overlay={<Tooltip id="edit-equipo-tooltip">Editar información del equipo</Tooltip>}>
+              <Button
+                variant="link"
+                size="sm"
+                className="text-muted p-1"
+                onClick={handleOpenEditEquipoModal}
+                aria-label="Editar equipo"
+              >
+                <FaEdit />
+              </Button>
+            </OverlayTrigger>
+          )}
+        </Card.Header>
+        <Card.Body className="py-3">
+          <Row className="g-3">
+            {/* Columna 1: Identificación */}
+            <Col md={4}>
+              <small className="text-muted d-block text-uppercase fw-semibold mb-1">Identificación</small>
+              <div className="mb-2">
+                <small className="text-muted d-block">Serie</small>
+                <Badge bg="secondary" className="fw-normal">
+                  {editedReporte.equipoSnapshot.Serie || 'No especificado'}
+                </Badge>
+              </div>
+              {editedReporte.equipoSnapshot.Inventario && (
+                <div className="mb-2">
+                  <small className="text-muted d-block">Inventario</small>
+                  <div>{editedReporte.equipoSnapshot.Inventario}</div>
+                </div>
+              )}
+              {editedReporte?.Equipo?.Invima && (
+                <div className="mb-2">
+                  <small className="text-muted d-block">Registro INVIMA</small>
+                  <Badge bg="info" className="fw-normal">
+                    {editedReporte.Equipo.Invima}
+                  </Badge>
+                </div>
+              )}
+            </Col>
+
+            {/* Columna 2: Especificaciones */}
+            <Col md={4}>
+              <small className="text-muted d-block text-uppercase fw-semibold mb-1">Especificaciones</small>
+              <div className="mb-2">
+                <small className="text-muted d-block">Marca</small>
+                <div className="fw-semibold">{editedReporte.equipoSnapshot.Marca || 'No especificado'}</div>
+              </div>
+              <div className="mb-2">
+                <small className="text-muted d-block">Modelo</small>
+                <div>{editedReporte.equipoSnapshot.Modelo || 'No especificado'}</div>
+              </div>
+              {editedReporte?.Equipo?.Riesgo && (
+                <div className="mb-2">
+                  <small className="text-muted d-block">Clasificación de Riesgo</small>
+                  <Badge
+                    bg={
+                      editedReporte.Equipo.Riesgo === 'I' ? 'success' :
+                      editedReporte.Equipo.Riesgo === 'IIA' ? 'info' :
+                      editedReporte.Equipo.Riesgo === 'IIB' ? 'warning' :
+                      'danger'
+                    }
+                    className="fw-normal"
+                  >
+                    Clase {editedReporte.Equipo.Riesgo}
+                  </Badge>
+                </div>
+              )}
+            </Col>
+
+            {/* Columna 3: Ubicación */}
+            <Col md={4}>
+              <small className="text-muted d-block text-uppercase fw-semibold mb-1">Ubicación</small>
+              {editedReporte?.equipoSnapshot?.Servicio && (
+                <div className="mb-2">
+                  <small className="text-muted d-block">Servicio</small>
+                  <div>{editedReporte.equipoSnapshot.Servicio}</div>
+                </div>
+              )}
+              {editedReporte.equipoSnapshot.Sede && (
+                <div className="mb-2">
+                  <small className="text-muted d-block">Sede</small>
+                  <div>{editedReporte.equipoSnapshot.Sede}</div>
+                </div>
+              )}
+              {editedReporte.equipoSnapshot.Ubicacion && (
+                <div className="mb-2">
+                  <small className="text-muted d-block">Ubicación</small>
+                  <div>{editedReporte.equipoSnapshot.Ubicacion}</div>
+                </div>
+              )}
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
       {/* Header del Reporte */}
       <Card className="mb-4 border-info">
         <Card.Header className="bg-info text-white d-flex justify-content-between align-items-center">
@@ -755,7 +941,28 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               {editedReporte.equipoSnapshot.Marca} • {editedReporte.equipoSnapshot.Modelo}
             </small>
           </div>
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 align-items-center">
+          {/* Camera shortcut — opens the file picker of <EvidenceUploader> so
+              the technician can capture evidence without switching tabs first.
+              Hidden on terminal states where evidences can no longer be added. */}
+          {editedReporte._id
+            && editedReporte.estado !== 'Cerrado'
+            && editedReporte.estado !== 'Cancelado'
+            && !editedReporte.procesado && (
+            <OverlayTrigger
+              placement="left"
+              overlay={<Tooltip id="quick-camera-tooltip">Subir foto de evidencia</Tooltip>}
+            >
+              <Button
+                variant="outline-light"
+                size="sm"
+                onClick={() => setAutoOpenEvidencePicker(true)}
+                aria-label="Subir evidencia"
+              >
+                <FaCamera />
+              </Button>
+            </OverlayTrigger>
+          )}
           {/*Mostrar un badge con el tipoMtto en grande */}
           {editedReporte.tipoMtto && (
             <Badge bg="primary" className="me-2 fs-6">
@@ -763,8 +970,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             </Badge>
           )}
             {editedReporte.estado==='Cerrado' || editedReporte.estado==='Cancelado' ? (
-              <Button 
-                variant="outline-light" 
+              <Button
+                variant="outline-light"
                 size="sm"
                 onClick={handleOpenViewReport}
               >
@@ -808,25 +1015,56 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                 )}
 
                 {editedReporte.fechaProcesado && (
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={handleSave}
+                  >
+                    <FaSave className="me-1" />Guardar Cambios
+                  </Button>
+                )}
+
+                {/*
+                  We drive all three buttons off `estado` because the boolean
+                  `procesado` field is not populated consistently by the API
+                  (it's undefined in some responses). Estado is the reliable
+                  source of truth:
+                    - Procesado → Editar / Anular
+                    - Pendiente / En_Progreso → Marcar Procesado
+                    - Cerrado / Cancelado → nothing (terminal)
+                */}
+                {editedReporte.estado === 'Procesado' && (
                   <>
-                    <Button 
-                      variant="success" 
+                    <Button
+                      variant="outline-primary"
                       size="sm"
-                      onClick= {handleSave}
-                    >
-                      <FaSave className="me-1" />Guardar Cambios</Button>
-                   </> 
-                  )}
-                    {!(editedReporte.estado === 'Cancelado' || editedReporte.estado === 'Cerrado') && (
-                    <Button 
-                      variant="primary" 
                       onClick={() => setShowConfirmModal(true)}
-                      disabled={!canMarkAsProcessed()}
                     >
-                      <FaCheck className="me-1" />
-                      Marcar Procesado
+                      <FaEdit className="me-1" />
+                      Editar Procesado
                     </Button>
-                    )}
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={handleUnprocessReport}
+                      disabled={isProcessing}
+                    >
+                      <FaTimes className="me-1" />
+                      Anular Procesado
+                    </Button>
+                  </>
+                )}
+
+                {(editedReporte.estado === 'Pendiente' || editedReporte.estado === 'En_Progreso') && (
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowConfirmModal(true)}
+                    disabled={!canMarkAsProcessed()}
+                  >
+                    <FaCheck className="me-1" />
+                    Marcar Procesado
+                  </Button>
+                )}
               </div>
             </Col>
           </Row>
@@ -883,132 +1121,9 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           </Form.Group>
         </Card.Body>
       </Card>
-      {/* Tabs de Trabajo */}
-      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'equipment')}>
-        {/* Tab 1: Información del Equipo */}
-        <Tab eventKey="equipment" title="📱 Equipo">
-          <Card className="mt-3">
-            <Card.Header className="d-flex justify-content-between align-items-center">
-              <div>
-                <h6 className="mb-0">Información del Equipo (Snapshot)</h6>
-                <small className="text-muted">
-                  Información del equipo al momento del reporte
-                </small>
-              </div>
-              {!editedReporte.procesado && (
-                <Button 
-                  variant="primary" 
-                  size="sm"
-                  onClick={handleOpenEditEquipoModal}
-                >
-                  <FaEdit className="me-1" />
-                  Editar Equipo
-                </Button>
-              )}
-            </Card.Header>
-            <Card.Body>
-              <Row className="g-4">
-                <Col md={6}>
-                  <div className="border-start border-primary border-3 ps-3 mb-4">
-                    <h6 className="text-primary mb-2">Identificación</h6>
-                    <div className="mb-3">
-                      <small className="text-muted d-block mb-1">Item / Nombre</small>
-                      <div className="fs-5 fw-semibold">{editedReporte.equipoSnapshot.ItemText || 'No especificado'}</div>
-                    </div>
-                    <div className="mb-3">
-                      <small className="text-muted d-block mb-1">Serie</small>
-                      <div className="fs-6">
-                        <Badge bg="secondary" className="fs-6 fw-normal">
-                          {editedReporte.equipoSnapshot.Serie || 'No especificado'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-
-                <Col md={6}>
-                  <div className="border-start border-info border-3 ps-3 mb-4">
-                    <h6 className="text-info mb-2">Especificaciones</h6>
-                    <div className="mb-3">
-                      <small className="text-muted d-block mb-1">Marca</small>
-                      <div className="fs-6 fw-semibold">{editedReporte.equipoSnapshot.Marca || 'No especificado'}</div>
-                    </div>
-                    <div className="mb-3">
-                      <small className="text-muted d-block mb-1">Modelo</small>
-                      <div className="fs-6">{editedReporte.equipoSnapshot.Modelo || 'No especificado'}</div>
-                    </div>
-                  </div>
-                </Col>
-              </Row>
-
-              {/* Información adicional del equipo si está disponible */}
-              {editedReporte?.equipoSnapshot && (
-                <Row className="mt-4">
-                  <Col md={12}>
-                    <div className="bg-light p-3 rounded">
-                      <h6 className="text-muted mb-3">Información Adicional</h6>
-                      <Row>
-                        {editedReporte?.equipoSnapshot?.Ubicacion && (
-                          <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Servicio</small>
-                            <div>{editedReporte?.equipoSnapshot?.Servicio}</div>
-                          </Col>
-                        )}
-                        {editedReporte.equipoSnapshot.Sede && typeof editedReporte.equipoSnapshot.Sede === 'object' && (
-                          <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Sede</small>
-                            <div>{editedReporte.equipoSnapshot.Sede}</div>
-                          </Col>
-                        )}
-                        {editedReporte.equipoSnapshot.Ubicacion && (
-                          <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Ubicación</small>
-                            <div>{editedReporte.equipoSnapshot.Ubicacion}</div>
-                          </Col>
-                        )}
-                        {editedReporte?.Equipo?.Invima && (
-                          <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Registro INVIMA</small>
-                            <div>
-                              <Badge bg="info" className="fw-normal">
-                                {editedReporte.Equipo.Invima}
-                              </Badge>
-                            </div>
-                          </Col>
-                        )}
-                        {editedReporte.equipoSnapshot.Inventario && (
-                          <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Inventario</small>
-                            <div>{editedReporte.equipoSnapshot.Inventario}</div>
-                          </Col>
-                        )}
-                        {editedReporte?.Equipo?.Riesgo && (
-                          <Col md={4} className="mb-2">
-                            <small className="text-muted d-block">Clasificación de Riesgo</small>
-                            <div>
-                              <Badge 
-                                bg={
-                                  editedReporte.Equipo.Riesgo === 'I' ? 'success' :
-                                  editedReporte.Equipo.Riesgo === 'IIA' ? 'info' :
-                                  editedReporte.Equipo.Riesgo === 'IIB' ? 'warning' :
-                                  'danger'
-                                }
-                                className="fw-normal"
-                              >
-                                Clase {editedReporte.Equipo.Riesgo}
-                              </Badge>
-                            </div>
-                          </Col>
-                        )}
-                      </Row>
-                    </div>
-                  </Col>
-                </Row>
-              )}
-            </Card.Body>
-          </Card>
-        </Tab>
-
+      {/* Tabs de Trabajo — the "Equipo" tab was removed; its content is now
+          the sticky card above so the technician sees the equipment at all times. */}
+      <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'activities')}>
         {/* Tab 2: Protocolo/Actividades */}
         <Tab eventKey="activities" title="✅ Protocolo">
           <Card className="mt-3">
@@ -1221,6 +1336,9 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               onSaved={(nuevas) =>
                 setEditedReporte((prev) => ({ ...prev, evidencias: nuevas }))
               }
+              autoOpenPicker={autoOpenEvidencePicker}
+              onAutoOpenHandled={() => setAutoOpenEvidencePicker(false)}
+              onFilesAdded={() => setActiveTab('evidences')}
             />
           ) : (
             <Alert variant="info" className="mt-3">
@@ -1234,6 +1352,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           {editedReporte._id ? (
             <VerificationParamsEditor
               reporteId={editedReporte._id}
+              equipoId={editedReporte.Equipo?._id}
               value={editedReporte.verificationParam ?? []}
               disabled={Boolean(editedReporte.procesado)}
               onDirtyChange={setHasUnsavedVerificationParams}
@@ -1430,11 +1549,17 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       {/* Modal de Confirmación */}
       <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Marcar como Procesado</Modal.Title>
+          <Modal.Title>
+            {editedReporte.estado === 'Procesado' ? 'Editar procesamiento' : 'Marcar como Procesado'}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Alert variant="warning">
-            <strong>¿Está seguro de marcar este reporte como procesado?</strong>
+          <Alert variant={editedReporte.estado === 'Procesado' ? 'info' : 'warning'}>
+            <strong>
+              {editedReporte.estado === 'Procesado'
+                ? 'Modifica los valores registrados al procesar y guarda para actualizarlos.'
+                : '¿Está seguro de marcar este reporte como procesado?'}
+            </strong>
           </Alert>
           <p>Esta acción:</p>
           <ul>
@@ -1529,18 +1654,18 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
             Cancelar
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={handleMarkAsProcessed}
             disabled={
-              (editedReporte.estadoOperativo === 'En Mantenimiento' || 
-               editedReporte.estadoOperativo === 'Fuera de Servicio' || 
-               editedReporte.estadoOperativo === 'Dado de Baja') && 
+              (editedReporte.estadoOperativo === 'En Mantenimiento' ||
+               editedReporte.estadoOperativo === 'Fuera de Servicio' ||
+               editedReporte.estadoOperativo === 'Dado de Baja') &&
               !observacionEstadoFinal.trim()
             }
           >
             <FaCheck className="me-1" />
-            Confirmar Procesado
+            {editedReporte.estado === 'Procesado' ? 'Actualizar Procesado' : 'Confirmar Procesado'}
           </Button>
         </Modal.Footer>
       </Modal>

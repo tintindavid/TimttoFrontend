@@ -26,9 +26,9 @@ const baseMenu: MenuItem[] = [
     icon: <FaTools />,
     subItems: [
       { id: 'actividades', label: 'Actividades', path: '/actividades' },
-      { id: 'items', label: 'Items', path: '/items' },
       { id: 'protocolos', label: 'Protocolos', path: '/protocols' },
-      { id: 'hv-equipo', label: 'HV Equipo', path: '/hv-equipo' },
+      { id: 'items', label: 'Items', path: '/items' }
+
     ],
   },
   {

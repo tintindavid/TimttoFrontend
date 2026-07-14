@@ -22,6 +22,8 @@ import { Reporte } from '@/types/reporte.types';
 import {Repuesto} from '@/types/repuesto.types';
 
 import { CreateHVEquipoDto, UpdateHVEquipoDto } from '@/types/hvEquipo.types';
+import VerificationTrendsTab, { VerificationTolerance } from '@/components/hvEquipo/VerificationTrendsTab';
+import GuiaRapidaTab, { GuiaRapidaSection } from '@/components/hvEquipo/GuiaRapidaTab';
 import Swal from 'sweetalert2';
 import './HVEquipoPage.css';
 import { useCurrentUserData } from '@/context/userContext';
@@ -122,7 +124,11 @@ const HVEquipoPage: React.FC = () => {
         Foto: hvEquipo.Foto || '',
         CiudadProveedor: hvEquipo.CiudadProveedor || '',
         Descripcion: hvEquipo.Descripcion || '',
-      });
+        // Include the guide + verification tolerances so the editor bound to
+        // formData can round-trip them through the single "Guardar" flow.
+        guiaRapida: ((hvEquipo as any).guiaRapida || []) as any,
+        verificationTolerances: ((hvEquipo as any).verificationTolerances || []) as any,
+      } as any);
     } else if (equipoInfo) {
       // Si no existe HV, inicializar con datos del equipo
       const ClienteId = equipoInfo.ClienteId;
@@ -358,6 +364,20 @@ const HVEquipoPage: React.FC = () => {
           RequiereCapacitacion: hvAprobada.RequiereCapacitacion,
           Recomendaciones: hvAprobada.Recomendaciones,
           Accesorios: hvAprobada.Accesorios,
+          // Bring the Guía Rápida and verification tolerances forward — same
+          // marca/modelo will almost always share these, and the user can still
+          // edit / remove sections afterwards.
+          guiaRapida: ((hvAprobada as any).guiaRapida || []).map((s: any, i: number) => ({
+            titulo: s.titulo,
+            contenidoHtml: s.contenidoHtml,
+            orden: typeof s.orden === 'number' ? s.orden : i,
+          })),
+          verificationTolerances: ((hvAprobada as any).verificationTolerances || []).map((t: any) => ({
+            magnitud: t.magnitud,
+            unidad: t.unidad || '',
+            umbralAlertaPct: t.umbralAlertaPct ?? 2,
+            umbralFueraToleranciaPct: t.umbralFueraToleranciaPct ?? 5,
+          })),
         }));
 
         Swal.fire({
@@ -801,9 +821,9 @@ const HVEquipoPage: React.FC = () => {
         <Tab
           eventKey="hoja-vida"
           title={
-            <span>
+            <span title="Hoja de Vida">
               <FaFileAlt className="me-2" />
-              Hoja de Vida
+              HV
             </span>
           }
         >
@@ -1903,9 +1923,9 @@ const HVEquipoPage: React.FC = () => {
         <Tab
           eventKey="preventivos"
           title={
-            <span>
+            <span title="Mantenimientos Preventivos">
               <FaHistory className="me-2" />
-              Mantenimientos Preventivos
+              MP
               <Badge bg="primary" className="ms-2">{reportesPreventivos.length}</Badge>
             </span>
           }
@@ -1996,9 +2016,9 @@ const HVEquipoPage: React.FC = () => {
         <Tab
           eventKey="timeline"
           title={
-            <span>
+            <span title="Historial de Cambios">
               <FaExchangeAlt className="me-2" />
-              Historial de Cambios
+              TL
               <Badge bg="info" className="ms-2">{timelineData.length}</Badge>
             </span>
           }
@@ -2127,9 +2147,9 @@ const HVEquipoPage: React.FC = () => {
         <Tab
           eventKey="correctivos"
           title={
-            <span>
+            <span title="Correctivos y otros mantenimientos">
               <FaTools className="me-2" />
-              Correctivos/Otros
+              MC
               <Badge bg="warning" text="dark" className="ms-2">{reportesCorrectivos.length}</Badge>
             </span>
           }
@@ -2220,9 +2240,9 @@ const HVEquipoPage: React.FC = () => {
         <Tab
           eventKey="repuestos"
           title={
-            <span>
+            <span title="Trazabilidad de repuestos">
               <FaCog className="me-2" />
-              Repuestos
+              Rep
               <Badge bg="success" className="ms-2">{repuestosData?.length || 0}</Badge>
             </span>
           }
@@ -2354,6 +2374,67 @@ const HVEquipoPage: React.FC = () => {
               )}
             </Card.Body>
           </Card>
+        </Tab>
+
+        {/* TAB 7: GUÍA RÁPIDA DE USO */}
+        <Tab
+          eventKey="guia-rapida"
+          title={
+            <span title="Guía Rápida de Uso">
+              📖 GR
+            </span>
+          }
+        >
+          {equipoId && (
+            <GuiaRapidaTab
+              // In edit mode we bind to formData so the guide saves atomically
+              // with the rest of the HV via the standard "Guardar" button; in
+              // view mode we render the persisted guiaRapida read-only.
+              value={
+                (isEditingHV
+                  ? ((formData as any).guiaRapida as GuiaRapidaSection[])
+                  : ((hvEquipo as any)?.guiaRapida as GuiaRapidaSection[])
+                ) || []
+              }
+              readOnly={!isEditingHV}
+              disabled={!hvEquipo && !isEditingHV}
+              equipoLabel={{
+                item: hvEquipo?.equipoSnapshot?.ItemText || equipoData?.data?.ItemId?.Nombre,
+                marca: hvEquipo?.equipoSnapshot?.Marca || equipoData?.data?.Marca,
+                modelo: hvEquipo?.equipoSnapshot?.Modelo || equipoData?.data?.Modelo,
+                serie: hvEquipo?.equipoSnapshot?.Serie || equipoData?.data?.Serie,
+              }}
+              onChange={(next) => {
+                setFormData((prev) => ({ ...prev, guiaRapida: next } as typeof prev));
+              }}
+            />
+          )}
+        </Tab>
+
+        {/* TAB 6: TRAZABILIDAD DE PARÁMETROS DE VERIFICACIÓN */}
+        <Tab
+          eventKey="verification-trends"
+          title={
+            <span title="Verificación de parámetros — trazabilidad">
+              📐 VP
+            </span>
+          }
+        >
+          {equipoId && (
+            <VerificationTrendsTab
+              equipoId={equipoId}
+              tolerances={((hvEquipo as any)?.verificationTolerances as VerificationTolerance[]) || []}
+              canEditTolerances={Boolean(hvEquipo)}
+              onTolerancesChange={async (next) => {
+                if (!hvEquipo?._id) return;
+                await updateHVMutation.mutateAsync({
+                  id: hvEquipo._id,
+                  data: { verificationTolerances: next } as unknown as UpdateHVEquipoDto,
+                });
+                refetchHV();
+              }}
+            />
+          )}
         </Tab>
       </Tabs>
     </Container>
