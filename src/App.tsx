@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
 import AppRoutes from '@/routes';
 import PerformanceMonitor from '@/components/common/PerformanceMonitor';
 import { ToastContainer } from 'react-toastify';

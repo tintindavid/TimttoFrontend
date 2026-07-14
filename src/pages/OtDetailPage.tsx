@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, ReactElement } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Nav, Tab, Alert, Button, Modal, ButtonGroup, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { Container, Row, Col, Nav, Tab, Alert, Button, Modal, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { 
   FaArrowLeft, 
   FaCheckCircle, 
@@ -22,6 +22,8 @@ import ReportsList from '../components/ots/ReportsList';
 import ReportDetail from '../components/ots/ReportDetail';
 import WorkSheets from '../components/ots/WorkSheets';
 import AddEquipoToOtModal from '../components/ots/AddEquipoToOtModal';
+import OtNotasModal from '../components/ots/OtNotasModal';
+import HistoryTimelineModal from '../components/ots/HistoryTimelineModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 
@@ -29,6 +31,9 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import { useOT } from '../hooks/useOTs';
 import { useReportes } from '../hooks/useReportes';
 import { reporteService } from '../services/reporte.service';
+import { otService } from '../services/ot.service';
+import { exportOtToXlsx } from '../services/otExport.service';
+import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 
 // Types
@@ -45,9 +50,15 @@ const OtDetailPage: React.FC = () => {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showAddEquipoModal, setShowAddEquipoModal] = useState(false);
   const [isUpdatingReporte, setIsUpdatingReporte] = useState(false);
+  // When the "Cerrar HT" quick action is used, we pass this flag to <WorkSheets>
+  // so it opens the Create modal immediately; WorkSheets clears it via
+  // onAutoOpenHandled once consumed so it doesn't re-fire on every render.
+  const [autoOpenCreateSheet, setAutoOpenCreateSheet] = useState(false);
+  const [showNotasModal, setShowNotasModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Queries
-  const { data: otResponse, isLoading: loadingOT, error: otError } = useOT(id!);
+  const { data: otResponse, isLoading: loadingOT, error: otError, refetch: refetchOt } = useOT(id!);
   
 
   const { 
@@ -222,23 +233,47 @@ const OtDetailPage: React.FC = () => {
   const handleSignWorkSheet = useCallback(async (sheetId: string, firma: string) => {
     try {
       await reporteService.signWorkSheet(sheetId, firma);
+      // Refresh reports first — the backend recomputes OT progress when a sheet
+      // is signed, so the OT snapshot below reflects the just-updated state.
       await refetchReportes();
+      const refreshed = await refetchOt();
+      const updatedOt = (refreshed?.data as { data?: OT } | undefined)?.data;
+
+      // Auto-complete when every report attached to this OT is closed and the
+      // backend already flagged EstadoOt as 'Cerrado'. PATCH to 'Completado'
+      // reuses the existing service transaction (which consumes spare parts,
+      // decrements inventory, etc.) so we don't duplicate that logic here.
+      if (updatedOt?.EstadoOt === 'Cerrado' && id) {
+        try {
+          await otService.patch(id, { EstadoOt: 'Completado' } as never);
+          await refetchOt();
+          toast.success('OT completada automáticamente — todas las hojas fueron firmadas.');
+        } catch (completeErr) {
+          console.error('Error auto-completando OT:', completeErr);
+          toast.warn('La hoja se firmó pero no fue posible completar la OT automáticamente. Revisa los repuestos e intenta de nuevo.');
+        }
+      }
     } catch (error) {
       console.error('Error signing worksheet:', error);
       throw error;
     }
-  }, [refetchReportes]);
+  }, [id, refetchReportes, refetchOt]);
 
+  // Manual completion fallback. Normally the OT auto-completes when the last
+  // worksheet is signed (handleSignWorkSheet). This handler only runs from the
+  // safety-net button that appears when EstadoOt got stuck in 'Cerrado'.
   const handleCompleteOT = useCallback(async () => {
+    if (!id) return;
     try {
-      // TODO: Implement OT completion logic
-      console.log('Completing OT:', id);
+      await otService.patch(id, { EstadoOt: 'Completado' } as never);
+      await refetchOt();
       setShowCompleteModal(false);
-      navigate('/ots');
+      toast.success('OT completada.');
     } catch (error) {
       console.error('Error completing OT:', error);
+      toast.error('No fue posible completar la OT.');
     }
-  }, [id, navigate]);
+  }, [id, refetchOt]);
 
 
   const renderTooltip = (
@@ -379,11 +414,18 @@ const OtDetailPage: React.FC = () => {
                 </span>
               )}
             </h1>
-            {porcentajeProcesados === 100 && reportes.length > 0 && (
-              <Button 
+            {/*
+              Manual "Completar OT" button removed — OT auto-completes in
+              handleSignWorkSheet as soon as the backend flags EstadoOt as 'Cerrado'
+              (all reports closed). Preserved as a safety-net for the edge case
+              where the OT ended up Cerrado but the auto-complete PATCH failed.
+            */}
+            {porcentajeProcesados === 100 && reportes.length > 0 && ot?.EstadoOt === 'Cerrado' && (
+              <Button
                 variant="success"
                 onClick={() => setShowCompleteModal(true)}
                 className="ms-2"
+                title="La OT quedó en estado Cerrado pero no se completó automáticamente. Vuelve a intentar."
               >
                 <FaCheckCircle className="me-1" />
                 Completar OT
@@ -396,33 +438,61 @@ const OtDetailPage: React.FC = () => {
         <Col>
         {/* Action Bar */}
           <div className="bg-light border rounded p-3 mb-4">
-            <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-2">
               <h6 className="mb-0 text-muted">
                 <FaTools className="me-2" />
                 Acciones Rápidas
               </h6>
 
-              <ButtonGroup size="sm">
+              {/* flex-wrap so the buttons stack across rows on narrow viewports
+                  instead of overflowing the card. ButtonGroup would force a
+                  single row and clip on mobile. */}
+              <div className="d-flex flex-wrap gap-1 justify-content-start justify-content-md-end">
 
-                <OverlayTrigger
-                  placement="top"
-                  overlay={renderTooltip('Ver Hojas de Trabajo', 'tooltip-worksheets')}
-                >
-                  <Button
-                    variant="outline-primary"
-                    onClick={() => setActiveTab('worksheets')}
+                {/* When there are processed reports without an assigned
+                    worksheet, the primary action is closing them (create a new
+                    HT). Otherwise the button just navigates to the tab. */}
+                {reportesSinHoja.length > 0 ? (
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={renderTooltip(
+                      `Cerrar hoja de trabajo con ${reportesSinHoja.length} reporte${reportesSinHoja.length === 1 ? '' : 's'} procesado${reportesSinHoja.length === 1 ? '' : 's'}`,
+                      'tooltip-cerrar-ht',
+                    )}
                   >
-                    <FaClipboardList className="me-1" />
-                    Hojas de Trabajo
-                  </Button>
-                </OverlayTrigger>
+                    <Button
+                      size="sm"
+                      variant="warning"
+                      onClick={() => {
+                        setActiveTab('worksheets');
+                        setAutoOpenCreateSheet(true);
+                      }}
+                    >
+                      <FaClipboardList className="me-1" />
+                      Cerrar HT ({reportesSinHoja.length})
+                    </Button>
+                  </OverlayTrigger>
+                ) : (
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={renderTooltip('Ver Hojas de Trabajo', 'tooltip-worksheets')}
+                  >
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      onClick={() => setActiveTab('worksheets')}
+                    >
+                      <FaClipboardList className="me-1" />
+                      Hojas de Trabajo
+                    </Button>
+                  </OverlayTrigger>
+                )}
 
                 <OverlayTrigger
                   placement="top"
                   overlay={renderTooltip('Ver Solicitudes de Repuestos', 'tooltip-repuestos')}
                 >
-                  <Button variant="outline-info"
-                    onClick={()=>setActiveTab('repuestos')}>
+                  <Button size="sm" variant="outline-info" onClick={() => setActiveTab('repuestos')}>
                     <FaCog className="me-1" />
                     Repuestos
                   </Button>
@@ -437,6 +507,7 @@ const OtDetailPage: React.FC = () => {
                     overlay={renderTooltip('Agregar Equipo a la OT', 'tooltip-agregar')}
                   >
                     <Button
+                      size="sm"
                       variant="outline-success"
                       onClick={() => setShowAddEquipoModal(true)}
                     >
@@ -450,7 +521,7 @@ const OtDetailPage: React.FC = () => {
                   placement="top"
                   overlay={renderTooltip('Ver Historial de Cambios', 'tooltip-historial')}
                 >
-                  <Button variant="outline-secondary">
+                  <Button size="sm" variant="outline-secondary" onClick={() => setShowHistoryModal(true)}>
                     <FaHistory className="me-1" />
                     Historial
                   </Button>
@@ -458,19 +529,9 @@ const OtDetailPage: React.FC = () => {
 
                 <OverlayTrigger
                   placement="top"
-                  overlay={renderTooltip('Documentos y Archivos', 'tooltip-documentos')}
-                >
-                  <Button variant="outline-warning">
-                    <FaFileAlt className="me-1" />
-                    Documentos
-                  </Button>
-                </OverlayTrigger>
-
-                <OverlayTrigger
-                  placement="top"
                   overlay={renderTooltip('Comentarios y Notas', 'tooltip-notas')}
                 >
-                  <Button variant="outline-dark">
+                  <Button size="sm" variant="outline-dark" onClick={() => setShowNotasModal(true)}>
                     <FaComments className="me-1" />
                     Notas
                   </Button>
@@ -478,9 +539,23 @@ const OtDetailPage: React.FC = () => {
 
                 <OverlayTrigger
                   placement="top"
-                  overlay={renderTooltip('Exportar / Imprimir OT', 'tooltip-exportar')}
+                  overlay={renderTooltip('Exportar OT a Excel (Reportes + Repuestos)', 'tooltip-exportar')}
                 >
-                  <Button variant="outline-primary">
+                  <Button
+                    size="sm"
+                    variant="outline-primary"
+                    onClick={() => {
+                      if (!ot) return;
+                      try {
+                        exportOtToXlsx(ot, reportes);
+                        toast.success('Exportación descargada.');
+                      } catch (err) {
+                        console.error('Export error:', err);
+                        toast.error('No fue posible exportar la OT.');
+                      }
+                    }}
+                    disabled={!ot || reportes.length === 0}
+                  >
                     <FaFileExport className="me-1" />
                     Exportar
                   </Button>
@@ -491,6 +566,7 @@ const OtDetailPage: React.FC = () => {
                   overlay={renderTooltip('Imprimir OT', 'tooltip-imprimir')}
                 >
                   <Button
+                    size="sm"
                     variant="outline-secondary"
                     onClick={() => window.print()}
                   >
@@ -498,7 +574,7 @@ const OtDetailPage: React.FC = () => {
                   </Button>
                 </OverlayTrigger>
 
-              </ButtonGroup>
+              </div>
             </div>
           </div>
 
@@ -576,12 +652,14 @@ const OtDetailPage: React.FC = () => {
 
               {/* Worksheets Tab */}
               <Tab.Pane eventKey="worksheets">
-                <WorkSheets 
+                <WorkSheets
                   otId={id!}
                   reportesProcesados={reportesSinHoja}
                   onCreateSheet={handleCreateWorkSheet}
                   onSignSheet={handleSignWorkSheet}
                   clienteId={ot.ClienteId?._id!}
+                  autoOpenCreate={autoOpenCreateSheet}
+                  onAutoOpenHandled={() => setAutoOpenCreateSheet(false)}
                 />
               </Tab.Pane>
             </Tab.Content>
@@ -603,6 +681,26 @@ const OtDetailPage: React.FC = () => {
             refetchReportes();
             setShowAddEquipoModal(false);
           }}
+        />
+      )}
+
+      {/* Notas Modal */}
+      {id && (
+        <OtNotasModal
+          show={showNotasModal}
+          onHide={() => setShowNotasModal(false)}
+          otId={id}
+        />
+      )}
+
+      {/* History Timeline Modal */}
+      {id && (
+        <HistoryTimelineModal
+          show={showHistoryModal}
+          onHide={() => setShowHistoryModal(false)}
+          resourceType="OT"
+          resourceId={id}
+          title={`Historial · OT ${ot?.Consecutivo || ''}`}
         />
       )}
 

@@ -43,6 +43,7 @@ import ProtocolsPage from '@/pages/Protocols/ProtocolsPage';
 import ProtocolFormPage from '@/pages/Protocols/ProtocolFormPage';
 import ProtocolDetailPage from '@/pages/Protocols/ProtocolDetailPage';
 import SettingsPage from '@/pages/Settings/SettingsPage';
+import RolesPage from '@/pages/Roles/RolesPage';
 import HVEquipoPage from '@/pages/HVEquipo/HVEquipoPage';
 import ActividadFormPage from '@/pages/Actividades/ActividadFormPage';
 import ActividadesPage from '@/pages/Actividades/ActividadesPage';
@@ -176,6 +177,7 @@ const AppRoutes: React.FC = () => {
         <Route path="protocols/:id/edit" element={<ProtocolFormPage />} />
 
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="roles" element={<RolesPage />} />
 
         <Route path="hv-equipo" element={<HVEquipoPage />} />
         <Route path="items" element={<ItemsPage />} />

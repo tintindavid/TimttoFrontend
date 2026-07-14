@@ -16,6 +16,20 @@ interface EvidenceUploaderProps {
   disabled?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
   onSaved?: (evidencias: Evidencia[]) => void;
+  /**
+   * When set to true, opens the native file picker on mount / when it flips
+   * from false to true. The uploader immediately calls `onAutoOpenHandled` so
+   * the parent can clear the flag (otherwise the picker would open again on
+   * every render).
+   */
+  autoOpenPicker?: boolean;
+  onAutoOpenHandled?: () => void;
+  /**
+   * Fired after the user picked at least one file. Useful for the parent to
+   * jump into the evidencias tab so the user can complete the description
+   * and hit Save without hunting for the section.
+   */
+  onFilesAdded?: () => void;
 }
 
 interface PendingEvidence {
@@ -37,6 +51,9 @@ const EvidenceUploader: React.FC<EvidenceUploaderProps> = ({
   disabled = false,
   onDirtyChange,
   onSaved,
+  autoOpenPicker,
+  onAutoOpenHandled,
+  onFilesAdded,
 }) => {
   const [pending, setPending] = useState<PendingEvidence[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +92,15 @@ const EvidenceUploader: React.FC<EvidenceUploaderProps> = ({
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
+
+  // Let a parent open the file picker on demand (used by the camera shortcut
+  // in the report header). We clear the flag immediately via onAutoOpenHandled
+  // so a re-render doesn't trigger a second dialog.
+  useEffect(() => {
+    if (!autoOpenPicker || disabled || atCap) return;
+    fileInputRef.current?.click();
+    onAutoOpenHandled?.();
+  }, [autoOpenPicker, disabled, atCap, onAutoOpenHandled]);
 
   const galleryImages = useMemo(
     () => [
@@ -122,6 +148,7 @@ const EvidenceUploader: React.FC<EvidenceUploaderProps> = ({
     }));
     setPending((prev) => [...prev, ...newPending]);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (newPending.length > 0) onFilesAdded?.();
   };
 
   const handlePendingDescChange = (id: string, value: string) => {
@@ -130,6 +157,10 @@ const EvidenceUploader: React.FC<EvidenceUploaderProps> = ({
 
   const handleSave = async () => {
     if (pending.length === 0) return;
+    // Guard against double-tap on mobile: without this, a rapid second click
+    // fires a parallel mutateAsync while the first request is still in flight,
+    // causing the same files to be uploaded twice and appear duplicated.
+    if (uploadMutation.isLoading) return;
     setError(null);
     try {
       const response = await uploadMutation.mutateAsync({
@@ -141,12 +172,18 @@ const EvidenceUploader: React.FC<EvidenceUploaderProps> = ({
       setPending([]);
       onSaved?.(response.data?.evidencias ?? evidencias);
     } catch (err: any) {
-      const message =
-        err?.response?.data?.error?.message ||
-        err?.response?.data?.message ||
-        err?.message ||
-        'Failed to upload evidences';
+      const isTimeout = err?.code === 'ECONNABORTED' || /timeout/i.test(err?.message || '');
+      const message = isTimeout
+        ? 'La subida está tardando más de lo esperado. Refrescamos para verificar si las evidencias ya se guardaron; revisa antes de reintentar para evitar duplicados.'
+        : err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to upload evidences';
       setError(message);
+      // Even on failure, notify the parent so it refetches the report — the
+      // backend may have actually persisted the evidences before the client
+      // gave up on the request.
+      onSaved?.(evidencias);
     }
   };
 

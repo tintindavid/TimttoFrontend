@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { Container, Row, Col, Button, Spinner, Card, Alert, Badge, ProgressBar, Dropdown } from 'react-bootstrap';
+import { Container, Row, Col, Button, Spinner, Card, Alert, Badge, ProgressBar, Dropdown, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { useOTs, useDeleteOt } from '@/hooks/useOTs';
 import DataTable from '@/components/common/DataTable';
+import OtNotasModal from '@/components/ots/OtNotasModal';
 import { useNavigate } from 'react-router-dom';
-import { FaEye, FaEdit, FaTrash, FaPlay, FaUserPlus, FaBan, FaEllipsisV, FaPause, FaCheckCircle, FaRedo } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaPlay, FaUserPlus, FaBan, FaEllipsisV, FaPause, FaCheckCircle, FaRedo, FaStickyNote } from 'react-icons/fa';
 
 const OTsPage: React.FC = () => {
   const [page] = useState(1);
   const { data, isLoading, error } = useOTs({ page, limit: 100 });
   const deleteMutation = useDeleteOt();
   const navigate = useNavigate();
+  // Which OT the notas modal is currently open for. Null when closed.
+  const [notasOtId, setNotasOtId] = useState<string | null>(null);
 
   console.log('OTsPage data:', data);
   
@@ -90,12 +93,54 @@ const OTsPage: React.FC = () => {
   };
 
   const columns = [
-    { 
-      key: 'Consecutivo', 
+    {
+      key: 'Consecutivo',
       label: 'N° OT',
       render: (row: any) => (
-        <span className="fw-bold text-primary">{row.Consecutivo || row.numeroOT || 'N/A'}</span>
-      )
+        // Hyperlink to the OT detail so the technician can jump in with a
+        // single click without opening the actions menu.
+        <Button
+          variant="link"
+          className="fw-bold text-primary p-0 text-decoration-none"
+          onClick={() => navigate(`/ots/${row._id}`)}
+        >
+          {row.Consecutivo || row.numeroOT || 'N/A'}
+        </Button>
+      ),
+    },
+    {
+      key: 'notas',
+      label: 'Notas',
+      render: (row: any) => {
+        const count = Array.isArray(row.notas) ? row.notas.length : 0;
+        return (
+          <OverlayTrigger
+            placement="top"
+            overlay={<Tooltip id={`notas-${row._id}`}>Ver / agregar notas</Tooltip>}
+          >
+            <Button
+              variant="link"
+              size="sm"
+              className="text-secondary p-0 position-relative"
+              onClick={() => setNotasOtId(row._id)}
+              aria-label="Notas"
+            >
+              <FaStickyNote size={18} />
+              {count > 0 && (
+                <Badge
+                  bg="warning"
+                  text="dark"
+                  pill
+                  className="position-absolute top-0 start-100 translate-middle"
+                  style={{ fontSize: '0.65rem' }}
+                >
+                  {count}
+                </Badge>
+              )}
+            </Button>
+          </OverlayTrigger>
+        );
+      },
     },
     { 
       key: 'ClienteId', 
@@ -176,6 +221,14 @@ const OTsPage: React.FC = () => {
 
       {isLoading && <div className="d-flex justify-content-center my-4"><Spinner animation="border" variant="primary" /></div>}
       {Boolean(error) && <Alert variant="danger">Error al cargar las OTs.</Alert>}
+
+      {notasOtId && (
+        <OtNotasModal
+          show={Boolean(notasOtId)}
+          onHide={() => setNotasOtId(null)}
+          otId={notasOtId}
+        />
+      )}
 
       {data && (
         <Card className="tt-card">

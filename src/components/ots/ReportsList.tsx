@@ -1,16 +1,24 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, Table, Button, Badge } from 'react-bootstrap';
 import { Reporte } from '@/types/reporte.types';
 import { FaPlay, FaCheck, FaTimes, FaClock } from 'react-icons/fa';
+import ReportSearchBar, { matchesReportSearch } from './ReportSearchBar';
 
 interface ReportsListProps {
   reportes: Reporte[];
   onReporteSelect: (reporte: Reporte) => void;
+  /** Reserved for future filter chips (marca/modelo/estado). Search input is always on. */
   showFilters?: boolean;
 }
 
-const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, showFilters = false }) => {
-  console.log('ReportsList - Reportes:', reportes);
+const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredReportes = useMemo(
+    () => reportes.filter((reporte) => matchesReportSearch(reporte, searchTerm)),
+    [reportes, searchTerm],
+  );
+
   const getEstadoIcon = (estado: string) => {
     switch (estado) {
       case 'Pendiente': return <FaClock className="text-info" />;
@@ -31,39 +39,41 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, sh
     }
   };
 
-  const getProcesadoBadge = (procesado: true) => {
-    return procesado ? (
-      <Badge bg="success" className="ms-2">
-        <FaCheck className="me-1" />
-        Procesado
-      </Badge>
-    ) : (
-      <Badge bg="secondary" className="ms-2">
-        Pendiente
-      </Badge>
-    );
-  };
+  const totalCount = reportes.length;
+  const shownCount = filteredReportes.length;
 
   return (
     <Card className="mb-4">
-      <Card.Header className="d-flex justify-content-between align-items-center">
-        <h5 className="mb-0">
-          📋 Reportes de Equipos ({reportes.length})
-        </h5>
-        <small className="text-muted">
-          {reportes.filter(r => r.procesado).length} procesados • {' '}
-          {reportes.filter(r => !r.procesado).length} pendientes
-        </small>
+      <Card.Header className="d-flex flex-column flex-md-row justify-content-md-between align-items-md-center gap-2">
+        <div>
+          <h5 className="mb-0">
+            📋 Reportes de Equipos ({shownCount}{shownCount !== totalCount ? ` de ${totalCount}` : ''})
+          </h5>
+          <small className="text-muted">
+            {reportes.filter((r) => r.procesado).length} procesados •{' '}
+            {reportes.filter((r) => !r.procesado).length} pendientes
+          </small>
+        </div>
+        <div style={{ minWidth: '260px', maxWidth: '480px', width: '100%' }}>
+          <ReportSearchBar value={searchTerm} onChange={setSearchTerm} />
+        </div>
       </Card.Header>
       <Card.Body className="p-0">
-        {reportes.length === 0 ? (
+        {totalCount === 0 ? (
           <div className="text-center py-4">
             <p className="text-muted mb-0">No hay reportes asociados a esta OT</p>
           </div>
+        ) : filteredReportes.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="text-muted mb-0">
+              Ningún reporte coincide con "{searchTerm.trim()}". Limpia el filtro para volver a ver todos.
+            </p>
+          </div>
         ) : (
-          <div className="table-responsive"
-              style={{ maxHeight: '75vh', overflowY: 'auto' }} // Ajuste para evitar que la tabla crezca demasiado y cause problemas de rendimiento
-              >
+          <div
+            className="table-responsive"
+            style={{ maxHeight: '75vh', overflowY: 'auto' }}
+          >
             <Table hover className="mb-0">
               <thead className="table-light">
                 <tr>
@@ -75,7 +85,7 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, sh
                 </tr>
               </thead>
               <tbody>
-                {reportes.map((reporte) => (
+                {filteredReportes.map((reporte) => (
                   <tr key={reporte._id}>
                     <td>{reporte.consecutivo}</td>
                     <td>
@@ -84,6 +94,11 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, sh
                         <small className="text-muted">
                           {reporte.equipoSnapshot.Marca} • {reporte.equipoSnapshot.Modelo} • S/N: {reporte.equipoSnapshot.Serie || 'N/A'}
                         </small>
+                        {reporte.equipoSnapshot.Inventario && (
+                          <div>
+                            <small className="text-muted">Inv: {reporte.equipoSnapshot.Inventario}</small>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td>
@@ -112,11 +127,11 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, sh
                     <td className="text-center">
                       <Button
                         size="sm"
-                        variant={reporte.procesado ? "outline-primary" : "primary"}
+                        variant={reporte.procesado ? 'outline-primary' : 'primary'}
                         onClick={() => onReporteSelect(reporte)}
                         disabled={reporte.estado === 'Cancelado'}
                       >
-                        {reporte.estado==='Procesado' || reporte.estado==='Cerrado' || reporte.estado==='Cancelado' ? (
+                        {reporte.estado === 'Procesado' || reporte.estado === 'Cerrado' || reporte.estado === 'Cancelado' ? (
                           <>
                             <FaCheck className="me-1" />
                             Ver Detalle

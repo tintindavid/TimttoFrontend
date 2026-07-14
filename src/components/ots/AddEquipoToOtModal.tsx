@@ -77,21 +77,35 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
     setFilterSerie('');
   };
 
-  const handleCreateNew = async () => {
+  // Called by EquipoForm after it successfully creates the equipo. We take
+  // the freshly created equipoId and attach it to the OT in the same flow —
+  // before this, the user had to reopen the modal and search for it in the
+  // "existing" tab.
+  const handleCreateNew = async (created?: { _id?: string; [key: string]: unknown }) => {
     setLoading(true);
     setError(null);
 
     try {
-      // El EquipoForm ya crea el equipo internamente
-      // Simplemente llamamos onSuccess para refrescar datos
-      if (onSuccess) {
-        onSuccess();
+      const newEquipoId = created?._id;
+      if (!newEquipoId) {
+        throw new Error('No se recibió el ID del equipo recién creado.');
       }
+
+      const response = await api.post(`/ots/${otId}/equipos`, {
+        equipos: [{ equipoId: newEquipoId }],
+        createReport: true,
+      });
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || 'No fue posible adjuntar el equipo a la OT.');
+      }
+
+      if (onSuccess) onSuccess();
       onHide();
       setActiveTab('new');
     } catch (err: any) {
       console.error('Error creando equipo en OT:', err);
-      setError(err.response?.data?.message || 'Error al agregar el equipo');
+      setError(err.response?.data?.message || err.message || 'Error al agregar el equipo');
     } finally {
       setLoading(false);
     }

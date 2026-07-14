@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaCogs, FaTools, FaUsers, FaClipboardList, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaTicketAlt, FaQrcode, FaLayerGroup, FaCity } from 'react-icons/fa';
+import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield, FaTicketAlt, FaQrcode, FaLayerGroup, FaCity } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
 import { useAuth } from '@/context/AuthContext';
 import './Sidebar.css';
@@ -26,9 +26,9 @@ const baseMenu: MenuItem[] = [
     icon: <FaTools />,
     subItems: [
       { id: 'actividades', label: 'Actividades', path: '/actividades' },
-      { id: 'items', label: 'Items', path: '/items' },
       { id: 'protocolos', label: 'Protocolos', path: '/protocols' },
-      { id: 'hv-equipo', label: 'HV Equipo', path: '/hv-equipo' },
+      { id: 'items', label: 'Items', path: '/items' }
+
     ],
   },
   {
@@ -54,6 +54,7 @@ const baseMenu: MenuItem[] = [
   { id: 'diario', label: 'Diario', path: '/diario', icon: <FaBook /> },
   { id: 'customers', label: 'Clientes', path: '/customers', icon: <FaBuilding /> },
   { id: 'users', label: 'Usuarios', path: '/users', icon: <FaUsers /> },
+  { id: 'roles', label: 'Roles', path: '/roles', icon: <FaUserShield /> },
   { id: 'settings', label: 'Configuración', path: '/settings', icon: <FaCog /> },
 ];
 
