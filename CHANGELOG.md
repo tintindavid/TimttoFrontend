@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.5.0...v1.6.0) (2026-07-14)
+
+
+### Features
+
+* rbac granular, historial, notas ot, guía rápida, verificación de parámetros y personal ([b965ea7](https://github.com/tintindavid/TimttoFrontend/commit/b965ea7e378d9793cf5a07d5acc29e934b7629cf))
+
 # [1.5.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.4.0...v1.5.0) (2026-07-05)
 
 
