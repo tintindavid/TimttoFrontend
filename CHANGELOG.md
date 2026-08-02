@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.6.0...v1.7.0) (2026-08-02)
+
+
+### Features
+
+* **client-portal:** portal SPA + admin OT tooling + review/sign flow ([b2ff3d6](https://github.com/tintindavid/TimttoFrontend/commit/b2ff3d6c244ccdf48c4f5aae2b7faf3b8557e108))
+
 # [1.6.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.5.0...v1.6.0) (2026-07-14)
 
 
