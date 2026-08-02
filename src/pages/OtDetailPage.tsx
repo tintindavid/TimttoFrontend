@@ -198,6 +198,23 @@ const OtDetailPage: React.FC = () => {
     }
   }, [refetchReportes, reportes]);
 
+  // Soft-deletes a Pendiente report from the OT list (2026-08-02). Backend
+  // rejects any other estado with 409 REPORT_NOT_DELETABLE, so we don't
+  // need extra client-side gating beyond what ReportsList already applies
+  // (button only shown for Pendiente). Refetches on success so the row
+  // disappears; error propagates so ReportsList shows the backend message.
+  const handleDeleteReporte = useCallback(
+    async (reporte: Reporte) => {
+      if (!reporte._id) return;
+      await reporteService.deleteReporte(reporte._id);
+      await refetchReportes();
+      if (selectedReporte && selectedReporte._id === reporte._id) {
+        setSelectedReporte(null);
+      }
+    },
+    [refetchReportes, selectedReporte],
+  );
+
   // Función para refrescar datos y actualizar el reporte seleccionado
   const handleRefreshData = useCallback(async () => {
     try {
@@ -626,17 +643,19 @@ const OtDetailPage: React.FC = () => {
             <Tab.Content>
               {/* Overview Tab */}
               <Tab.Pane eventKey="overview">
-                    <ReportsList 
+                    <ReportsList
                       reportes={reportes}
                       onReporteSelect={handleReporteSelect}
+                      onDeleteReporte={handleDeleteReporte}
                     />
               </Tab.Pane>
 
               {/* Reports Tab */}
               <Tab.Pane eventKey="reports">
-                <ReportsList 
+                <ReportsList
                   reportes={reportesPendientes}
                   onReporteSelect={handleReporteSelect}
+                  onDeleteReporte={handleDeleteReporte}
                   showFilters={true}
                 />
               </Tab.Pane>

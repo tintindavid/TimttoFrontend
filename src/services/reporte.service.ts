@@ -102,6 +102,15 @@ export const reporteService = {
     return response.data;
   },
 
+  // Soft-deletes a report. Backend enforces `estado: 'Pendiente'` (any other
+  // state throws 409 REPORT_NOT_DELETABLE). Uses the same admin endpoint
+  // that already existed for internal cleanups (`DELETE /reports/:id`) —
+  // only the estado gate is new (2026-08-02).
+  deleteReporte: async (reporteId: string) => {
+    const response = await api.delete<ApiResponse<null>>(`/reports/${reporteId}`);
+    return response.data;
+  },
+
   // Delete activity
   deleteActividad: async (reporteId: string, actividadId: string) => {
     const response = await api.delete<ApiResponse<null>>(
