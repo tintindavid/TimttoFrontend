@@ -1,0 +1,95 @@
+import React from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { Alert, Button, Spinner, Table } from 'react-bootstrap';
+import { useSheetsHistory } from '@/hooks/portal/useSheetsHistory';
+import { publicPortalService } from '@/services/publicPortal.service';
+import { PortalSheet } from '@/types/publicPortal.types';
+
+const formatDate = (iso?: string | null): string => {
+  if (!iso) return '—';
+  try {
+    return new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(
+      new Date(iso)
+    );
+  } catch {
+    return iso;
+  }
+};
+
+/**
+ * `/portal/:token/historial` — lists `SheetWork` generated from the current
+ * token (D12). Polls every 3s while any sheet is `pdfStatus: 'pending'`
+ * via `useSheetsHistory`, stops once every sheet is `ready`/`error`.
+ */
+const PortalSheetsHistory: React.FC = () => {
+  const { token } = useParams<{ token: string }>();
+  const { data, isLoading, isError } = useSheetsHistory(token);
+  const sheets: PortalSheet[] = data?.data?.sheets ?? [];
+
+  return (
+    <>
+      <div className="mb-3">
+        <Link to={`/portal/${token}`}>&larr; Volver al listado</Link>
+      </div>
+      <h4 className="mb-3">Historial de firmas</h4>
+
+      {isLoading && (
+        <div className="text-center py-5">
+          <Spinner animation="border" aria-label="Cargando historial" />
+        </div>
+      )}
+
+      {!isLoading && isError && (
+        <Alert variant="danger">No fue posible cargar el historial.</Alert>
+      )}
+
+      {!isLoading && !isError && sheets.length === 0 && (
+        <p className="text-muted">
+          Aún no has firmado ninguna hoja de trabajo desde este acceso.
+        </p>
+      )}
+
+      {!isLoading && !isError && sheets.length > 0 && (
+        <Table striped bordered responsive>
+          <thead>
+            <tr>
+              <th># Hoja</th>
+              <th>OT</th>
+              <th>Firmada el</th>
+              <th>PDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sheets.map((sheet) => (
+              <tr key={sheet._id}>
+                <td>{sheet.numeroHoja}</td>
+                <td>{sheet.otConsecutivo}</td>
+                <td>{formatDate(sheet.signedAt)}</td>
+                <td>
+                  {sheet.pdfStatus === 'ready' && (
+                    <a href={publicPortalService.getSheetPdfUrl(token as string, sheet._id)} download>
+                      <Button variant="outline-primary" size="sm">
+                        Descargar PDF
+                      </Button>
+                    </a>
+                  )}
+                  {sheet.pdfStatus === 'pending' && (
+                    <span className="text-muted">
+                      <Spinner animation="border" size="sm" className="me-2" aria-label="Generando PDF" />
+                      Generando PDF...
+                    </span>
+                  )}
+                  {sheet.pdfStatus === 'error' && (
+                    <span className="text-danger">No se pudo generar el PDF</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </>
+  );
+};
+
+export default PortalSheetsHistory;

@@ -8,6 +8,7 @@ import CustomerServiciosSection from '@/components/customers/CustomerServiciosSe
 import CustomerEquiposSection from '@/components/customers/CustomerEquiposSection';
 import CustomerOTsSection from '@/components/customers/CustomerOTsSection';
 import CustomerQrsSection from '@/components/customers/CustomerQrsSection';
+import ClientTokensTab from '@/pages/Customers/ClientTokensTab';
 import { useAuth } from '@/context/AuthContext';
 import { dataQueryOptions } from '@/config/queryClient';
 
@@ -138,6 +139,13 @@ const CustomerDetailPage: React.FC = () => {
             {isAdmin && (
               <Tab eventKey="qrs" title="QRs">
                 <CustomerQrsSection customerId={customer._id!} />
+              </Tab>
+            )}
+
+            {/* Accesos cliente — admin-only, per client-portal-token-and-readonly */}
+            {isAdmin && (
+              <Tab eventKey="client-tokens" title="Accesos cliente">
+                <ClientTokensTab customerId={customer._id!} />
               </Tab>
             )}
           </Tabs>

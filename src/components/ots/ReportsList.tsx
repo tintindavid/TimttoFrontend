@@ -1,18 +1,30 @@
 import React, { useMemo, useState } from 'react';
-import { Card, Table, Button, Badge } from 'react-bootstrap';
+import { Card, Table, Button, Badge, Modal, OverlayTrigger, Popover, Spinner, Alert } from 'react-bootstrap';
 import { Reporte } from '@/types/reporte.types';
-import { FaPlay, FaCheck, FaTimes, FaClock } from 'react-icons/fa';
+import { FaPlay, FaCheck, FaTimes, FaClock, FaTrash, FaStickyNote } from 'react-icons/fa';
 import ReportSearchBar, { matchesReportSearch } from './ReportSearchBar';
 
 interface ReportsListProps {
   reportes: Reporte[];
   onReporteSelect: (reporte: Reporte) => void;
+  /**
+   * Optional. When provided, a delete affordance appears next to the row
+   * action for reports in `estado: 'Pendiente'` (backend refuses any other
+   * state with 409 `REPORT_NOT_DELETABLE`; this frontend gate stops the
+   * click before it happens). Parent decides how to persist (e.g. calls
+   * `reportService.delete(id)` + refetches the OT). Receives the reporte
+   * so callers can display its consecutivo in a toast.
+   */
+  onDeleteReporte?: (reporte: Reporte) => Promise<void> | void;
   /** Reserved for future filter chips (marca/modelo/estado). Search input is always on. */
   showFilters?: boolean;
 }
 
-const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect }) => {
+const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, onDeleteReporte }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<Reporte | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const filteredReportes = useMemo(
     () => reportes.filter((reporte) => matchesReportSearch(reporte, searchTerm)),
@@ -41,6 +53,25 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect }) 
 
   const totalCount = reportes.length;
   const shownCount = filteredReportes.length;
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete || !onDeleteReporte) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDeleteReporte(pendingDelete);
+      setPendingDelete(null);
+    } catch (err) {
+      const msg =
+        (err as { response?: { data?: { message?: string; error?: { code?: string } } } })
+          ?.response?.data?.message ||
+        (err as Error)?.message ||
+        'No fue posible eliminar el reporte.';
+      setDeleteError(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <Card className="mb-4">
@@ -87,7 +118,45 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect }) 
               <tbody>
                 {filteredReportes.map((reporte) => (
                   <tr key={reporte._id}>
-                    <td>{reporte.consecutivo}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2">
+                        <span>{reporte.consecutivo}</span>
+                        {reporte.clientNote?.text && (
+                          <OverlayTrigger
+                            trigger={['hover', 'focus', 'click']}
+                            placement="right"
+                            overlay={
+                              <Popover id={`note-popover-${reporte._id}`}>
+                                <Popover.Header as="h6">
+                                  Nota del cliente
+                                  {reporte.clientNote.updatedAt && (
+                                    <small className="text-muted d-block fw-normal">
+                                      {new Date(reporte.clientNote.updatedAt).toLocaleString('es-CO', {
+                                        dateStyle: 'medium',
+                                        timeStyle: 'short',
+                                      })}
+                                    </small>
+                                  )}
+                                </Popover.Header>
+                                <Popover.Body style={{ whiteSpace: 'pre-wrap' }}>
+                                  {reporte.clientNote.text}
+                                </Popover.Body>
+                              </Popover>
+                            }
+                          >
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="p-0 text-info"
+                              aria-label={`Nota del cliente en ${reporte.consecutivo}`}
+                              title="El cliente dejó una nota sobre este reporte"
+                            >
+                              <FaStickyNote />
+                            </Button>
+                          </OverlayTrigger>
+                        )}
+                      </div>
+                    </td>
                     <td>
                       <div>
                         <div className="fw-bold">{reporte.equipoSnapshot.ItemText}</div>
@@ -125,24 +194,37 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect }) 
                       </div>
                     </td>
                     <td className="text-center">
-                      <Button
-                        size="sm"
-                        variant={reporte.procesado ? 'outline-primary' : 'primary'}
-                        onClick={() => onReporteSelect(reporte)}
-                        disabled={reporte.estado === 'Cancelado'}
-                      >
-                        {reporte.estado === 'Procesado' || reporte.estado === 'Cerrado' || reporte.estado === 'Cancelado' ? (
-                          <>
-                            <FaCheck className="me-1" />
-                            Ver Detalle
-                          </>
-                        ) : (
-                          <>
-                            <FaPlay className="me-1" />
-                            Trabajar
-                          </>
+                      <div className="d-inline-flex gap-1">
+                        <Button
+                          size="sm"
+                          variant={reporte.procesado ? 'outline-primary' : 'primary'}
+                          onClick={() => onReporteSelect(reporte)}
+                          disabled={reporte.estado === 'Cancelado'}
+                        >
+                          {reporte.estado === 'Procesado' || reporte.estado === 'Cerrado' || reporte.estado === 'Cancelado' ? (
+                            <>
+                              <FaCheck className="me-1" />
+                              Ver Detalle
+                            </>
+                          ) : (
+                            <>
+                              <FaPlay className="me-1" />
+                              Trabajar
+                            </>
+                          )}
+                        </Button>
+                        {onDeleteReporte && reporte.estado === 'Pendiente' && (
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => setPendingDelete(reporte)}
+                            aria-label={`Eliminar reporte ${reporte.consecutivo}`}
+                            title="Eliminar reporte pendiente"
+                          >
+                            <FaTrash />
+                          </Button>
                         )}
-                      </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -151,6 +233,44 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect }) 
           </div>
         )}
       </Card.Body>
+
+      <Modal
+        show={pendingDelete !== null}
+        onHide={() => (isDeleting ? null : setPendingDelete(null))}
+        centered
+      >
+        <Modal.Header closeButton={!isDeleting}>
+          <Modal.Title>Eliminar reporte</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            Vas a eliminar el reporte <strong>{pendingDelete?.consecutivo}</strong> —{' '}
+            {pendingDelete?.equipoSnapshot.ItemText}.
+          </p>
+          <p className="mb-0 small text-muted">
+            Solo se pueden eliminar reportes en estado <strong>Pendiente</strong>. Una vez que el técnico empieza
+            a trabajarlos, quedan como parte del historial de la OT.
+          </p>
+          {deleteError && (
+            <Alert variant="danger" className="mt-3 mb-0">
+              {deleteError}
+            </Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            onClick={() => setPendingDelete(null)}
+            disabled={isDeleting}
+          >
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleConfirmDelete} disabled={isDeleting}>
+            {isDeleting && <Spinner as="span" animation="border" size="sm" className="me-2" />}
+            Eliminar reporte
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Card>
   );
 };

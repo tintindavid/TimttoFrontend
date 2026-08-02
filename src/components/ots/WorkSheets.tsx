@@ -455,7 +455,14 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                 {hojasTrabajo.map((hoja: SheetWork) => (
                   <tr key={hoja._id}>
                     <td>
-                      <div className="fw-bold">{hoja.numeroHoja}</div>
+                      <div className="fw-bold">
+                        {hoja.numeroHoja}
+                        {hoja.source === 'client-portal' && (
+                          <Badge bg="info" className="ms-1">
+                            Portal
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <Badge bg="info">

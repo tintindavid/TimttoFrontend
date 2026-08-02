@@ -383,7 +383,14 @@ const HojasTrabajoTab: React.FC = () => {
                   {worksheets.map((hoja: SheetWork) => (
                     <tr key={hoja._id}>
                       <td>
-                        <div className="fw-bold">{hoja.numeroHoja}</div>
+                        <div className="fw-bold">
+                          {hoja.numeroHoja}
+                          {hoja.source === 'client-portal' && (
+                            <Badge bg="info" className="ms-1">
+                              Portal
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div>{(hoja as any).clienteId?.Razonsocial || 'N/A'}</div>
