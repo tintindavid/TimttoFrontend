@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.8.0...v1.9.0) (2026-08-03)
+
+
+### Features
+
+* **portal-cliente:** filtros + descarga reportes + listado y modal admin ([e3f43a1](https://github.com/tintindavid/TimttoFrontend/commit/e3f43a1a8621d3cd1d5f14b69cfd685712abf6c5))
+
 # [1.8.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.7.0...v1.8.0) (2026-08-03)
 
 
