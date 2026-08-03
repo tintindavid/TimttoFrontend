@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PortalHome from './PortalHome';
 import { PortalConsolidatedView } from '@/types/publicPortal.types';
@@ -112,9 +112,11 @@ describe('PortalHome', () => {
 
     renderAt();
 
-    expect(screen.getByText('Monitor de signos vitales')).toBeInTheDocument(); // Procesado
-    expect(screen.queryByText('Bomba de infusión')).not.toBeInTheDocument(); // Cerrado → other tab
-    expect(screen.queryByText('Equipo cancelado')).not.toBeInTheDocument(); // Cancelado → hidden entirely
+    // Filter selects also render ItemText values as <option>, so query by
+    // the button role that ListGroup.Item action=true generates for the row.
+    expect(screen.getByRole('button', { name: /Monitor de signos vitales/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Bomba de infusión/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Equipo cancelado/ })).not.toBeInTheDocument();
   });
 
   it('Cerrados tab exposes Cerrado reports on demand', () => {
@@ -128,10 +130,11 @@ describe('PortalHome', () => {
     renderAt();
 
     // Tab label carries a badge with the count; click switches the panel.
+    // Filter selects also render the ItemText as <option>, so scope to the
+    // ListGroup row (rendered as <button>) via role for disambiguation.
     fireEvent.click(screen.getByRole('tab', { name: /Cerrados/ }));
-    expect(screen.getByText('Bomba de infusión')).toBeInTheDocument();
-    // Cancelado stays hidden even on the Cerrados tab (only Cerrado shows).
-    expect(screen.queryByText('Equipo cancelado')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Bomba de infusión/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Equipo cancelado/ })).not.toBeInTheDocument();
   });
 
   it('Cancelado reports never appear on any tab', () => {
@@ -144,6 +147,8 @@ describe('PortalHome', () => {
 
     renderAt();
 
+    // 2026-08-04: Cancelado is also excluded from the filter selects, so
+    // `queryByText` on the whole document is safe — no <option> ghosts.
     for (const tabName of ['Para revisar', 'Cerrados', 'Pendientes']) {
       fireEvent.click(screen.getByRole('tab', { name: new RegExp(tabName) }));
       expect(screen.queryByText('Equipo cancelado')).not.toBeInTheDocument();
@@ -179,7 +184,7 @@ describe('PortalHome', () => {
 
     renderAt();
 
-    fireEvent.click(screen.getByText('Monitor de signos vitales'));
+    fireEvent.click(screen.getByRole('button', { name: /Monitor de signos vitales/ }));
 
     expect(screen.getByLabelText('Cargando detalle')).toBeInTheDocument();
   });

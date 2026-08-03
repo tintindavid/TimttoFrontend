@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Form, Modal, Pagination, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { FaCopy } from 'react-icons/fa';
+import { FaCopy, FaEye } from 'react-icons/fa';
 import { useOTsByCustomer } from '@/hooks/useOTs';
 import { useCreateClientToken } from '@/hooks/clientAccessToken/useClientTokens';
 import { useUsers } from '@/hooks/useUsers';
@@ -28,6 +28,20 @@ const extractError = (
 
 const otLabel = (ot: OT): string =>
   `${ot.Consecutivo || ot._id} — ${ot.EstadoOt || 'Sin estado'}`;
+
+const formatOtDate = (iso?: string | null): string => {
+  if (!iso) return '—';
+  try {
+    return new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(new Date(iso));
+  } catch {
+    return '—';
+  }
+};
+
+// Client-side page size — the list is short (one client's OTs) but can grow
+// enough to feel unwieldy inside a modal; 10 keeps the checkbox column at a
+// stable height without needing a virtualized list.
+const OTS_PER_PAGE = 10;
 
 /**
  * Modal used from `ClientTokensTab` to create a `ClientAccessToken`.
@@ -63,6 +77,18 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clien
     [allOts, includeCerradas]
   );
 
+  const [page, setPage] = useState<number>(1);
+  const totalPages = Math.max(1, Math.ceil(availableOts.length / OTS_PER_PAGE));
+  // Snap back to page 1 whenever the underlying list shrinks past the
+  // current page (e.g. toggling "Incluir Cerradas" while on page 3).
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+  const pagedOts = useMemo(() => {
+    const start = (page - 1) * OTS_PER_PAGE;
+    return availableOts.slice(start, start + OTS_PER_PAGE);
+  }, [availableOts, page]);
+
   const createMutation = useCreateClientToken();
 
   const resetState = (): void => {
@@ -71,6 +97,7 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clien
     setAttributionUserId('');
     setSubmitError('');
     setCreatedToken(null);
+    setPage(1);
   };
 
   const handleClose = (): void => {
@@ -216,7 +243,15 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clien
               className="mb-3"
             />
 
-            <Form.Label>Seleccione las OT a compartir</Form.Label>
+            <div className="d-flex justify-content-between align-items-end mb-1">
+              <Form.Label className="mb-0">Seleccione las OT a compartir</Form.Label>
+              {availableOts.length > 0 && (
+                <span className="small text-muted">
+                  {selectedOtIds.length} seleccionada{selectedOtIds.length === 1 ? '' : 's'} ·{' '}
+                  {availableOts.length} total
+                </span>
+              )}
+            </div>
             {loadingOts ? (
               <div className="text-center py-3">
                 <Spinner size="sm" animation="border" aria-label="Cargando OTs" />
@@ -226,18 +261,57 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clien
                 Este cliente no tiene OT disponibles para compartir.
               </Alert>
             ) : (
-              <div className="border rounded p-2" style={{ maxHeight: 260, overflowY: 'auto' }}>
-                {availableOts.map((ot) => (
-                  <Form.Check
-                    key={ot._id}
-                    type="checkbox"
-                    id={`create-token-ot-${ot._id}`}
-                    label={otLabel(ot)}
-                    checked={!!ot._id && selectedOtIds.includes(ot._id)}
-                    onChange={() => ot._id && toggleOt(ot._id)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="border rounded" style={{ maxHeight: 320, overflowY: 'auto' }}>
+                  {pagedOts.map((ot) => (
+                    <div
+                      key={ot._id}
+                      className="d-flex align-items-center justify-content-between gap-2 px-2 py-2 border-bottom"
+                    >
+                      <Form.Check
+                        type="checkbox"
+                        id={`create-token-ot-${ot._id}`}
+                        label={otLabel(ot)}
+                        checked={!!ot._id && selectedOtIds.includes(ot._id)}
+                        onChange={() => ot._id && toggleOt(ot._id)}
+                        className="flex-grow-1"
+                      />
+                      <span className="small text-muted text-nowrap">
+                        {formatOtDate(ot.FechaCreacion || ot.createdAt)}
+                      </span>
+                      {/* Eye button abre el detalle de la OT en otra pestaña
+                          para no romper el flujo del modal de creación. */}
+                      <a
+                        href={ot._id ? `/ots/${ot._id}` : undefined}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="btn btn-sm btn-outline-secondary"
+                        title="Ver detalle de la OT en nueva pestaña"
+                        aria-label={`Ver detalle de ${ot.Consecutivo || 'OT'}`}
+                      >
+                        <FaEye />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="d-flex justify-content-center mt-2">
+                    <Pagination size="sm" className="mb-0">
+                      <Pagination.Prev
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                      />
+                      <Pagination.Item active>
+                        {page} / {totalPages}
+                      </Pagination.Item>
+                      <Pagination.Next
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                      />
+                    </Pagination>
+                  </div>
+                )}
+              </>
             )}
           </Modal.Body>
           <Modal.Footer>
