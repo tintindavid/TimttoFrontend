@@ -86,6 +86,10 @@ export const PERMISSIONS = {
 
   PDF_REPORTS_GENERATE: 'pdf-reports:generate',
 
+  // Portal cliente — permite crear/administrar los accesos (tokens) del
+  // portal de cliente. Nombre en español para reflejar la UI (2026-08-03).
+  PORTAL_CLIENTE_CREAR: 'client-access-tokens:create',
+
   CRONOGRAMAS_READ: 'cronogramas:read',
   CRONOGRAMAS_CREATE: 'cronogramas:create',
   CRONOGRAMAS_UPDATE: 'cronogramas:update',

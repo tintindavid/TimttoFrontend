@@ -22,6 +22,27 @@ vi.mock('@/hooks/useOTs', () => ({
   }),
 }));
 
+// New (2026-08-03): the modal loads users with fileFirma to populate the
+// "Técnico que firmará" selector. `technician-a` gets picked when we want
+// to exercise the attribution branch.
+vi.mock('@/hooks/useUsers', () => ({
+  useUsers: () => ({
+    data: {
+      data: [
+        { _id: 'me', fullName: 'Me Admin', email: 'me@test.co' },
+        { _id: 'tech1', fullName: 'Tech One', email: 't1@test.co' },
+      ],
+    },
+    isLoading: false,
+  }),
+}));
+
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { _id: 'me', fullName: 'Me Admin', email: 'me@test.co', role: 'admin' },
+  }),
+}));
+
 const mutateAsync = vi.fn();
 vi.mock('@/hooks/clientAccessToken/useClientTokens', () => ({
   useCreateClientToken: () => ({ mutateAsync, isLoading: false }),
@@ -57,7 +78,7 @@ describe('CreateTokenModal', () => {
     expect(submitButton).toBeDisabled();
   });
 
-  it('submits the selected OTs and shows the public URL step', async () => {
+  it('submits the selected OTs without attributionUserId when using the default (Yo)', async () => {
     mutateAsync.mockResolvedValueOnce({
       data: { id: 'tok1', token: 'abc123', url: 'https://app.timtto.co/portal/abc123' },
     });
@@ -78,7 +99,29 @@ describe('CreateTokenModal', () => {
     expect(toast.success).toHaveBeenCalledWith('Acceso creado correctamente.');
   });
 
-  it('shows a friendly error toast when the admin has no signature on file', async () => {
+  it('sends attributionUserId when the admin picks another técnico', async () => {
+    mutateAsync.mockResolvedValueOnce({
+      data: { id: 'tok2', token: 'xyz789', url: 'https://app.timtto.co/portal/xyz789' },
+    });
+
+    renderModal();
+
+    fireEvent.click(screen.getByLabelText(/OT-001/));
+    fireEvent.change(screen.getByLabelText(/Técnico que firmará/), {
+      target: { value: 'tech1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Crear acceso' }));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        clienteId: 'c1',
+        otIds: ['ot1'],
+        attributionUserId: 'tech1',
+      });
+    });
+  });
+
+  it('shows a friendly error toast when the attributed técnico has no firma', async () => {
     mutateAsync.mockRejectedValueOnce({
       response: {
         data: {
@@ -95,7 +138,7 @@ describe('CreateTokenModal', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        'Tu perfil no tiene firma cargada. Súbela desde tu perfil antes de emitir accesos cliente.'
+        'El técnico seleccionado no tiene firma cargada. Elige otro o pídele que la suba.'
       );
     });
   });

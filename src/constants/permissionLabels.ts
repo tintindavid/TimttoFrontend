@@ -36,6 +36,7 @@ export const RESOURCE_LABELS: Record<string, ResourceLabel> = {
   reports: { plural: 'Reportes', singular: 'reporte' },
   informes: { plural: 'Informes', singular: 'informe' },
   'pdf-reports': { plural: 'PDF de Reportes', singular: 'PDF de reporte' },
+  'client-access-tokens': { plural: 'Accesos Cliente (Portal)', singular: 'acceso cliente' },
   cronogramas: { plural: 'Cronogramas', singular: 'cronograma' },
   'actividad-mtto': { plural: 'Actividades de Mantenimiento', singular: 'actividad de mantenimiento' },
   'actividad-reporte': { plural: 'Actividades en Reportes', singular: 'actividad en reporte' },

@@ -4,7 +4,10 @@ import { toast } from 'react-toastify';
 import { FaCopy } from 'react-icons/fa';
 import { useOTsByCustomer } from '@/hooks/useOTs';
 import { useCreateClientToken } from '@/hooks/clientAccessToken/useClientTokens';
+import { useUsers } from '@/hooks/useUsers';
+import { useAuth } from '@/context/AuthContext';
 import { OT } from '@/types/ot.types';
+import { User } from '@/types/user.types';
 import { ClientAccessTokenCreateResponse } from '@/types/clientAccessToken.types';
 
 interface CreateTokenModalProps {
@@ -34,13 +37,23 @@ const otLabel = (ot: OT): string =>
 const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clienteId }) => {
   const [selectedOtIds, setSelectedOtIds] = useState<string[]>([]);
   const [includeCerradas, setIncludeCerradas] = useState<boolean>(false);
+  const [attributionUserId, setAttributionUserId] = useState<string>('');
   const [submitError, setSubmitError] = useState<string>('');
   const [createdToken, setCreatedToken] = useState<ClientAccessTokenCreateResponse | null>(null);
+
+  const { user: currentUser } = useAuth();
 
   // `useOTsByCustomer` has its own `enabled: !!customerId` guard; the modal
   // is only ever mounted with a valid `clienteId` from `ClientTokensTab`.
   const { data: otsData, isLoading: loadingOts } = useOTsByCustomer(clienteId, {});
   const allOts: OT[] = (otsData?.data ?? []) as OT[];
+
+  // Only users with fileFirma can be attributed as técnico signer (2026-08-03).
+  // limit:100 is a safety cap — the modal is a Select, not a picker, so most
+  // tenants land well under this. If we ever hit tenants with more signers,
+  // switch to a react-select async pattern.
+  const { data: usersData, isLoading: loadingUsers } = useUsers({ hasFirma: true, limit: 100 });
+  const usersWithFirma: User[] = (usersData?.data ?? []) as User[];
 
   const availableOts = useMemo(
     () =>
@@ -55,6 +68,7 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clien
   const resetState = (): void => {
     setSelectedOtIds([]);
     setIncludeCerradas(false);
+    setAttributionUserId('');
     setSubmitError('');
     setCreatedToken(null);
   };
@@ -80,14 +94,24 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clien
     }
 
     try {
-      const res = await createMutation.mutateAsync({ clienteId, otIds: selectedOtIds });
+      const res = await createMutation.mutateAsync({
+        clienteId,
+        otIds: selectedOtIds,
+        // Only send when the user picked someone other than themselves — the
+        // backend defaults to caller when the field is absent.
+        ...(attributionUserId && attributionUserId !== currentUser?._id
+          ? { attributionUserId }
+          : {}),
+      });
       setCreatedToken(res.data);
       toast.success('Acceso creado correctamente.');
     } catch (err) {
       const { message, code } = extractError(err);
       const friendly =
         code === 'USER_SIGNATURE_MISSING'
-          ? 'Tu perfil no tiene firma cargada. Súbela desde tu perfil antes de emitir accesos cliente.'
+          ? 'El técnico seleccionado no tiene firma cargada. Elige otro o pídele que la suba.'
+          : code === 'ATTRIBUTION_USER_NOT_FOUND'
+          ? 'El técnico seleccionado no existe o no pertenece a este tenant.'
           : code === 'OT_CLIENT_MISMATCH'
           ? 'Alguna de las OT seleccionadas no pertenece a este cliente.'
           : code === 'OT_NOT_AVAILABLE'
@@ -145,6 +169,43 @@ const CreateTokenModal: React.FC<CreateTokenModalProps> = ({ show, onHide, clien
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
             {submitError && <Alert variant="danger">{submitError}</Alert>}
+
+            <Form.Group className="mb-3" controlId="createTokenAttributionUser">
+              <Form.Label>Técnico que firmará las HTs</Form.Label>
+              {loadingUsers ? (
+                <div className="text-muted small">
+                  <Spinner size="sm" animation="border" className="me-2" aria-label="Cargando técnicos" />
+                  Cargando técnicos con firma...
+                </div>
+              ) : usersWithFirma.length === 0 ? (
+                <Alert variant="warning" className="mb-0 py-2 small">
+                  Ningún usuario tiene firma cargada. Pide a un técnico que suba su firma antes de emitir accesos.
+                </Alert>
+              ) : (
+                <>
+                  <Form.Select
+                    value={attributionUserId}
+                    onChange={(e) => setAttributionUserId(e.target.value)}
+                  >
+                    <option value="">
+                      {currentUser
+                        ? `Yo (${currentUser.fullName || currentUser.firstName || currentUser.email})`
+                        : 'Yo (creador del acceso)'}
+                    </option>
+                    {usersWithFirma
+                      .filter((u) => u._id && u._id !== currentUser?._id)
+                      .map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.fullName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email}
+                        </option>
+                      ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    Esta atribución no se puede cambiar después de crear el acceso.
+                  </Form.Text>
+                </>
+              )}
+            </Form.Group>
 
             <Form.Check
               type="checkbox"

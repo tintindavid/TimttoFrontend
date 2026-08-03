@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
-import { Alert, Badge, Button, Form, Modal, OverlayTrigger, Spinner, Tooltip } from 'react-bootstrap';
+import { Alert, Badge, Button, Col, Form, Modal, OverlayTrigger, Row, Spinner, Tooltip } from 'react-bootstrap';
 import { FaInfoCircle } from 'react-icons/fa';
 import { useReportDetail } from '@/hooks/portal/useReportDetail';
 import {
@@ -221,89 +221,96 @@ const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ token, reportId, 
                   action so the client can flag discrepancies (e.g. "este
                   equipo está fuera de servicio aunque el reporte lo marca
                   operativo") before signing. */}
+              {/* Footer del modal: dos columnas responsivas (nota | firma) en
+                  ≥md, apiladas en mobile. Reduce la altura vertical vs. el
+                  layout anterior (nota-encima-firma) sin sacar nada. */}
               <div
                 className="border-top bg-light px-3 py-3"
                 aria-label="Sección de firma del cliente"
                 style={{ flexShrink: 0 }}
               >
-                <div className="mb-3">
-                  <div className="d-flex justify-content-between align-items-center mb-1">
-                    <label
-                      htmlFor="client-note-textarea"
-                      className="fw-semibold text-uppercase small text-muted mb-0"
-                    >
-                      Nota del cliente (opcional)
-                    </label>
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="small text-muted">
-                        {noteDraft.length}/{CLIENT_NOTE_MAX}
-                      </span>
-                      {updateNote.isError && (
-                        <span className="small text-danger">No se pudo guardar</span>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline-primary"
-                        onClick={handleSaveNote}
-                        disabled={!noteDirty || updateNote.isLoading || noteDraft.length > CLIENT_NOTE_MAX}
+                <Row className="g-3 align-items-start">
+                  <Col xs={12} md={7}>
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <label
+                        htmlFor="client-note-textarea"
+                        className="fw-semibold text-uppercase small text-muted mb-0"
                       >
-                        {updateNote.isLoading && (
-                          <Spinner as="span" animation="border" size="sm" className="me-1" />
+                        Nota del cliente (opcional)
+                      </label>
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="small text-muted">
+                          {noteDraft.length}/{CLIENT_NOTE_MAX}
+                        </span>
+                        {updateNote.isError && (
+                          <span className="small text-danger">No se pudo guardar</span>
                         )}
-                        {noteDraft.trim() === '' && report?.clientNote ? 'Eliminar nota' : 'Guardar nota'}
-                      </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-primary"
+                          onClick={handleSaveNote}
+                          disabled={!noteDirty || updateNote.isLoading || noteDraft.length > CLIENT_NOTE_MAX}
+                        >
+                          {updateNote.isLoading && (
+                            <Spinner as="span" animation="border" size="sm" className="me-1" />
+                          )}
+                          {noteDraft.trim() === '' && report?.clientNote ? 'Eliminar nota' : 'Guardar nota'}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <Form.Control
-                    id="client-note-textarea"
-                    as="textarea"
-                    rows={2}
-                    maxLength={CLIENT_NOTE_MAX}
-                    placeholder="Agrega observaciones sobre este reporte (p. ej. si el equipo está fuera de servicio en la práctica)"
-                    value={noteDraft}
-                    onChange={(e) => {
-                      setNoteDraft(e.target.value);
-                      setNoteDirty(true);
-                    }}
-                  />
-                </div>
+                    <Form.Control
+                      id="client-note-textarea"
+                      as="textarea"
+                      rows={2}
+                      maxLength={CLIENT_NOTE_MAX}
+                      placeholder="Agrega observaciones sobre este reporte (p. ej. si el equipo está fuera de servicio en la práctica)"
+                      value={noteDraft}
+                      onChange={(e) => {
+                        setNoteDraft(e.target.value);
+                        setNoteDirty(true);
+                      }}
+                    />
+                  </Col>
 
-                <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                  <div style={{ flex: '1 1 300px', minWidth: 0 }}>
-                    <div className="fw-semibold text-uppercase small text-muted">
-                      Firma del cliente
+                  <Col xs={12} md={5}>
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <span className="fw-semibold text-uppercase small text-muted">
+                        Firma del cliente
+                      </span>
+                      <OverlayTrigger
+                        placement="top"
+                        overlay={<Tooltip id="review-help-tooltip">{REVIEW_HELP_TEXT}</Tooltip>}
+                      >
+                        <Button
+                          variant="link"
+                          className="p-0 text-secondary"
+                          aria-label="Ayuda sobre la revisión"
+                          tabIndex={0}
+                        >
+                          <FaInfoCircle size={18} />
+                        </Button>
+                      </OverlayTrigger>
                     </div>
-                    <div className="small text-muted">
+                    <div className="small text-muted mb-2">
                       {isReviewed
                         ? 'Ya marcaste este reporte como recibido a satisfacción. La firma manuscrita se recolecta al terminar de revisar todos los reportes.'
                         : 'Al marcar como revisado indicas que recibes el reporte a satisfacción. La firma manuscrita final se recolecta al terminar de revisar todos los reportes.'}
                     </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                    <OverlayTrigger
-                      placement="top"
-                      overlay={<Tooltip id="review-help-tooltip">{REVIEW_HELP_TEXT}</Tooltip>}
-                    >
-                      <Button
-                        variant="link"
-                        className="p-1 text-secondary"
-                        aria-label="Ayuda sobre la revisión"
-                        tabIndex={0}
-                      >
-                        <FaInfoCircle size={20} />
-                      </Button>
-                    </OverlayTrigger>
-                    {isReviewToggleDisabled ? (
-                      <OverlayTrigger
-                        overlay={<Tooltip id="review-disabled-tooltip">{disabledReason}</Tooltip>}
-                      >
-                        <span className="d-inline-block">{reviewButton}</span>
-                      </OverlayTrigger>
-                    ) : (
-                      reviewButton
-                    )}
-                  </div>
-                </div>
+                    {/* Full-width en mobile (d-grid), alineado a la derecha
+                        en ≥md para que no se estire raro en la columna. */}
+                    <div className="d-grid d-md-flex justify-content-md-end">
+                      {isReviewToggleDisabled ? (
+                        <OverlayTrigger
+                          overlay={<Tooltip id="review-disabled-tooltip">{disabledReason}</Tooltip>}
+                        >
+                          <span className="d-inline-block">{reviewButton}</span>
+                        </OverlayTrigger>
+                      ) : (
+                        reviewButton
+                      )}
+                    </div>
+                  </Col>
+                </Row>
               </div>
             </>
           )}
