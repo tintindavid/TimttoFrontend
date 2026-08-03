@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.7.0...v1.8.0) (2026-08-03)
+
+
+### Features
+
+* **portal-cliente:** permission gate + attribution selector + modal UX ([2e45851](https://github.com/tintindavid/TimttoFrontend/commit/2e45851d1c731707e0047205e7115465bf02b6b7))
+
 # [1.7.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.6.0...v1.7.0) (2026-08-02)
 
 
