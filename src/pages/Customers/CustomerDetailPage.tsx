@@ -10,6 +10,8 @@ import CustomerOTsSection from '@/components/customers/CustomerOTsSection';
 import CustomerQrsSection from '@/components/customers/CustomerQrsSection';
 import ClientTokensTab from '@/pages/Customers/ClientTokensTab';
 import { useAuth } from '@/context/AuthContext';
+import { useHasPermission } from '@/hooks/usePermission';
+import { PERMISSIONS } from '@/constants/permissions';
 import { dataQueryOptions } from '@/config/queryClient';
 
 const CustomerDetailPage: React.FC = () => {
@@ -17,6 +19,10 @@ const CustomerDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  // Portal-cliente tab visibility is permission-gated as of 2026-08-03
+  // (previously role=admin only). Admin still passes because the backfill
+  // adds the permission to the seeded Admin role in every tenant.
+  const canManageClientPortal = useHasPermission(PERMISSIONS.PORTAL_CLIENTE_CREAR);
   
   // Query optimizada con configuración específica
   const { data, isLoading, error } = useCustomer(id || '', {
@@ -142,8 +148,8 @@ const CustomerDetailPage: React.FC = () => {
               </Tab>
             )}
 
-            {/* Accesos cliente — admin-only, per client-portal-token-and-readonly */}
-            {isAdmin && (
+            {/* Accesos cliente — gated by PORTAL_CLIENTE_CREAR (2026-08-03). */}
+            {canManageClientPortal && (
               <Tab eventKey="client-tokens" title="Accesos cliente">
                 <ClientTokensTab customerId={customer._id!} />
               </Tab>

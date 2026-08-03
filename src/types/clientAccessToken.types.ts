@@ -44,6 +44,12 @@ export interface ClientAccessToken {
 export interface ClientAccessTokenCreatePayload {
   clienteId: string;
   otIds: string[];
+  /**
+   * Optional (2026-08-03): user whose firma stamps every HT auto-generated
+   * from this token when the client signs. Defaults to the caller on the
+   * backend. Must be a user with `fileFirma`. Immutable after creation.
+   */
+  attributionUserId?: string;
 }
 
 /** Shape returned once by `POST /api/client-tokens` — the only time the raw token is guaranteed fresh. */
