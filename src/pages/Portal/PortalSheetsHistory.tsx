@@ -56,7 +56,8 @@ const PortalSheetsHistory: React.FC = () => {
               <th># Hoja</th>
               <th>OT</th>
               <th>Firmada el</th>
-              <th>PDF</th>
+              <th>Hoja de trabajo</th>
+              <th>Reportes</th>
             </tr>
           </thead>
           <tbody>
@@ -69,7 +70,7 @@ const PortalSheetsHistory: React.FC = () => {
                   {sheet.pdfStatus === 'ready' && (
                     <a href={publicPortalService.getSheetPdfUrl(token as string, sheet._id)} download>
                       <Button variant="outline-primary" size="sm">
-                        Descargar PDF
+                        Descargar HT
                       </Button>
                     </a>
                   )}
@@ -81,6 +82,26 @@ const PortalSheetsHistory: React.FC = () => {
                   )}
                   {sheet.pdfStatus === 'error' && (
                     <span className="text-danger">No se pudo generar el PDF</span>
+                  )}
+                </td>
+                <td>
+                  {/* ZIP with one PDF per report of the sheet — same content
+                      the admin gets from Hojas de trabajo > Reportes PDF.
+                      Requires the sheet PDF to be ready because the reports
+                      only exist as a signed batch once the sheet flow
+                      finished; while pending we hide the button to avoid
+                      a half-signed download. */}
+                  {sheet.pdfStatus === 'ready' ? (
+                    <a
+                      href={publicPortalService.getSheetReportsZipUrl(token as string, sheet._id)}
+                      download
+                    >
+                      <Button variant="outline-secondary" size="sm">
+                        Descargar reportes (ZIP)
+                      </Button>
+                    </a>
+                  ) : (
+                    <span className="text-muted small">—</span>
                   )}
                 </td>
               </tr>

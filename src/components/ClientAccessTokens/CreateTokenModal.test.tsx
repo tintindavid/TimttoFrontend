@@ -85,7 +85,7 @@ describe('CreateTokenModal', () => {
 
     renderModal();
 
-    fireEvent.click(screen.getByLabelText(/OT-001/));
+    fireEvent.click(screen.getByRole('checkbox', { name: /OT-001/i }));
     const submitButton = screen.getByRole('button', { name: 'Crear acceso' });
     expect(submitButton).not.toBeDisabled();
 
@@ -106,7 +106,7 @@ describe('CreateTokenModal', () => {
 
     renderModal();
 
-    fireEvent.click(screen.getByLabelText(/OT-001/));
+    fireEvent.click(screen.getByRole('checkbox', { name: /OT-001/i }));
     fireEvent.change(screen.getByLabelText(/Técnico que firmará/), {
       target: { value: 'tech1' },
     });
@@ -133,7 +133,7 @@ describe('CreateTokenModal', () => {
 
     renderModal();
 
-    fireEvent.click(screen.getByLabelText(/OT-001/));
+    fireEvent.click(screen.getByRole('checkbox', { name: /OT-001/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Crear acceso' }));
 
     await waitFor(() => {

@@ -71,12 +71,18 @@ describe('PortalSheetsHistory', () => {
     expect(screen.getByText('HT-0001')).toBeInTheDocument();
     expect(screen.getByText('HT-0002')).toBeInTheDocument();
 
-    const downloadButton = screen.getByRole('button', { name: 'Descargar PDF' });
-    expect(downloadButton).toBeInTheDocument();
-    const link = downloadButton.closest('a');
-    expect(link).toHaveAttribute(
+    // 2026-08-04: "Descargar PDF" was renamed "Descargar HT" and a second
+    // action "Descargar reportes (ZIP)" was added per client transparency ask.
+    const htDownload = screen.getByRole('button', { name: 'Descargar HT' });
+    expect(htDownload.closest('a')).toHaveAttribute(
       'href',
       expect.stringContaining('/public/client-view/tok-123/sheets/sheet-1/pdf')
+    );
+
+    const reportsDownload = screen.getByRole('button', { name: 'Descargar reportes (ZIP)' });
+    expect(reportsDownload.closest('a')).toHaveAttribute(
+      'href',
+      expect.stringContaining('/public/client-view/tok-123/sheets/sheet-1/reports-pdf')
     );
 
     expect(screen.getByText('Generando PDF...')).toBeInTheDocument();

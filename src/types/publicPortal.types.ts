@@ -47,6 +47,10 @@ export interface PortalReportSummary {
   estado: PortalReportEstado;
   equipoSnapshot?: PortalEquipoSnapshot;
   fechaFinalizado?: string | null;
+  /** Promoted from detail 2026-08-04 for the portal list "Fecha" column. */
+  fechaProcesado?: string | null;
+  /** Promoted from detail 2026-08-04 for the portal list operative state column. */
+  estadoOperativo?: PortalEstadoOperativo | null;
   /** Client review mark set via `POST/DELETE .../reports/:reportId/review` (D1). */
   clientReview: { reviewedAt: string } | null;
   /**

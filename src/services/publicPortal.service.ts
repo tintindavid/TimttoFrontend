@@ -122,6 +122,15 @@ class PublicPortalService {
   }
 
   /**
+   * ZIP with one PDF per report of the signed sheet (2026-08-04). Backend
+   * scopes by token+sheet ownership so a link leaked to another token/tenant
+   * still 404s. Rendered as an `<a href download>` in the history table.
+   */
+  getSheetReportsZipUrl(token: string, sheetId: string): string {
+    return `${PUBLIC_BASE_URL}${this.endpoint}/${token}/sheets/${sheetId}/reports-pdf`;
+  }
+
+  /**
    * URL of the HTML view of a single report — same document the client will
    * receive as PDF at handover. Feeds the `<iframe>` inside
    * `ReportDetailModal` so the visual matches the deliverable exactly.

@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Alert, Badge, Button, Card, ListGroup, Spinner, Tab, Tabs } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, ListGroup, Row, Spinner, Tab, Tabs } from 'react-bootstrap';
 import { usePortalConsolidated } from '@/hooks/portal/usePortalData';
 import { PortalOt, PortalReportEstado, PortalReportSummary } from '@/types/publicPortal.types';
 import PortalRevoked from './PortalRevoked';
 import ReportDetailModal from './ReportDetailModal';
 import SignatureModal, { SignatureModalReportGroup } from './SignatureModal';
+import PortalFilterBar, {
+  EMPTY_FILTERS,
+  PortalFilterValues,
+  reportMatchesFilters,
+} from './PortalFilterBar';
 
 const estadoBadgeVariant = (estado: PortalReportEstado): string => {
   switch (estado) {
@@ -20,6 +25,22 @@ const estadoBadgeVariant = (estado: PortalReportEstado): string => {
     case 'Pendiente':
     default:
       return 'warning';
+  }
+};
+
+const estadoOperativoBadgeVariant = (estado?: string | null): string => {
+  switch (estado) {
+    case 'Operativo':
+      return 'success';
+    case 'Fuera de Servicio':
+      return 'danger';
+    case 'En Mantenimiento':
+    case 'En Reparacion':
+      return 'info';
+    case 'Espera de Repuestos':
+      return 'warning';
+    default:
+      return 'light';
   }
 };
 
@@ -63,6 +84,9 @@ const PortalHome: React.FC = () => {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('para-revisar');
+  // Single filter shared across every tab — the client asked explicitly for
+  // "un solo filtro para todas las ordenes" (2026-08-04).
+  const [filters, setFilters] = useState<PortalFilterValues>(EMPTY_FILTERS);
 
   const { data, isLoading, isError, error } = usePortalConsolidated(token);
 
@@ -89,6 +113,12 @@ const PortalHome: React.FC = () => {
 
   const view = data?.data;
   const ots: PortalOt[] = view?.ots ?? [];
+  // Cancelled reports are hidden from every tab and every UI surface —
+  // keep them out of the filter selects too so the client never sees a
+  // ghost option that hides everything when picked (2026-08-04).
+  const filterableOts: PortalOt[] = ots
+    .map((ot) => ({ ...ot, reports: ot.reports.filter((r) => r.estado !== 'Cancelado') }))
+    .filter((ot) => ot.reports.length > 0);
 
   /** A report is "reviewed and pending signature" when clientReview is set AND
    *  the report is not yet in a signed sheet. The sign endpoint enforces the
@@ -115,7 +145,8 @@ const PortalHome: React.FC = () => {
   const handleSignClick = () => setSignatureOpen(true);
 
   // Per-tab counts drive the badges next to each tab label so the client
-  // sees where the action lives at a glance ("Para revisar (3)").
+  // sees where the action lives at a glance ("Para revisar (3)"). Filtered
+  // counts (2026-08-04) so the badges match what's actually shown.
   const counts: Record<TabKey, number> = {
     'para-revisar': 0,
     cerrados: 0,
@@ -123,6 +154,7 @@ const PortalHome: React.FC = () => {
   };
   for (const ot of ots) {
     for (const r of ot.reports) {
+      if (!reportMatchesFilters(r, filters)) continue;
       (Object.keys(TAB_FILTERS) as TabKey[]).forEach((key) => {
         if (TAB_FILTERS[key](r)) counts[key] += 1;
       });
@@ -132,13 +164,24 @@ const PortalHome: React.FC = () => {
   const renderOtsForTab = (tabKey: TabKey) => {
     const filter = TAB_FILTERS[tabKey];
     const otsForTab = ots
-      .map((ot) => ({ ...ot, reports: ot.reports.filter(filter) }))
+      .map((ot) => ({
+        ...ot,
+        reports: ot.reports.filter((r) => filter(r) && reportMatchesFilters(r, filters)),
+      }))
       .filter((ot) => ot.reports.length > 0);
 
     if (otsForTab.length === 0) {
+      const isFilterActive =
+        filters.q !== '' ||
+        filters.item !== '' ||
+        filters.marca !== '' ||
+        filters.ubicacion !== '' ||
+        filters.estadoOperativo !== '';
       return (
         <Alert variant="light" className="text-muted small mb-0">
-          {tabKey === 'para-revisar'
+          {isFilterActive
+            ? 'Ningún equipo coincide con los filtros aplicados.'
+            : tabKey === 'para-revisar'
             ? 'No hay reportes pendientes de tu revisión en este momento.'
             : 'No hay reportes en este estado.'}
         </Alert>
@@ -164,36 +207,75 @@ const PortalHome: React.FC = () => {
             <div className="small text-muted">Avance: {ot.Avance ?? 0}%</div>
           </Card.Header>
           <ListGroup variant="flush">
-            {ot.reports.map((report: PortalReportSummary) => (
-              <ListGroup.Item
-                key={report._id}
-                action
-                onClick={() => setSelectedReportId(report._id)}
-                className="d-flex justify-content-between align-items-center flex-wrap gap-2"
-              >
-                <div>
-                  <div>{report.equipoSnapshot?.ItemText || 'Equipo sin nombre'}</div>
-                  <div className="small text-muted">
-                    {report.equipoSnapshot?.Marca} {report.equipoSnapshot?.Modelo} ·{' '}
-                    {report.equipoSnapshot?.Serie}
-                  </div>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  <span className="small text-muted">{formatDate(report.fechaFinalizado)}</span>
-                  {report.clientNote?.text && (
-                    <Badge bg="info" pill title="Este reporte tiene una nota tuya">
-                      Nota
-                    </Badge>
-                  )}
-                  {report.clientReview && (
-                    <Badge bg="success" pill>
-                      Revisado
-                    </Badge>
-                  )}
-                  <Badge bg={estadoBadgeVariant(report.estado)}>{report.estado}</Badge>
-                </div>
-              </ListGroup.Item>
-            ))}
+            {ot.reports.map((report: PortalReportSummary) => {
+              // Prefer processed date (when the technician officially closed
+              // the report) over finalizado; falls back to finalizado for
+              // older reports that predate fechaProcesado.
+              const fechaCol = report.fechaProcesado || report.fechaFinalizado;
+              return (
+                <ListGroup.Item
+                  key={report._id}
+                  action
+                  onClick={() => setSelectedReportId(report._id)}
+                >
+                  {/* Grid interno para las 4 columnas de datos + badges.
+                      xs stacked, md 4-col grid (2026-08-04). */}
+                  <Row className="g-2 align-items-center">
+                    <Col xs={12} md={4}>
+                      <div className="fw-semibold">
+                        {report.equipoSnapshot?.ItemText || 'Equipo sin nombre'}
+                      </div>
+                      <div className="small text-muted">
+                        {report.equipoSnapshot?.Marca} {report.equipoSnapshot?.Modelo} ·{' '}
+                        {report.equipoSnapshot?.Serie}
+                      </div>
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="small">
+                        <span className="text-muted">Ubicación: </span>
+                        {report.equipoSnapshot?.Ubicacion || '—'}
+                      </div>
+                      <div className="small">
+                        <span className="text-muted">Inventario: </span>
+                        {report.equipoSnapshot?.Inventario || '—'}
+                      </div>
+                    </Col>
+                    <Col xs={6} md={2}>
+                      <div className="small text-muted mb-1">Estado operativo</div>
+                      {report.estadoOperativo ? (
+                        <Badge
+                          bg={estadoOperativoBadgeVariant(report.estadoOperativo)}
+                          text={estadoOperativoBadgeVariant(report.estadoOperativo) === 'light' ? 'dark' : undefined}
+                        >
+                          {report.estadoOperativo}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted small">—</span>
+                      )}
+                    </Col>
+                    <Col xs={6} md={2}>
+                      <div className="small text-muted mb-1">Fecha</div>
+                      <div className="small">{formatDate(fechaCol)}</div>
+                    </Col>
+                    <Col xs={6} md={1} className="text-md-end">
+                      <div className="d-flex flex-wrap gap-1 justify-content-md-end">
+                        {report.clientNote?.text && (
+                          <Badge bg="info" pill title="Este reporte tiene una nota tuya">
+                            Nota
+                          </Badge>
+                        )}
+                        {report.clientReview && (
+                          <Badge bg="success" pill>
+                            Revisado
+                          </Badge>
+                        )}
+                        <Badge bg={estadoBadgeVariant(report.estado)}>{report.estado}</Badge>
+                      </div>
+                    </Col>
+                  </Row>
+                </ListGroup.Item>
+              );
+            })}
           </ListGroup>
         </Card>
       );
@@ -242,7 +324,9 @@ const PortalHome: React.FC = () => {
       {ots.length === 0 ? (
         <Alert variant="info">No hay órdenes de trabajo asociadas a este acceso.</Alert>
       ) : (
-        <Tabs
+        <>
+          <PortalFilterBar ots={filterableOts} value={filters} onChange={setFilters} />
+          <Tabs
           activeKey={activeTab}
           onSelect={(k) => k && setActiveTab(k as TabKey)}
           className="mb-3"
@@ -293,6 +377,7 @@ const PortalHome: React.FC = () => {
             {renderOtsForTab('pendientes')}
           </Tab>
         </Tabs>
+        </>
       )}
 
       <ReportDetailModal
