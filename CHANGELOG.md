@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.9.0...v1.10.0) (2026-08-06)
+
+
+### Features
+
+* **portal:** close reports on client sign + late-sign + image upload ([19e20c2](https://github.com/tintindavid/TimttoFrontend/commit/19e20c2a4deca2cb81b6981ff28b441dda8bdf12))
+
 # Unreleased (2026-08-05)
 
 
