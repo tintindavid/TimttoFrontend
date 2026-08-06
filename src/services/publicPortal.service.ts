@@ -4,6 +4,8 @@ import {
   PortalConsolidatedView,
   PortalReportDetail,
   PortalSheetsResponse,
+  PortalSignLateRequest,
+  PortalSignLateResponse,
   PortalSignRequest,
   PortalSignResponse,
 } from '@/types/publicPortal.types';
@@ -108,6 +110,25 @@ class PublicPortalService {
   async listSheets(token: string): Promise<ApiResponse<PortalSheetsResponse>> {
     const res = await publicPortalApi.get<ApiResponse<PortalSheetsResponse>>(
       `${this.endpoint}/${token}/sheets`
+    );
+    return res.data;
+  }
+
+  /**
+   * Attaches a signature to a `SheetWork` created without one (empty
+   * `firmaFile`) — `portal-signature-flow` D3/D7. Restricted server-side to
+   * the token that originally created the sheet; a mismatched token gets a
+   * 404 `SHEET_NOT_FOUND` (no existence leak), an already-signed sheet gets
+   * 409 `SHEET_ALREADY_SIGNED`.
+   */
+  async signExistingSheet(
+    token: string,
+    sheetId: string,
+    payload: PortalSignLateRequest
+  ): Promise<ApiResponse<PortalSignLateResponse>> {
+    const res = await publicPortalApi.post<ApiResponse<PortalSignLateResponse>>(
+      `${this.endpoint}/${token}/sheets/${sheetId}/sign`,
+      payload
     );
     return res.data;
   }

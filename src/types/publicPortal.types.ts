@@ -157,9 +157,31 @@ export interface PortalSheet {
   signedAt: string;
   pdfStatus: 'pending' | 'ready' | 'error';
   pdfUrl: string | null;
+  /**
+   * Firebase URL of the drawn/uploaded signature, or `null`/empty when the
+   * sheet was created without one (`portal-signature-flow`, D7). Drives the
+   * "Firmar hoja" late-sign affordance in `PortalSheetsHistory`.
+   */
+  firmaFile: string | null;
 }
 
 /** `GET /public/client-view/:token/sheets` response body. */
 export interface PortalSheetsResponse {
   sheets: PortalSheet[];
+}
+
+/**
+ * Body of `POST /public/client-view/:token/sheets/:sheetId/sign` — late-sign
+ * a `SheetWork` whose `firmaFile` is empty (`portal-signature-flow`
+ * Requirement "Portal late-sign endpoint for empty-signature sheets").
+ * Reuses the `signature` shape of `PortalSignRequest` without `reportIds`.
+ */
+export interface PortalSignLateRequest {
+  signature: PortalSignRequest['signature'];
+}
+
+/** Response body of the late-sign endpoint. */
+export interface PortalSignLateResponse {
+  sheetId: string;
+  pdfStatus: 'pending';
 }

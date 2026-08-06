@@ -115,6 +115,19 @@ export const sheetworkService = {
     });
     return response.data;
   },
+
+  /**
+   * Cierra los reportes en estado `Procesado` vinculados a esta hoja de
+   * trabajo (`sheet-report-closure`, retro-mitigación de HTs firmadas antes
+   * de la corrección del flujo del portal). Solo afecta reportes de esta
+   * hoja — no toca otros estados ni otras hojas.
+   */
+  closeReports: async (sheetId: string) => {
+    const response = await api.post<ApiResponse<{ modifiedCount: number }>>(
+      `/worksheets/${sheetId}/close-reports`
+    );
+    return response.data;
+  },
 };
 
 export default sheetworkService;

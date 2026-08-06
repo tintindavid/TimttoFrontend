@@ -1,11 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
 import { FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import SignatureCanvas from 'react-signature-canvas';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSign } from '@/hooks/portal/useSign';
+import { useSignExistingSheet } from '@/hooks/portal/useSignExistingSheet';
+import { portalKeys } from '@/hooks/portal/usePortalData';
 import { AxiosError } from 'axios';
+import SignatureInput, { SignatureInputHandle } from '@/components/common/SignatureInput';
 import SignPreviewModal from './SignPreviewModal';
 
 export interface SignatureModalReportGroup {
@@ -19,6 +22,16 @@ interface SignatureModalProps {
   onHide: () => void;
   token: string | undefined;
   reviewedReports: SignatureModalReportGroup[];
+  /**
+   * `'initial'` (default) creates N `SheetWork` via `POST /sign` from the
+   * reviewed-reports selection. `'late'` attaches a signature to a single
+   * already-existing `SheetWork` whose `firmaFile` is empty, via
+   * `POST /sheets/:sheetId/sign` (`portal-signature-flow` D3/D7) — opened
+   * from `PortalSheetsHistory`'s "Firmar hoja" icon.
+   */
+  mode?: 'initial' | 'late';
+  /** Required when `mode === 'late'`. */
+  sheetId?: string;
 }
 
 interface BackendErrorBody {
@@ -35,35 +48,37 @@ const CARGO_MAX = 100;
 const OBSERVACIONES_MAX = 2000;
 
 /**
- * Opened from `PortalHome`'s "Firmar N reportes" button. Captures the
- * manuscript signature (canvas), signer name + cargo + observaciones, and
- * fires `POST /sign` via `useSign`.
+ * Opened from `PortalHome`'s "Firmar N reportes" button (`mode: 'initial'`,
+ * default) or from `PortalSheetsHistory`'s "Firmar hoja" icon
+ * (`mode: 'late'`). Captures the manuscript signature (via the shared
+ * `SignatureInput` — canvas or uploaded image), signer name + cargo +
+ * observaciones, and fires the matching mutation.
  *
  * Cédula was removed from the UI (2026-08-02): the backend never persisted
  * it, only length-validated it — so it was dead audit noise for the client.
  * Observaciones was added: text goes into the generated `SheetWork.observaciones`
  * and prints on the HT PDF under "Observaciones".
  *
- * Canvas offset fix: `react-signature-canvas`'s internal canvas has a
- * fixed pixel resolution while the parent stretches to 100% width, which
- * misaligns the pointer trace on desktop. `useEffect` below syncs the
- * canvas internal `width`/`height` (and the 2D context transform for
- * HiDPI) with the container's actual bounding rect on mount and on resize.
+ * The canvas-offset/HiDPI resize logic and the draw/upload toggle live in
+ * `SignatureInput` (`portal-signature-flow` D5/D8) — this component only
+ * reads its imperative handle (`getPngBase64`/`isEmpty`) at submit time.
  */
 const SignatureModal: React.FC<SignatureModalProps> = ({
   show,
   onHide,
   token,
   reviewedReports,
+  mode = 'initial',
+  sheetId,
 }) => {
   const navigate = useNavigate();
-  const sigCanvas = useRef<SignatureCanvas>(null);
-  const canvasWrapper = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const signatureRef = useRef<SignatureInputHandle>(null);
 
   const [signerName, setSignerName] = useState('');
   const [cargo, setCargo] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [canvasEmpty, setCanvasEmpty] = useState(true);
+  const [hasSignature, setHasSignature] = useState(false);
   const [invalidSignatureError, setInvalidSignatureError] = useState<string | null>(null);
   const [creatorInvalidError, setCreatorInvalidError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -78,6 +93,8 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
   } | null>(null);
 
   const signMutation = useSign(token);
+  const lateSignMutation = useSignExistingSheet(token, sheetId);
+  const activeMutation = mode === 'late' ? lateSignMutation : signMutation;
 
   const isNameValid = signerName.trim().length >= NAME_MIN && signerName.trim().length <= NAME_MAX;
   const isCargoValid = cargo.trim().length <= CARGO_MAX;
@@ -86,49 +103,20 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
   const touchedName = signerName.length > 0;
 
   const canSubmit =
-    !canvasEmpty &&
+    hasSignature &&
     isNameValid &&
     isCargoValid &&
     isObservacionesValid &&
     !creatorInvalidError &&
-    !signMutation.isLoading;
+    !activeMutation.isLoading;
 
-  // Sync the canvas internal resolution with its rendered size + device
-  // pixel ratio so mouse/touch coordinates land where the user actually
-  // clicks. Runs when the modal opens and whenever the viewport resizes.
-  useEffect(() => {
-    if (!show) return;
-    const resize = () => {
-      const wrapper = canvasWrapper.current;
-      const canvas = sigCanvas.current?.getCanvas();
-      if (!wrapper || !canvas) return;
-      const rect = wrapper.getBoundingClientRect();
-      const ratio = window.devicePixelRatio || 1;
-      // Save existing strokes so a resize doesn't erase them; react-signature-canvas
-      // exposes toData/fromData for exactly this.
-      const data = sigCanvas.current?.toData();
-      canvas.width = rect.width * ratio;
-      canvas.height = rect.height * ratio;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-      const ctx = canvas.getContext('2d');
-      ctx?.setTransform(ratio, 0, 0, ratio, 0, 0);
-      if (data && data.length > 0) {
-        sigCanvas.current?.fromData(data);
-      }
-    };
-    // Delay one frame so the modal's transition has laid out the wrapper.
-    const raf = requestAnimationFrame(resize);
-    window.addEventListener('resize', resize);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
-    };
-  }, [show]);
+  const handleSignatureChange = () => {
+    setHasSignature(!(signatureRef.current?.isEmpty() ?? true));
+  };
 
   const resetForm = () => {
-    sigCanvas.current?.clear();
-    setCanvasEmpty(true);
+    signatureRef.current?.clear();
+    setHasSignature(false);
     setSignerName('');
     setCargo('');
     setObservaciones('');
@@ -139,14 +127,9 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
   };
 
   const handleHide = () => {
-    if (signMutation.isLoading) return;
+    if (activeMutation.isLoading) return;
     resetForm();
     onHide();
-  };
-
-  const handleClearSignature = () => {
-    sigCanvas.current?.clear();
-    setCanvasEmpty(true);
   };
 
   const totalReports = useMemo(
@@ -157,13 +140,12 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
 
   const handleOpenPreview = () => {
     const reportIds = reviewedReports.flatMap((g) => g.reports.map((r) => r._id));
-    // If the client already drew a signature, ship it into the preview so
-    // they can see how it'll look on the sheet. Otherwise the preview
+    // If the client already captured a signature, ship it into the preview
+    // so they can see how it'll look on the sheet. Otherwise the preview
     // renders with an empty firma-cliente slot — still useful for layout.
-    const imagePng =
-      sigCanvas.current && !sigCanvas.current.isEmpty()
-        ? sigCanvas.current.toDataURL('image/png').replace(/^data:image\/png;base64,/, '')
-        : undefined;
+    const imagePng = signatureRef.current && !signatureRef.current.isEmpty()
+      ? signatureRef.current.getPngBase64() ?? undefined
+      : undefined;
     setPreviewPayload({
       reportIds,
       signature: {
@@ -176,29 +158,68 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
     setPreviewOpen(true);
   };
 
-  const handleEnd = () => {
-    setCanvasEmpty(Boolean(sigCanvas.current?.isEmpty()));
-  };
-
   const handleSubmit = () => {
-    if (!sigCanvas.current || sigCanvas.current.isEmpty() || !token) return;
+    if (!signatureRef.current || signatureRef.current.isEmpty() || !token) return;
+    if (mode === 'late' && !sheetId) return;
 
     setInvalidSignatureError(null);
 
-    const dataUrl = sigCanvas.current.toDataURL('image/png');
-    const imagePng = dataUrl.replace(/^data:image\/png;base64,/, '');
+    const imagePng = signatureRef.current.getPngBase64();
+    if (!imagePng) return;
+
+    const signature = {
+      imagePng,
+      signerName: signerName.trim(),
+      cargo: cargo.trim() || undefined,
+      observaciones: observaciones.trim() || undefined,
+    };
+
+    if (mode === 'late') {
+      lateSignMutation.mutate(
+        { signature },
+        {
+          onSuccess: () => {
+            resetForm();
+            onHide();
+          },
+          onError: (error: AxiosError) => {
+            const status = error.response?.status;
+            const body = error.response?.data as BackendErrorBody | undefined;
+            const code = body?.error?.code;
+
+            if (status === 400 && code === 'INVALID_SIGNATURE_IMAGE') {
+              setInvalidSignatureError(
+                'La firma no es válida. Vuelve a firmar o carga una imagen con más contenido.'
+              );
+              return;
+            }
+
+            if (status === 409 && code === 'SHEET_ALREADY_SIGNED') {
+              toast.info('Esta hoja ya tiene firma.');
+              if (token) queryClient.invalidateQueries({ queryKey: portalKeys.sheets(token) });
+              resetForm();
+              onHide();
+              return;
+            }
+
+            if (status === 404 && code === 'SHEET_NOT_FOUND') {
+              toast.error('La hoja no está disponible con este acceso.');
+              resetForm();
+              onHide();
+              return;
+            }
+
+            toast.error('No fue posible firmar. Intenta de nuevo.');
+          },
+        }
+      );
+      return;
+    }
+
     const reportIds = reviewedReports.flatMap((group) => group.reports.map((r) => r._id));
 
     signMutation.mutate(
-      {
-        reportIds,
-        signature: {
-          imagePng,
-          signerName: signerName.trim(),
-          cargo: cargo.trim() || undefined,
-          observaciones: observaciones.trim() || undefined,
-        },
-      },
+      { reportIds, signature },
       {
         onSuccess: () => {
           resetForm();
@@ -221,7 +242,9 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
           }
 
           if (status === 400 && code === 'INVALID_SIGNATURE_IMAGE') {
-            setInvalidSignatureError('La firma no es válida. Vuelve a firmar.');
+            setInvalidSignatureError(
+              'La firma no es válida. Vuelve a firmar o carga una imagen con más contenido.'
+            );
             return;
           }
 
@@ -241,65 +264,49 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
   return (
     <Modal show={show} onHide={handleHide} size="lg" centered>
       <Modal.Header closeButton>
-        <Modal.Title>Firmar recepción de reportes</Modal.Title>
+        <Modal.Title>
+          {mode === 'late' ? 'Firmar hoja de trabajo' : 'Firmar recepción de reportes'}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {creatorInvalidError && <Alert variant="danger">{creatorInvalidError}</Alert>}
 
-        <Alert variant="light" className="border">
-          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-              Se van a firmar <strong>{totalReports} reportes</strong> marcados
-              {otsCount > 1 && (
-                <>
-                  {' '}
-                  en <strong>{otsCount} órdenes de trabajo</strong>
-                </>
-              )}
-              .
-              <div className="small text-muted mt-1">
-                Se generará una hoja de trabajo por cada OT firmada.
+        {mode === 'initial' && (
+          <Alert variant="light" className="border">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                Se van a firmar <strong>{totalReports} reportes</strong> marcados
+                {otsCount > 1 && (
+                  <>
+                    {' '}
+                    en <strong>{otsCount} órdenes de trabajo</strong>
+                  </>
+                )}
+                .
+                <div className="small text-muted mt-1">
+                  Se generará una hoja de trabajo por cada OT firmada.
+                </div>
               </div>
+              <Button
+                variant="link"
+                className="p-0 text-decoration-none"
+                onClick={handleOpenPreview}
+                disabled={totalReports === 0}
+              >
+                <FaEye className="me-1" />
+                Ver cómo quedará la hoja de trabajo
+              </Button>
             </div>
-            <Button
-              variant="link"
-              className="p-0 text-decoration-none"
-              onClick={handleOpenPreview}
-              disabled={totalReports === 0}
-            >
-              <FaEye className="me-1" />
-              Ver cómo quedará la hoja de trabajo
-            </Button>
-          </div>
-        </Alert>
+          </Alert>
+        )}
 
-        <div
-          ref={canvasWrapper}
-          className="border rounded mb-2"
-          style={{ touchAction: 'none', height: 200, width: '100%' }}
-        >
-          <SignatureCanvas
-            ref={sigCanvas}
-            penColor="black"
-            onEnd={handleEnd}
-            // No className/style on the canvas here — the internal size is
-            // set by the useEffect above based on the wrapper's bounding
-            // rect, so pointer coordinates and drawn pixels stay aligned.
-            canvasProps={{ 'aria-label': 'Área de firma' }}
-          />
-        </div>
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <Button variant="link" className="p-0" onClick={handleClearSignature}>
-            Limpiar firma
-          </Button>
-          <small className="text-muted">{canvasEmpty ? 'Canvas vacío' : 'Firma capturada'}</small>
-        </div>
+        <SignatureInput ref={signatureRef} onChange={handleSignatureChange} />
         {invalidSignatureError && (
-          <div className="text-danger small mb-3">{invalidSignatureError}</div>
+          <div className="text-danger small mb-3 mt-2">{invalidSignatureError}</div>
         )}
 
         <Form>
-          <Form.Group className="mb-3" controlId="signerName">
+          <Form.Group className="mb-3 mt-3" controlId="signerName">
             <Form.Label>Nombre completo</Form.Label>
             <Form.Control
               type="text"
@@ -344,11 +351,11 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
         </Form>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={handleHide} disabled={signMutation.isLoading}>
+        <Button variant="secondary" onClick={handleHide} disabled={activeMutation.isLoading}>
           Cancelar
         </Button>
         <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit}>
-          {signMutation.isLoading && (
+          {activeMutation.isLoading && (
             <Spinner animation="border" size="sm" className="me-2" aria-label="Firmando" />
           )}
           Firmar
