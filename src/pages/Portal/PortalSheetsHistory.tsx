@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Alert, Button, Spinner, Table } from 'react-bootstrap';
+import { FaSignature } from 'react-icons/fa';
 import { useSheetsHistory } from '@/hooks/portal/useSheetsHistory';
 import { publicPortalService } from '@/services/publicPortal.service';
 import { PortalSheet } from '@/types/publicPortal.types';
+import SignatureModal from './SignatureModal';
 
 const formatDate = (iso?: string | null): string => {
   if (!iso) return '—';
@@ -25,6 +27,11 @@ const PortalSheetsHistory: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const { data, isLoading, isError } = useSheetsHistory(token);
   const sheets: PortalSheet[] = data?.data?.sheets ?? [];
+
+  // Sheet targeted by the "Firmar hoja" icon (`portal-signature-flow` D3/D7)
+  // — only rendered for sheets created without a signature (`firmaFile`
+  // empty). Opens `SignatureModal` in `mode="late"`.
+  const [signLateSheet, setSignLateSheet] = useState<PortalSheet | null>(null);
 
   return (
     <>
@@ -103,12 +110,32 @@ const PortalSheetsHistory: React.FC = () => {
                   ) : (
                     <span className="text-muted small">—</span>
                   )}
+                  {!sheet.firmaFile && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="ms-2"
+                      title="Firmar hoja"
+                      onClick={() => setSignLateSheet(sheet)}
+                    >
+                      <FaSignature />
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </Table>
       )}
+
+      <SignatureModal
+        show={!!signLateSheet}
+        onHide={() => setSignLateSheet(null)}
+        token={token}
+        reviewedReports={[]}
+        mode="late"
+        sheetId={signLateSheet?._id}
+      />
     </>
   );
 };

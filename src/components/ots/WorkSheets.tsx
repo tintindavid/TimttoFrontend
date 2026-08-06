@@ -1,15 +1,17 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, Table, Button, Badge, Modal, Form, Alert, Row, Col, InputGroup, Spinner } from 'react-bootstrap';
+import { toast } from 'react-toastify';
 import { SheetWork } from '@/types/reporte.types';
-import { FaFilePdf, FaSignature, FaPlus, FaDownload, FaSearch, FaFilter, FaTimes, FaEraser, FaEye, FaPrint } from 'react-icons/fa';
-import SignatureCanvas from 'react-signature-canvas';
+import { FaFilePdf, FaSignature, FaPlus, FaDownload, FaSearch, FaFilter, FaTimes, FaEye, FaPrint, FaCheckSquare } from 'react-icons/fa';
 import { useWorkSheets } from '@/hooks/useReportes';
+import { useCloseSheetReports } from '@/hooks/useCloseSheetReports';
 import { useAuth } from '@/context/AuthContext';
 import './WorkSheets.css';
 import { useCurrentUserData } from '@/context/userContext';
 import { ca } from 'date-fns/locale';
 import { generateBulkPDF } from '@/services/descargarPdf.service';
 import PreviewSheetWorkModal from '@/components/common/PreviewSheetWorkModal';
+import SignatureInput, { SignatureInputHandle } from '@/components/common/SignatureInput';
 import { sheetworkService } from '@/services/sheetwork.service';
 import tenantService from '@/services/tenant.service';
 
@@ -42,6 +44,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   
   // Obtener hojas de trabajo desde el backend
   const { data: hojasTrabajo = [], isLoading, isError, error, refetch } = useWorkSheets(otId);
+  const closeReportsMutation = useCloseSheetReports(otId);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [showSignCreateModal, setShowSignCreateModal] = useState(false);
@@ -52,18 +55,12 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [loadingPdfSheets, setLoadingPdfSheets] = useState<Record<string, boolean>>({});
   const [tenantData, setTenantData] = useState<any>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  
+
   // Estados para firma al crear hoja
   const [recibeNombre, setRecibeNombre] = useState('');
   const [recibeCargo, setRecibeCargo] = useState('');
-  const signaturePadRef = useRef<SignatureCanvas>(null);
-  const signatureContainerRef = useRef<HTMLDivElement>(null);
-  // Persist the drawn signature as a data URL. react-signature-canvas clears the
-  // <canvas> bitmap whenever the element resizes — which happens on mobile every
-  // time the user scrolls inside the modal or the on-screen keyboard opens. We
-  // save on stroke end and restore on resize / re-open so the signature never
-  // disappears from under the user.
-  const [savedSignatureDataURL, setSavedSignatureDataURL] = useState<string>('');
+  const createSignatureRef = useRef<SignatureInputHandle>(null);
+  const [hasCreateSignature, setHasCreateSignature] = useState(false);
 
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
@@ -202,6 +199,10 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
     setShowSignCreateModal(true);
   };
 
+  const handleCreateSignatureChange = () => {
+    setHasCreateSignature(!(createSignatureRef.current?.isEmpty() ?? true));
+  };
+
   const handleCreateSheetWithSignature = () => {
     // Validar campos
     if (!recibeNombre.trim()) {
@@ -212,10 +213,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       alert('El campo "Cargo" es obligatorio');
       return;
     }
-    // Prefer the persisted data URL — the visible canvas may have been wiped by
-    // a resize (mobile scroll / keyboard) even though the user did draw.
-    const canvasEmpty = signaturePadRef.current?.isEmpty();
-    if (canvasEmpty && !savedSignatureDataURL) {
+    if (createSignatureRef.current?.isEmpty()) {
       alert('Debe firmar para crear la hoja de trabajo');
       return;
     }
@@ -227,16 +225,17 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       return;
     }
 
-    // Obtener firma como imagen base64: si el canvas fue vaciado por resize,
-    // usar la copia persistida en state.
-    const firmaBase64 = !canvasEmpty
-      ? signaturePadRef.current?.toDataURL()
-      : savedSignatureDataURL;
+    // `onCreateSheet` expects a data URL (matches the previous
+    // `SignatureCanvas.toDataURL()` contract); `SignatureInput` returns the
+    // bare base64 payload, so re-add the prefix here.
+    const pngBase64 = createSignatureRef.current?.getPngBase64();
+    const firmaDataUrl = pngBase64 ? `data:image/png;base64,${pngBase64}` : '';
+
     // Enviar equipos con datos de recepción
     onCreateSheet(selectedEquipos, {
       recibe: recibeNombre,
       cargo: recibeCargo,
-      firma: firmaBase64 || '',
+      firma: firmaDataUrl,
       responsable: currentUserData._id,
       cargoResponsable: currentUserData?.role || 'N/A',
       fullName: currentUserData?.fullName || 'N/A',
@@ -247,50 +246,15 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
     setTimeout(() => {
       refetch();
     }, 1000);
-    
+
     // Limpiar y cerrar
     setShowSignCreateModal(false);
     setSelectedEquipos([]);
     setRecibeNombre('');
     setRecibeCargo('');
-    signaturePadRef.current?.clear();
-    setSavedSignatureDataURL('');
+    createSignatureRef.current?.clear();
+    setHasCreateSignature(false);
   };
-
-  const handleClearSignature = () => {
-    signaturePadRef.current?.clear();
-    setSavedSignatureDataURL('');
-  };
-
-  // Guardar la firma cada vez que el usuario termina un trazo.
-  const handleSignatureEnd = () => {
-    const pad = signaturePadRef.current;
-    if (!pad || pad.isEmpty()) return;
-    setSavedSignatureDataURL(pad.toDataURL());
-  };
-
-  // Restore the persisted signature into the canvas whenever the container
-  // resizes (mobile scroll, keyboard opening) — signature-canvas wipes the
-  // bitmap on resize otherwise.
-  useEffect(() => {
-    if (!showSignCreateModal) return;
-    const container = signatureContainerRef.current;
-    if (!container) return;
-
-    const restore = () => {
-      const pad = signaturePadRef.current;
-      if (!pad) return;
-      if (pad.isEmpty() && savedSignatureDataURL) {
-        pad.fromDataURL(savedSignatureDataURL);
-      }
-    };
-
-    const observer = new ResizeObserver(restore);
-    observer.observe(container);
-    // Also run once after mount so a reopened modal shows the last signature.
-    restore();
-    return () => observer.disconnect();
-  }, [showSignCreateModal, savedSignatureDataURL]);
 
   const handleSignSheet = () => {
     if (!selectedSheet || !firmaCliente.trim()) {
@@ -572,6 +536,40 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                                 <FaFilePdf className="me-1" />
                               )}
                               {isLoadingPdf ? 'Procesando...' : 'Reportes PDF'}
+                            </Button>
+                          );
+                        })()}
+                        {/* reason: the runtime SheetWork.reports payload includes `estado`
+                            beyond the narrower typed subset in reporte.types.ts — interop
+                            with the actual API response shape (sheet-report-closure). */}
+                        {hoja.reports?.some((r: any) => r.estado === 'Procesado') && (() => {
+                          const isClosingThis =
+                            closeReportsMutation.isLoading &&
+                            closeReportsMutation.variables === hoja._id;
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              title="Cerrar reportes de esta hoja"
+                              onClick={() =>
+                                closeReportsMutation.mutate(hoja._id!, {
+                                  onSuccess: () => toast.success('Reportes cerrados'),
+                                  onError: () => toast.error('No se pudo cerrar los reportes'),
+                                })
+                              }
+                              disabled={isClosingThis}
+                            >
+                              {isClosingThis ? (
+                                <Spinner
+                                  as="span"
+                                  animation="border"
+                                  size="sm"
+                                  role="status"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <FaCheckSquare />
+                              )}
                             </Button>
                           );
                         })()}
@@ -867,42 +865,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
               <Form.Label>
                 Firma <span className="text-danger">*</span>
               </Form.Label>
-              <div
-                ref={signatureContainerRef}
-                className="signature-container border rounded bg-white p-2"
-                style={{
-                  position: 'relative',
-                  touchAction: 'none'
-                }}
-              >
-                <SignatureCanvas
-                  ref={signaturePadRef}
-                  onEnd={handleSignatureEnd}
-                  canvasProps={{
-                    className: 'signature-canvas',
-                    style: {
-                      width: '100%',
-                      height: '200px',
-                      border: '2px dashed #dee2e6',
-                      borderRadius: '4px',
-                      cursor: 'crosshair'
-                    }
-                  }}
-                />
-              </div>
-              <div className="mt-2 d-flex justify-content-between align-items-center">
-                <Form.Text className="text-muted">
-                  Firme en el recuadro usando el mouse o pantalla táctil
-                </Form.Text>
-                <Button 
-                  size="sm" 
-                  variant="outline-secondary"
-                  onClick={handleClearSignature}
-                >
-                  <FaEraser className="me-1" />
-                  Limpiar Firma
-                </Button>
-              </div>
+              <SignatureInput ref={createSignatureRef} onChange={handleCreateSignatureChange} />
             </Form.Group>
           </Form>
 
@@ -922,9 +885,10 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
           >
             Volver
           </Button>
-          <Button 
-            variant="success" 
+          <Button
+            variant="success"
             onClick={handleCreateSheetWithSignature}
+            disabled={!hasCreateSignature}
           >
             <FaSignature className="me-1" />
             Crear Hoja con Firma

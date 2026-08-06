@@ -1,3 +1,12 @@
+# Unreleased (2026-08-05)
+
+
+### Features
+
+* **portal-cliente:** ícono "Firmar hoja" en el historial del portal cuando una hoja de trabajo fue creada sin firma (late-sign, `portal-signature-flow`)
+* **firma:** `SignatureModal` y el modal admin de crear HT usan el nuevo componente compartido `SignatureInput`, que admite dibujar en canvas o cargar una imagen PNG/JPG (re-codificada a PNG en el navegador)
+* **ot:** ícono junto a "Reportes PDF" en Hojas de Trabajo para cerrar los reportes `Procesado` vinculados a una hoja específica (mitigación retro para HTs firmadas antes de la corrección del flujo del portal)
+
 # [1.9.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.8.0...v1.9.0) (2026-08-03)
 
 
