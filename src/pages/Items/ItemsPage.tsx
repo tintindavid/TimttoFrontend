@@ -1,60 +1,55 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Button, Card, Spinner, Alert, Table, Form, Dropdown, Badge, InputGroup } from 'react-bootstrap';
 import { FaSearch, FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { useItems, useDeleteItem } from '@/hooks/useItems';
+import { useDebounce } from '@/hooks/useDebounce';
 import Pagination from '@/components/common/Pagination';
 import { useNavigate } from 'react-router-dom';
 
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
+type SortDirection = 'asc' | 'desc';
+
+/**
+ * Server-side listing (fix-listing-search-serverside):
+ * search + sort + pagination all travel as query params, so the input
+ * hits every record in the DB instead of only the visible page.
+ */
 const ItemsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const { data, isLoading, error } = useItems({ page, limit });
-  const deleteMutation = useDeleteItem();
+  const [searchInput, setSearchInput] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortDirection>('asc');
   const navigate = useNavigate();
 
-  const handleDelete = async (id: string) => {
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  // Reset page whenever the query params that produce a different result-set change.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, sortOrder, limit]);
+
+  const { data, isLoading, isFetching, error } = useItems({
+    page,
+    limit,
+    search: debouncedSearch || undefined,
+    sortBy: 'Nombre',
+    order: sortOrder,
+  });
+
+  const deleteMutation = useDeleteItem();
+
+  const handleDelete = async (id: string): Promise<void> => {
     if (window.confirm('¿Confirmar eliminar item?')) {
       await deleteMutation.mutateAsync(id);
     }
   };
 
-  const itemsRaw = data?.data ?? [];
+  const items = data?.data ?? [];
   const totalPages = data?.pagination?.pages ?? 1;
   const totalItems = data?.pagination?.total ?? 0;
 
-  // Filtrar y ordenar items
-  const filteredAndSortedItems = useMemo(() => {
-    let result = [...itemsRaw];
-
-    // Filtrar por búsqueda (nombre u observación)
-    if (searchTerm.trim()) {
-      const query = searchTerm.toLowerCase();
-      result = result.filter(item => 
-        item.Nombre?.toLowerCase().includes(query) ||
-        item.Observacion?.toLowerCase().includes(query)
-      );
-    }
-
-    // Ordenar por nombre
-    result.sort((a, b) => {
-      const nameA = a.Nombre?.toUpperCase() || '';
-      const nameB = b.Nombre?.toUpperCase() || '';
-      
-      if (sortOrder === 'asc') {
-        return nameA.localeCompare(nameB);
-      } else {
-        return nameB.localeCompare(nameA);
-      }
-    });
-
-    return result;
-  }, [itemsRaw, searchTerm, sortOrder]);
-
-  const handleLimitChange = (newLimit: number) => {
+  const handleLimitChange = (newLimit: number): void => {
     setLimit(newLimit);
-    setPage(1); // Reset a página 1
   };
 
   return (
@@ -71,7 +66,6 @@ const ItemsPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Filtros y búsqueda */}
       <Row className="mb-3">
         <Col md={5}>
           <Form.Group>
@@ -83,9 +77,14 @@ const ItemsPage: React.FC = () => {
               <Form.Control
                 type="text"
                 placeholder="Buscar por nombre u observación..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
               />
+              {isFetching && (
+                <InputGroup.Text>
+                  <Spinner size="sm" animation="border" />
+                </InputGroup.Text>
+              )}
             </InputGroup>
           </Form.Group>
         </Col>
@@ -98,7 +97,7 @@ const ItemsPage: React.FC = () => {
               </InputGroup.Text>
               <Form.Select
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                onChange={(e) => setSortOrder(e.target.value as SortDirection)}
               >
                 <option value="asc">A-Z (Ascendente)</option>
                 <option value="desc">Z-A (Descendente)</option>
@@ -113,50 +112,26 @@ const ItemsPage: React.FC = () => {
               value={limit}
               onChange={(e) => handleLimitChange(Number(e.target.value))}
             >
-              <option value={20}>20 items</option>
-              <option value={50}>50 items</option>
-              <option value={100}>100 items</option>
-              <option value={200}>200 items</option>
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n} items
+                </option>
+              ))}
             </Form.Select>
           </Form.Group>
         </Col>
       </Row>
 
-      {/* Contador de resultados */}
       <Row className="mb-3">
         <Col>
           <small className="text-muted">
-            Mostrando {filteredAndSortedItems.length} de {totalItems} items totales
-            {searchTerm && ' (filtrados)'}
+            Mostrando {items.length} de {totalItems} items totales
+            {debouncedSearch && ' (filtrados)'}
           </small>
         </Col>
       </Row>
 
-      {/* Controles de paginación */}
-      <Row className="mb-3" style={{ display: 'none' }}>
-        <Col md={6}>
-          <Form.Group>
-            <Form.Label>Items por página</Form.Label>
-            <Form.Select
-              value={limit}
-              onChange={(e) => handleLimitChange(Number(e.target.value))}
-              style={{ maxWidth: 200 }}
-            >
-              <option value={20}>20 items</option>
-              <option value={50}>50 items</option>
-              <option value={100}>100 items</option>
-              <option value={200}>200 items</option>
-            </Form.Select>
-          </Form.Group>
-        </Col>
-        <Col md={6} className="d-flex justify-content-end align-items-end">
-          <Badge bg="info" className="fs-6">
-            {totalItems} item{totalItems !== 1 ? 's' : ''} total{totalItems !== 1 ? 'es' : ''}
-          </Badge>
-        </Col>
-      </Row>
-
-      {isLoading ? (
+      {isLoading && !data ? (
         <div className="d-flex justify-content-center my-4">
           <Spinner animation="border" />
         </div>
@@ -165,20 +140,20 @@ const ItemsPage: React.FC = () => {
       ) : (
         <Card className="tt-card">
           <Card.Body className="p-0">
-            {filteredAndSortedItems.length === 0 ? (
+            {items.length === 0 ? (
               <Alert variant="info" className="m-4 text-center">
-                {itemsRaw.length === 0 ? (
+                {debouncedSearch ? (
                   <>
-                    <h5>No hay items disponibles</h5>
+                    <h5>Ningún item coincide con la búsqueda</h5>
+                    <p className="mb-0">No hay items que coincidan con "{debouncedSearch}".</p>
+                  </>
+                ) : (
+                  <>
+                    <h5>Aún no hay items configurados</h5>
                     <p className="mb-3">Crea tu primer item para comenzar.</p>
                     <Button variant="primary" onClick={() => navigate('/items/new')}>
                       Crear Item
                     </Button>
-                  </>
-                ) : (
-                  <>
-                    <h5>No se encontraron items</h5>
-                    <p className="mb-0">No hay items que coincidan con "{searchTerm}"</p>
                   </>
                 )}
               </Alert>
@@ -198,7 +173,7 @@ const ItemsPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAndSortedItems.map((item: any) => (
+                      {items.map((item: any) => (
                         <tr key={item._id}>
                           <td><strong>{item.Nombre}</strong></td>
                           <td>
@@ -209,9 +184,7 @@ const ItemsPage: React.FC = () => {
                             </div>
                           </td>
                           <td>
-                            {item.ProtocoloId?.nombre || (
-                              <span className="text-muted">N/A</span>
-                            )}
+                            {item.ProtocoloId?.nombre || <span className="text-muted">N/A</span>}
                           </td>
                           <td>{item.Iva}%</td>
                           <td>
@@ -219,18 +192,13 @@ const ItemsPage: React.FC = () => {
                               {item.IvaIncluido ? 'Sí' : 'No'}
                             </Badge>
                           </td>
-                          <td>
-                            ${item.Precio?.toLocaleString('es-CO') || '0'}
-                          </td>
+                          <td>${item.Precio?.toLocaleString('es-CO') || '0'}</td>
                           <td style={{ position: 'relative' }}>
                             <Dropdown align="end">
                               <Dropdown.Toggle variant="outline-secondary" size="sm">
                                 Acciones
                               </Dropdown.Toggle>
-                              <Dropdown.Menu
-                                renderOnMount
-                                popperConfig={{ strategy: 'fixed' }}
-                              >
+                              <Dropdown.Menu renderOnMount popperConfig={{ strategy: 'fixed' }}>
                                 <Dropdown.Item onClick={() => navigate(`/items/${item._id}`)}>
                                   Ver detalle
                                 </Dropdown.Item>
@@ -255,11 +223,7 @@ const ItemsPage: React.FC = () => {
 
                 {totalPages > 1 && (
                   <div className="d-flex justify-content-center p-3 border-top">
-                    <Pagination
-                      page={page}
-                      pages={totalPages}
-                      onChange={setPage}
-                    />
+                    <Pagination page={page} pages={totalPages} onChange={setPage} />
                   </div>
                 )}
               </>

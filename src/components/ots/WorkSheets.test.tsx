@@ -34,6 +34,15 @@ vi.mock('@/components/ots/ResendSignModal', () => ({
   default: () => null,
 }));
 
+const filenameModalMock = vi.fn();
+vi.mock('@/components/ots/PdfReportsFilenameModal', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    filenameModalMock(props);
+    return props.show ? <div data-testid="pdf-filename-modal">open sheet={props.sheetworkId}</div> : null;
+  },
+}));
+
 vi.mock('@/services/customer.service', () => ({
   customerService: { getById: vi.fn().mockResolvedValue({ data: { Email: 'x@y.com', correousados: [] } }) },
 }));
@@ -216,5 +225,31 @@ describe('WorkSheets — EnviadaAFirmar icons (sheetwork-remote-signature)', () 
     });
     render(<WorkSheets {...defaultProps} />);
     expect(screen.queryByTitle('Reenviar solicitud de firma')).not.toBeInTheDocument();
+  });
+});
+
+describe('WorkSheets — Reportes PDF opens filename builder modal', () => {
+  beforeEach(() => {
+    mockUseWorkSheets.mockReset();
+    mockUseCloseSheetReports.mockReset();
+    filenameModalMock.mockClear();
+    mockUseCloseSheetReports.mockReturnValue({
+      mutate: mockCloseMutate,
+      isLoading: false,
+      variables: undefined,
+    });
+  });
+
+  it('opens the PdfReportsFilenameModal when the "Reportes PDF" button is clicked (no direct download)', () => {
+    mockUseWorkSheets.mockReturnValue({
+      data: [baseSheet({ _id: 'sheet-pdf', estado: 'Firmada', reports: [{ _id: 'r1', estado: 'Cerrado' }] })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(<WorkSheets {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /reportes pdf/i }));
+    expect(screen.getByTestId('pdf-filename-modal').textContent).toContain('sheet-pdf');
   });
 });

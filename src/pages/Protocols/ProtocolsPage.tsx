@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Card,
@@ -11,66 +11,57 @@ import {
   Badge,
   Dropdown,
   Form,
-  InputGroup
+  InputGroup,
 } from 'react-bootstrap';
 import { FaSearch, FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useProtocols, useDeleteProtocol } from '@/hooks/useProtocols';
+import { useDebounce } from '@/hooks/useDebounce';
 import { ProtocolMtto } from '@/types/protocol.types';
 import ConfirmModal from '@/components/common/ConfirmModal';
 import Pagination from '@/components/common/Pagination';
 
+const PAGE_SIZE = 20;
+type SortDirection = 'asc' | 'desc';
+
+/**
+ * Server-side listing (fix-listing-search-serverside):
+ * search + sort + page all travel as query params. Debounced input to avoid
+ * a request per keystroke; keepPreviousData on the hook so paging + typing
+ * don't flicker.
+ */
 const ProtocolsPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [searchInput, setSearchInput] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortDirection>('asc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProtocol, setSelectedProtocol] = useState<ProtocolMtto | null>(null);
 
-  const { data, isLoading, error } = useProtocols({
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  // Reset to page 1 whenever the search term changes (post-debounce).
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, sortOrder]);
+
+  const { data, isLoading, isFetching, error } = useProtocols({
     page,
-    limit: 10
+    limit: PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    sortBy: 'nombre',
+    order: sortOrder,
   });
 
   const deleteMutation = useDeleteProtocol();
 
-  // Extraer datos y ordenar ANTES de los returns tempranos
   const protocols = data?.data ?? [];
   const totalPages = data?.pagination?.pages ?? 1;
-  
-  // Filtrar y ordenar protocolos
-  const filteredAndSortedProtocols = useMemo(() => {
-    let result = [...protocols];
-    
-    // Filtrar por búsqueda (nombre o descripción)
-    if (searchTerm.trim()) {
-      const query = searchTerm.toLowerCase();
-      result = result.filter(protocol => 
-        protocol.nombre?.toLowerCase().includes(query) ||
-        protocol.Descripcion?.toLowerCase().includes(query)
-      );
-    }
-    
-    // Ordenar por nombre
-    result.sort((a, b) => {
-      const nameA = a.nombre?.toUpperCase() || '';
-      const nameB = b.nombre?.toUpperCase() || '';
-      
-      if (sortOrder === 'asc') {
-        return nameA.localeCompare(nameB);
-      } else {
-        return nameB.localeCompare(nameA);
-      }
-    });
-    
-    return result;
-  }, [protocols, searchTerm, sortOrder]);
+  const totalCount = data?.pagination?.total ?? 0;
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!selectedProtocol?._id) return;
-
     try {
       await deleteMutation.mutateAsync(selectedProtocol._id);
       setShowDeleteModal(false);
@@ -80,12 +71,12 @@ const ProtocolsPage: React.FC = () => {
     }
   };
 
-  const openDeleteModal = (protocol: ProtocolMtto) => {
+  const openDeleteModal = (protocol: ProtocolMtto): void => {
     setSelectedProtocol(protocol);
     setShowDeleteModal(true);
   };
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="d-flex justify-content-center my-4">
         <Spinner animation="border" />
@@ -94,11 +85,7 @@ const ProtocolsPage: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <Alert variant="danger">
-        Error al cargar protocolos. Intenta nuevamente.
-      </Alert>
-    );
+    return <Alert variant="danger">Error al cargar protocolos. Intenta nuevamente.</Alert>;
   }
 
   return (
@@ -106,23 +93,17 @@ const ProtocolsPage: React.FC = () => {
       <Row className="align-items-center mb-4">
         <Col>
           <h1>Protocolos de Mantenimiento</h1>
-          <p className="text-muted">
-            Gestión de protocolos de mantenimiento
-          </p>
+          <p className="text-muted">Gestión de protocolos de mantenimiento</p>
         </Col>
         <Col xs="auto">
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => navigate('/protocols/new')}
-          >
+          <Button variant="primary" size="lg" onClick={() => navigate('/protocols/new')}>
             + Crear Protocolo
           </Button>
         </Col>
       </Row>
 
       <Row className="mb-3">
-        <Col md={6}>
+        <Col md={8}>
           <InputGroup>
             <InputGroup.Text>
               <FaSearch />
@@ -130,54 +111,42 @@ const ProtocolsPage: React.FC = () => {
             <Form.Control
               type="text"
               placeholder="Buscar protocolos por nombre o descripción..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
+            {isFetching && (
+              <InputGroup.Text>
+                <Spinner size="sm" animation="border" />
+              </InputGroup.Text>
+            )}
           </InputGroup>
         </Col>
-        <Col md={3}>
-          <InputGroup>
-            <InputGroup.Text>
-              {sortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
-            </InputGroup.Text>
-            <Form.Select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-            >
-              <option value="asc">A-Z (Ascendente)</option>
-              <option value="desc">Z-A (Descendente)</option>
-            </Form.Select>
-          </InputGroup>
-        </Col>
-        <Col md={3} className="d-flex justify-content-end align-items-center">
-          <Badge bg="info" className="fs-6">
-            {filteredAndSortedProtocols.length} de {protocols.length} protocolo{protocols.length !== 1 ? 's' : ''}
-          </Badge>
+        <Col md={4} className="text-md-end mt-2 mt-md-0">
+          <Button
+            variant="outline-secondary"
+            onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+          >
+            Ordenar A–Z{' '}
+            {sortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUp />}
+          </Button>
         </Col>
       </Row>
 
       <Card className="tt-card">
         <Card.Body className="p-0">
-          {filteredAndSortedProtocols.length === 0 ? (
+          {protocols.length === 0 ? (
             <div className="text-center py-5">
               <Alert variant="info" className="mx-4">
-                {searchTerm ? (
+                {debouncedSearch ? (
                   <>
-                    <h5>No se encontraron protocolos</h5>
-                    <p className="mb-0">
-                      No hay protocolos que coincidan con "{searchTerm}"
-                    </p>
+                    <h5>Ningún protocolo coincide con la búsqueda</h5>
+                    <p className="mb-0">No hay protocolos que coincidan con "{debouncedSearch}".</p>
                   </>
                 ) : (
                   <>
-                    <h5>No hay protocolos disponibles</h5>
-                    <p className="mb-3">
-                      Crea tu primer protocolo para comenzar.
-                    </p>
-                    <Button
-                      variant="primary"
-                      onClick={() => navigate('/protocols/new')}
-                    >
+                    <h5>Aún no hay protocolos configurados</h5>
+                    <p className="mb-3">Crea tu primer protocolo para comenzar.</p>
+                    <Button variant="primary" onClick={() => navigate('/protocols/new')}>
                       Crear Protocolo
                     </Button>
                   </>
@@ -200,7 +169,7 @@ const ProtocolsPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAndSortedProtocols.map((protocol) => (
+                    {protocols.map((protocol) => (
                       <tr key={protocol._id}>
                         <td>
                           <strong>{protocol.nombre}</strong>
@@ -208,16 +177,12 @@ const ProtocolsPage: React.FC = () => {
                         <td>
                           <div className="text-truncate" style={{ maxWidth: 220 }}>
                             {protocol.Descripcion ?? (
-                              <span className="text-muted fst-italic">
-                                Sin descripción
-                              </span>
+                              <span className="text-muted fst-italic">Sin descripción</span>
                             )}
                           </div>
                         </td>
                         <td>
-                          <Badge bg="secondary">
-                            {protocol.actividadesMtto?.length ?? 0}
-                          </Badge>
+                          <Badge bg="secondary">{protocol.actividadesMtto?.length ?? 0}</Badge>
                         </td>
                         <td>
                           <small className="text-muted">
@@ -228,33 +193,19 @@ const ProtocolsPage: React.FC = () => {
                         </td>
                         <td style={{ position: 'relative' }}>
                           <Dropdown align="end">
-                            <Dropdown.Toggle
-                              variant="outline-secondary"
-                              size="sm"
-                            >
+                            <Dropdown.Toggle variant="outline-secondary" size="sm">
                               Acciones
                             </Dropdown.Toggle>
-
-                            <Dropdown.Menu
-                              renderOnMount
-                              popperConfig={{
-                                strategy: 'fixed'
-                              }}
-                            >
-                              <Dropdown.Item
-                                onClick={() => navigate(`/protocols/${protocol._id}`)}
-                              >
+                            <Dropdown.Menu renderOnMount popperConfig={{ strategy: 'fixed' }}>
+                              <Dropdown.Item onClick={() => navigate(`/protocols/${protocol._id}`)}>
                                 Ver detalle
                               </Dropdown.Item>
-
                               <Dropdown.Item
                                 onClick={() => navigate(`/protocols/${protocol._id}/edit`)}
                               >
                                 Editar
                               </Dropdown.Item>
-
                               <Dropdown.Divider />
-
                               <Dropdown.Item
                                 className="text-danger"
                                 onClick={() => openDeleteModal(protocol)}
@@ -270,15 +221,12 @@ const ProtocolsPage: React.FC = () => {
                 </Table>
               </div>
 
-              {totalPages > 1 && (
-                <div className="d-flex justify-content-center p-3 border-top">
-                  <Pagination
-                    page={page}
-                    pages={totalPages}
-                    onChange={setPage}
-                  />
-                </div>
-              )}
+              <div className="d-flex justify-content-between align-items-center p-3 border-top flex-wrap gap-2">
+                <small className="text-muted">
+                  Mostrando {protocols.length} de {totalCount} protocolo{totalCount !== 1 ? 's' : ''}
+                </small>
+                {totalPages > 1 && <Pagination page={page} pages={totalPages} onChange={setPage} />}
+              </div>
             </>
           )}
         </Card.Body>
@@ -299,4 +247,3 @@ const ProtocolsPage: React.FC = () => {
 };
 
 export default ProtocolsPage;
-

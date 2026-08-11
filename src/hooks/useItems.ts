@@ -2,7 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { itemService } from '@/services/items.service';
 
 export const useItems = (params?: any) => {
-  return useQuery({ queryKey: ['items', params], queryFn: () => itemService.getAll(params) });
+  return useQuery({
+    queryKey: ['items', params],
+    queryFn: () => itemService.getAll(params),
+    keepPreviousData: true,
+  });
 };
 
 export const useItem = (id?: string) => {

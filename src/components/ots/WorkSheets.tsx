@@ -16,6 +16,7 @@ import SignatureInput, { SignatureInputHandle } from '@/components/common/Signat
 import InPlaceSignSection, { InPlaceSignSectionHandle } from '@/components/ots/InPlaceSignSection';
 import RemoteSignSection from '@/components/ots/RemoteSignSection';
 import ResendSignModal from '@/components/ots/ResendSignModal';
+import PdfReportsFilenameModal from '@/components/ots/PdfReportsFilenameModal';
 import { sheetworkService } from '@/services/sheetwork.service';
 import tenantService from '@/services/tenant.service';
 import { customerService } from '@/services/customer.service';
@@ -60,6 +61,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [resendTarget, setResendTarget] = useState<SheetWork | null>(null);
   const [showFallbackSignModal, setShowFallbackSignModal] = useState(false);
   const [fallbackSignTarget, setFallbackSignTarget] = useState<SheetWork | null>(null);
+  const [filenameModalTarget, setFilenameModalTarget] = useState<SheetWork | null>(null);
   const fallbackSignRef = useRef<InPlaceSignSectionHandle>(null);
   const [fallbackCanSubmit, setFallbackCanSubmit] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<SheetWork | null>(null);
@@ -553,7 +555,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                             <Button
                               size="sm"
                               variant="outline-secondary"
-                              onClick={() => onPDFReports(hoja._id!)}
+                              onClick={() => setFilenameModalTarget(hoja)}
                               disabled={isLoadingPdf}
                             >
                               {isLoadingPdf ? (
@@ -1100,6 +1102,18 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
         sheetWork={selectedSheet}
         tenantData={tenantData}
         onDownloadPdf={handleDownloadPdf}
+      />
+
+      {/* Modal — Nombre dinámico de los reportes PDF (pdf-reports-filename-builder) */}
+      <PdfReportsFilenameModal
+        show={Boolean(filenameModalTarget)}
+        onHide={() => setFilenameModalTarget(null)}
+        sheetworkId={filenameModalTarget?._id || null}
+        sampleReport={
+          filenameModalTarget?.reports?.find((r: any) => r?.estado !== 'Cancelado') ||
+          filenameModalTarget?.reports?.[0] ||
+          null
+        }
       />
     </Card>
   );
