@@ -1,3 +1,14 @@
+# Unreleased (2026-08-11)
+
+
+### Bug Fixes
+
+* **protocols/items:** las páginas `ProtocolsPage` e `ItemsPage` ahora buscan directo en la DB. Antes pedían solo la página actual del paginado (limit 10-20) y filtraban en memoria con `useMemo`, por lo que la búsqueda solo veía los registros ya visibles. Ahora envían `search`/`sortBy`/`order` como query params al backend (debounced 300ms via `useDebounce`, `keepPreviousData: true` en el hook), el conteo "Mostrando N de M" refleja `pagination.total`, y el orden alfabético también se resuelve server-side.
+
+### Features
+
+* **ots:** el botón "Reportes PDF" en el tab Hojas de Trabajo ahora abre un modal (`PdfReportsFilenameModal`) para configurar el nombre de cada PDF del ZIP. 5 tokens reordenables por drag-and-drop (`consecutivo`, `serial`, `inventario`, `item`, `fecha`), preselección por default `consecutivo + fecha + item`, vista previa en vivo usando el primer reporte de la hoja, botón "Deseleccionar todo", y popover ⓘ con la explicación de la interacción. Al enviar, se descarga el ZIP con los nombres configurados; sin configuración, se preserva el comportamiento anterior.
+
 # [1.11.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.10.0...v1.11.0) (2026-08-11)
 
 

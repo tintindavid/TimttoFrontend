@@ -6,6 +6,7 @@ export const useProtocols = (params?: any) => {
   return useQuery({
     queryKey: ['protocols', params],
     queryFn: () => protocolService.getAll(params),
+    keepPreviousData: true,
   });
 };
 

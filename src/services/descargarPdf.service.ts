@@ -13,6 +13,7 @@ interface BulkPDFParams {
   filters?: Record<string, any>;
   otId?: string;
   sheetworkId?: string;
+  fileNameConfig?: { tokens: string[] };
 }
 
 /**
