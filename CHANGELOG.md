@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.10.0...v1.11.0) (2026-08-11)
+
+
+### Features
+
+* **portal:** sheetwork remote signature + client-token edit and send-link ([06093b4](https://github.com/tintindavid/TimttoFrontend/commit/06093b4ad0b401944d8a231b2741b0847894fbb9))
+
 # Unreleased (2026-08-10)
 
 
