@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.11.0...v1.12.0) (2026-08-11)
+
+
+### Features
+
+* **ots): pdf filename builder modal + fix(listings:** server-side search ([9f1b282](https://github.com/tintindavid/TimttoFrontend/commit/9f1b282368079009a0deac21feaab1eee2c8af3a))
+
 # Unreleased (2026-08-11)
 
 
