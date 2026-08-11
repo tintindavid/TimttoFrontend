@@ -1,0 +1,76 @@
+.remote-sign-page {
+  min-height: 100vh;
+  background-color: #f4f5f7;
+  padding: 24px 12px;
+}
+
+.remote-sign-header {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.remote-sign-header img {
+  max-height: 48px;
+  width: auto;
+}
+
+.remote-sign-header h1 {
+  font-size: 1.05rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.remote-sign-header small {
+  color: #6b7280;
+}
+
+.remote-sign-preview-wrap {
+  max-width: 900px;
+  margin: 0 auto 20px auto;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  padding: 4px;
+  overflow: hidden;
+}
+
+.remote-sign-preview-wrap iframe {
+  display: block;
+  width: 100%;
+  height: 78vh;
+  border: 0;
+  border-radius: 6px;
+}
+
+.remote-sign-card {
+  max-width: 900px;
+  margin: 0 auto 20px auto;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  padding: 24px;
+}
+
+.remote-sign-card h2 {
+  font-size: 1.15rem;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.remote-sign-download {
+  text-align: center;
+  padding: 32px 12px;
+}
+
+.remote-sign-download .btn {
+  min-width: 220px;
+}

@@ -23,6 +23,13 @@ export interface ClientAccessTokenCreatedByRef {
   fullName?: string;
 }
 
+export interface ClientAccessTokenEmailHistory {
+  lastEmail?: string | null;
+  lastSentAt?: string | null;
+  lastSentBy?: string | null;
+  sendCount?: number;
+}
+
 export interface ClientAccessToken {
   _id: string;
   tenantId: string;
@@ -34,6 +41,7 @@ export interface ClientAccessToken {
   accessCount: number;
   lastAccessedAt?: string | null;
   createdBy?: string | ClientAccessTokenCreatedByRef | null;
+  emailHistory?: ClientAccessTokenEmailHistory;
   revokedAt?: string | null;
   revokedBy?: string | null;
   isDeleted?: boolean;

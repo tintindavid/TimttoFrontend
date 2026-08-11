@@ -14,6 +14,30 @@ vi.mock('@/hooks/useCloseSheetReports', () => ({
   useCloseSheetReports: (...args: unknown[]) => mockUseCloseSheetReports(...args),
 }));
 
+const mockSignInPlaceAsync = vi.fn();
+vi.mock('@/hooks/useSignInPlace', () => ({
+  useSignInPlace: () => ({ mutateAsync: mockSignInPlaceAsync, isPending: false }),
+}));
+
+vi.mock('@/components/ots/InPlaceSignSection', () => ({
+  __esModule: true,
+  default: React.forwardRef(() => null),
+}));
+
+vi.mock('@/components/ots/RemoteSignSection', () => ({
+  __esModule: true,
+  default: () => <div data-testid="remote-sign-section" />,
+}));
+
+vi.mock('@/components/ots/ResendSignModal', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+vi.mock('@/services/customer.service', () => ({
+  customerService: { getById: vi.fn().mockResolvedValue({ data: { Email: 'x@y.com', correousados: [] } }) },
+}));
+
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({ token: 'tok-1' }),
 }));
@@ -147,5 +171,50 @@ describe('WorkSheets — close-reports icon (sheet-report-closure)', () => {
 
     const button = screen.getByTitle('Cerrar reportes de esta hoja');
     expect(button).toBeDisabled();
+  });
+});
+
+describe('WorkSheets — EnviadaAFirmar icons (sheetwork-remote-signature)', () => {
+  beforeEach(() => {
+    mockUseWorkSheets.mockReset();
+    mockUseCloseSheetReports.mockReset();
+    mockUseCloseSheetReports.mockReturnValue({
+      mutate: mockCloseMutate,
+      isLoading: false,
+      variables: undefined,
+    });
+  });
+
+  it('renders Reenviar + Firmar-en-sitio icons only for EnviadaAFirmar sheets', () => {
+    mockUseWorkSheets.mockReturnValue({
+      data: [
+        baseSheet({ _id: 'sheet-signed', estado: 'Firmada' }),
+        baseSheet({ _id: 'sheet-pending', estado: 'EnviadaAFirmar', reports: [] }),
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<WorkSheets {...defaultProps} />);
+
+    // The EnviadaAFirmar row shows both icons; the Firmada row shows neither.
+    expect(screen.getByTitle('Reenviar solicitud de firma')).toBeInTheDocument();
+    // Note: `Firmar en sitio` title collides with the existing modal button, so
+    // scope by role+title.
+    expect(screen.getByRole('button', { name: /firmar en sitio/i })).toBeInTheDocument();
+  });
+
+  it('does not render EnviadaAFirmar icons for sheets in other states', () => {
+    mockUseWorkSheets.mockReturnValue({
+      data: [baseSheet({ estado: 'Firmada', reports: [] })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(<WorkSheets {...defaultProps} />);
+    expect(screen.queryByTitle('Reenviar solicitud de firma')).not.toBeInTheDocument();
   });
 });

@@ -1,18 +1,19 @@
+# Unreleased (2026-08-10)
+
+
+### Features
+
+* **sheetwork:** modal "Firma de Creación de Hoja de Trabajo" ahora tiene dos tabs — "Firma en Sitio" (comportamiento actual, extraído a `<InPlaceSignSection>`) y "Firma Remota" (formulario que envía un correo con el enlace de firma al cliente).
+* **sheetwork:** nuevos íconos `Reenviar` y `Firmar en sitio` en las filas de HT en estado `EnviadaAFirmar`; abren `ResendSignModal` y el modal de firma en sitio como fallback.
+* **sheetwork:** nueva página pública `/firma/:token` — el cliente ve el PDF de la HT (mismo layout que el PDF final) y firma con `SignatureInput`; tras firmar la vista pasa a modo read-only con descarga del PDF hasta el vencimiento del token (7 días desde la firma).
+* **client-tokens:** en el tab "Accesos Cliente" del detalle de cliente, cada acceso activo ahora tiene dos íconos nuevos: ➕ "Añadir OTs" (abre modal listando OTs del cliente que no están ya en el acceso) y ✉️ "Enviar link por correo" (abre modal con el último correo utilizado o el correo del cliente por defecto, editable; reenviable N veces). Bajo la fila se muestra el histórico "N envíos, último a x@y.com hace …" cuando `emailHistory.sendCount > 0`.
+
 # [1.10.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.9.0...v1.10.0) (2026-08-06)
 
 
 ### Features
 
 * **portal:** close reports on client sign + late-sign + image upload ([19e20c2](https://github.com/tintindavid/TimttoFrontend/commit/19e20c2a4deca2cb81b6981ff28b441dda8bdf12))
-
-# Unreleased (2026-08-05)
-
-
-### Features
-
-* **portal-cliente:** ícono "Firmar hoja" en el historial del portal cuando una hoja de trabajo fue creada sin firma (late-sign, `portal-signature-flow`)
-* **firma:** `SignatureModal` y el modal admin de crear HT usan el nuevo componente compartido `SignatureInput`, que admite dibujar en canvas o cargar una imagen PNG/JPG (re-codificada a PNG en el navegador)
-* **ot:** ícono junto a "Reportes PDF" en Hojas de Trabajo para cerrar los reportes `Procesado` vinculados a una hoja específica (mitigación retro para HTs firmadas antes de la corrección del flujo del portal)
 
 # [1.9.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.8.0...v1.9.0) (2026-08-03)
 

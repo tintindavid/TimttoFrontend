@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, Badge, Button, Card, Spinner, Table } from 'react-bootstrap';
-import { FaBan, FaTrash } from 'react-icons/fa';
+import { FaBan, FaEnvelope, FaPlus, FaTrash } from 'react-icons/fa';
 import { ClientAccessToken, ClientAccessTokenOtSummary } from '@/types/clientAccessToken.types';
 import CopyLinkButton from './CopyLinkButton';
 
@@ -11,6 +11,8 @@ interface TokenListProps {
   errorMessage?: string;
   onRevoke: (token: ClientAccessToken) => void;
   onDelete: (token: ClientAccessToken) => void;
+  onAddOts?: (token: ClientAccessToken) => void;
+  onSendLink?: (token: ClientAccessToken) => void;
 }
 
 const formatDate = (iso?: string | null): string => {
@@ -39,6 +41,21 @@ const renderOtsSummary = (otIds: ClientAccessToken['otIds']): string => {
  * React-Bootstrap `Table` listing `ClientAccessToken` documents for a client.
  * Columns per spec 8.1: Fecha, OTs, Estado, Accesos, Último acceso, Acciones.
  */
+const formatRelative = (iso?: string | null): string => {
+  if (!iso) return '';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(diffMs)) return '';
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 1) return 'hace instantes';
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `hace ${diffH} h`;
+  const diffD = Math.round(diffH / 24);
+  if (diffD < 30) return `hace ${diffD} d`;
+  const diffMo = Math.round(diffD / 30);
+  return `hace ${diffMo} mes${diffMo > 1 ? 'es' : ''}`;
+};
+
 const TokenList: React.FC<TokenListProps> = ({
   tokens,
   isLoading,
@@ -46,6 +63,8 @@ const TokenList: React.FC<TokenListProps> = ({
   errorMessage,
   onRevoke,
   onDelete,
+  onAddOts,
+  onSendLink,
 }) => {
   if (isLoading) {
     return (
@@ -86,46 +105,84 @@ const TokenList: React.FC<TokenListProps> = ({
         </tr>
       </thead>
       <tbody>
-        {tokens.map((t) => (
-          <tr key={t._id}>
-            <td className="small">{formatDate(t.createdAt)}</td>
-            <td className="small">{renderOtsSummary(t.otIds)}</td>
-            <td>
-              <Badge bg={t.status === 'active' ? 'success' : 'secondary'}>
-                {t.status === 'active' ? 'Activo' : 'Revocado'}
-              </Badge>
-            </td>
-            <td>{t.accessCount ?? 0}</td>
-            <td className="small text-muted">{formatDate(t.lastAccessedAt)}</td>
-            <td className="text-end">
-              {t.status === 'active' ? (
-                <>
-                  <CopyLinkButton token={t.token} className="me-1" />
+        {tokens.map((t) => {
+          const history = t.emailHistory;
+          const sendCount = history?.sendCount ?? 0;
+          return (
+            <tr key={t._id}>
+              <td className="small">{formatDate(t.createdAt)}</td>
+              <td className="small">
+                {renderOtsSummary(t.otIds)}
+                {sendCount > 0 && (
+                  <div className="text-muted small mt-1">
+                    <FaEnvelope className="me-1" />
+                    {sendCount} envío{sendCount > 1 ? 's' : ''}
+                    {history?.lastEmail ? ` · último a ${history.lastEmail}` : ''}
+                    {history?.lastSentAt ? ` · ${formatRelative(history.lastSentAt)}` : ''}
+                  </div>
+                )}
+              </td>
+              <td>
+                <Badge bg={t.status === 'active' ? 'success' : 'secondary'}>
+                  {t.status === 'active' ? 'Activo' : 'Revocado'}
+                </Badge>
+              </td>
+              <td>{t.accessCount ?? 0}</td>
+              <td className="small text-muted">{formatDate(t.lastAccessedAt)}</td>
+              <td className="text-end">
+                {t.status === 'active' ? (
+                  <>
+                    <CopyLinkButton token={t.token} className="me-1" />
+                    {onAddOts && (
+                      <Button
+                        size="sm"
+                        variant="outline-primary"
+                        className="me-1"
+                        onClick={() => onAddOts(t)}
+                        title="Añadir OTs"
+                        aria-label="Añadir OTs"
+                      >
+                        <FaPlus />
+                      </Button>
+                    )}
+                    {onSendLink && (
+                      <Button
+                        size="sm"
+                        variant="outline-info"
+                        className="me-1"
+                        onClick={() => onSendLink(t)}
+                        title="Enviar link por correo"
+                        aria-label="Enviar link por correo"
+                      >
+                        <FaEnvelope />
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline-warning"
+                      className="me-1"
+                      onClick={() => onRevoke(t)}
+                      title="Revocar acceso"
+                      aria-label="Revocar acceso"
+                    >
+                      <FaBan />
+                    </Button>
+                  </>
+                ) : (
                   <Button
                     size="sm"
-                    variant="outline-warning"
-                    className="me-1"
-                    onClick={() => onRevoke(t)}
-                    title="Revocar acceso"
-                    aria-label="Revocar acceso"
+                    variant="outline-danger"
+                    onClick={() => onDelete(t)}
+                    title="Eliminar acceso"
+                    aria-label="Eliminar acceso"
                   >
-                    <FaBan />
+                    <FaTrash />
                   </Button>
-                </>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline-danger"
-                  onClick={() => onDelete(t)}
-                  title="Eliminar acceso"
-                  aria-label="Eliminar acceso"
-                >
-                  <FaTrash />
-                </Button>
-              )}
-            </td>
-          </tr>
-        ))}
+                )}
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </Table>
   );

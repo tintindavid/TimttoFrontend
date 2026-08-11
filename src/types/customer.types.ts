@@ -15,6 +15,7 @@ export interface Customer {
   StatusReason?: string;
   TelContacto?: string;
   UserContacto?: string;
+  correousados?: string[];
   isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
