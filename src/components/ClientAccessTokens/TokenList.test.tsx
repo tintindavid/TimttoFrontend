@@ -81,4 +81,72 @@ describe('TokenList', () => {
     expect(screen.getByLabelText('Eliminar acceso')).toBeInTheDocument();
     expect(screen.queryByLabelText('Revocar acceso')).not.toBeInTheDocument();
   });
+
+  it('renders the "add OTs" and "send link" icons for active tokens when handlers are provided', () => {
+    const onAddOts = vi.fn();
+    const onSendLink = vi.fn();
+    render(
+      <TokenList
+        tokens={[baseToken]}
+        isLoading={false}
+        isError={false}
+        onRevoke={vi.fn()}
+        onDelete={vi.fn()}
+        onAddOts={onAddOts}
+        onSendLink={onSendLink}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Añadir OTs'));
+    fireEvent.click(screen.getByLabelText('Enviar link por correo'));
+    expect(onAddOts).toHaveBeenCalledWith(baseToken);
+    expect(onSendLink).toHaveBeenCalledWith(baseToken);
+  });
+
+  it('hides the add-OTs / send-link icons for revoked tokens', () => {
+    const revoked: ClientAccessToken = { ...baseToken, status: 'revoked' };
+    render(
+      <TokenList
+        tokens={[revoked]}
+        isLoading={false}
+        isError={false}
+        onRevoke={vi.fn()}
+        onDelete={vi.fn()}
+        onAddOts={vi.fn()}
+        onSendLink={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText('Añadir OTs')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Enviar link por correo')).not.toBeInTheDocument();
+  });
+
+  it('renders the email-history line when sendCount > 0', () => {
+    const withHistory: ClientAccessToken = {
+      ...baseToken,
+      emailHistory: { sendCount: 3, lastEmail: 'x@y.com', lastSentAt: new Date().toISOString() },
+    };
+    render(
+      <TokenList
+        tokens={[withHistory]}
+        isLoading={false}
+        isError={false}
+        onRevoke={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    expect(screen.getByText(/3 envíos/i)).toBeInTheDocument();
+    expect(screen.getByText(/x@y\.com/)).toBeInTheDocument();
+  });
+
+  it('omits the email-history line when sendCount is 0 or absent', () => {
+    render(
+      <TokenList
+        tokens={[baseToken]}
+        isLoading={false}
+        isError={false}
+        onRevoke={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+    expect(screen.queryByText(/envío/i)).not.toBeInTheDocument();
+  });
 });

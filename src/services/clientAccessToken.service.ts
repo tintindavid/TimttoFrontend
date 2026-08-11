@@ -52,6 +52,26 @@ class ClientAccessTokenService {
     return res.data;
   }
 
+  /** Appends OTs to an existing active token. Backend $addToSet-dedupes. */
+  async addOts(id: string, otIds: string[]): Promise<ApiResponse<ClientAccessToken>> {
+    const res = await api.patch<ApiResponse<ClientAccessToken>>(
+      `${this.endpoint}/${id}/ots`,
+      { otIds }
+    );
+    return res.data;
+  }
+
+  /** Dispatches the portal link by email; records emailHistory on the token. */
+  async sendLink(
+    id: string,
+    email: string
+  ): Promise<ApiResponse<{ id: string; email: string; sentAt: string; emailSent: boolean }>> {
+    const res = await api.post<
+      ApiResponse<{ id: string; email: string; sentAt: string; emailSent: boolean }>
+    >(`${this.endpoint}/${id}/send`, { email });
+    return res.data;
+  }
+
   /**
    * Builds the public portal URL for a raw token value. The host is taken
    * from `VITE_PUBLIC_APP_URL` falling back to the current origin, same

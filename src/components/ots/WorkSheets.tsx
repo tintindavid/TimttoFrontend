@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Card, Table, Button, Badge, Modal, Form, Alert, Row, Col, InputGroup, Spinner } from 'react-bootstrap';
+import { Card, Table, Button, Badge, Modal, Form, Alert, Row, Col, InputGroup, Spinner, Tabs, Tab } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { SheetWork } from '@/types/reporte.types';
-import { FaFilePdf, FaSignature, FaPlus, FaDownload, FaSearch, FaFilter, FaTimes, FaEye, FaPrint, FaCheckSquare } from 'react-icons/fa';
+import { FaFilePdf, FaSignature, FaPlus, FaDownload, FaSearch, FaFilter, FaTimes, FaEye, FaPrint, FaCheckSquare, FaEnvelope } from 'react-icons/fa';
 import { useWorkSheets } from '@/hooks/useReportes';
 import { useCloseSheetReports } from '@/hooks/useCloseSheetReports';
+import { useSignInPlace } from '@/hooks/useSignInPlace';
 import { useAuth } from '@/context/AuthContext';
 import './WorkSheets.css';
 import { useCurrentUserData } from '@/context/userContext';
@@ -12,8 +13,12 @@ import { ca } from 'date-fns/locale';
 import { generateBulkPDF } from '@/services/descargarPdf.service';
 import PreviewSheetWorkModal from '@/components/common/PreviewSheetWorkModal';
 import SignatureInput, { SignatureInputHandle } from '@/components/common/SignatureInput';
+import InPlaceSignSection, { InPlaceSignSectionHandle } from '@/components/ots/InPlaceSignSection';
+import RemoteSignSection from '@/components/ots/RemoteSignSection';
+import ResendSignModal from '@/components/ots/ResendSignModal';
 import { sheetworkService } from '@/services/sheetwork.service';
 import tenantService from '@/services/tenant.service';
+import { customerService } from '@/services/customer.service';
 
 interface WorkSheetsProps {
   otId: string;
@@ -45,16 +50,25 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   // Obtener hojas de trabajo desde el backend
   const { data: hojasTrabajo = [], isLoading, isError, error, refetch } = useWorkSheets(otId);
   const closeReportsMutation = useCloseSheetReports(otId);
+  const signInPlaceMutation = useSignInPlace(otId);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [showSignCreateModal, setShowSignCreateModal] = useState(false);
+  const [signCreateActiveTab, setSignCreateActiveTab] = useState<'inplace' | 'remote'>('inplace');
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showResendModal, setShowResendModal] = useState(false);
+  const [resendTarget, setResendTarget] = useState<SheetWork | null>(null);
+  const [showFallbackSignModal, setShowFallbackSignModal] = useState(false);
+  const [fallbackSignTarget, setFallbackSignTarget] = useState<SheetWork | null>(null);
+  const fallbackSignRef = useRef<InPlaceSignSectionHandle>(null);
+  const [fallbackCanSubmit, setFallbackCanSubmit] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<SheetWork | null>(null);
   const [selectedEquipos, setSelectedEquipos] = useState<string[]>([]);
   const [firmaCliente, setFirmaCliente] = useState('');
   const [loadingPdfSheets, setLoadingPdfSheets] = useState<Record<string, boolean>>({});
   const [tenantData, setTenantData] = useState<any>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [customerData, setCustomerData] = useState<{ Email?: string; correousados?: string[] } | null>(null);
 
   // Estados para firma al crear hoja
   const [recibeNombre, setRecibeNombre] = useState('');
@@ -79,7 +93,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   useEffect(() => {
     const fetchTenantData = async () => {
       if (!currentUserData?.tenantId) return;
-      
+
       try {
         const response = await tenantService.getById(currentUserData.tenantId);
         setTenantData(response.data || null);
@@ -90,6 +104,24 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
 
     fetchTenantData();
   }, [currentUserData?.tenantId]);
+
+  // Load customer data so the remote-sign tab can prefill email and offer
+  // correousados as autocomplete options.
+  useEffect(() => {
+    if (!clienteId) return;
+    let cancelled = false;
+    customerService
+      .getById(clienteId)
+      .then((res: any) => {
+        if (cancelled) return;
+        const doc = res?.data || res;
+        setCustomerData({ Email: doc?.Email, correousados: doc?.correousados || [] });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [clienteId]);
   const [filterSerie, setFilterSerie] = useState('');
   const [filterSede, setFilterSede] = useState('');
   const [filterServicio, setFilterServicio] = useState('');
@@ -276,6 +308,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case 'Borrador': return 'warning';
+      case 'EnviadaAFirmar': return 'info';
       case 'Firmada': return 'success';
       case 'Cerrada': return 'secondary';
       default: return 'info';
@@ -539,6 +572,34 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                             </Button>
                           );
                         })()}
+                        {hoja.estado === 'EnviadaAFirmar' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              title="Reenviar solicitud de firma"
+                              onClick={() => {
+                                setResendTarget(hoja);
+                                setShowResendModal(true);
+                              }}
+                            >
+                              <FaEnvelope />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-warning"
+                              title="Firmar en sitio"
+                              onClick={() => {
+                                setFallbackSignTarget(hoja);
+                                fallbackSignRef.current?.reset();
+                                setFallbackCanSubmit(false);
+                                setShowFallbackSignModal(true);
+                              }}
+                            >
+                              <FaSignature />
+                            </Button>
+                          </>
+                        )}
                         {/* reason: the runtime SheetWork.reports payload includes `estado`
                             beyond the narrower typed subset in reporte.types.ts — interop
                             with the actual API response shape (sheet-report-closure). */}
@@ -804,9 +865,9 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
         </Modal.Footer>
       </Modal>
 
-      {/* Modal Firma al Crear Hoja */}
-      <Modal 
-        show={showSignCreateModal} 
+      {/* Modal Firma al Crear Hoja — Tabs: En Sitio / Remota */}
+      <Modal
+        show={showSignCreateModal}
         onHide={() => setShowSignCreateModal(false)}
         size="lg"
         centered
@@ -818,66 +879,82 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Alert variant="info">
-            Complete los siguientes datos y firme para crear la hoja de trabajo con {selectedEquipos.length} equipo(s) seleccionado(s)
-          </Alert>
+          <Tabs
+            activeKey={signCreateActiveTab}
+            onSelect={(k) => setSignCreateActiveTab((k as 'inplace' | 'remote') || 'inplace')}
+            className="mb-3"
+          >
+            <Tab eventKey="inplace" title="Firma en Sitio">
+              <Alert variant="info">
+                Complete los siguientes datos y firme para crear la hoja de trabajo con {selectedEquipos.length} equipo(s) seleccionado(s).
+              </Alert>
+              <Form>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        Recibe <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="Nombre de quien recibe"
+                        value={recibeNombre}
+                        onChange={(e) => setRecibeNombre(e.target.value)}
+                        required
+                      />
+                      <Form.Text className="text-muted">Nombre completo de la persona que recibe</Form.Text>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>
+                        Cargo <span className="text-danger">*</span>
+                      </Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="Cargo de quien recibe"
+                        value={recibeCargo}
+                        onChange={(e) => setRecibeCargo(e.target.value)}
+                        required
+                      />
+                      <Form.Text className="text-muted">Cargo o posición en la empresa</Form.Text>
+                    </Form.Group>
+                  </Col>
+                </Row>
 
-          <Form>
-            <Row>
-              <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>
-                    Recibe <span className="text-danger">*</span>
+                    Firma <span className="text-danger">*</span>
                   </Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="Nombre de quien recibe"
-                    value={recibeNombre}
-                    onChange={(e) => setRecibeNombre(e.target.value)}
-                    required
-                  />
-                  <Form.Text className="text-muted">
-                    Nombre completo de la persona que recibe
-                  </Form.Text>
+                  <SignatureInput ref={createSignatureRef} onChange={handleCreateSignatureChange} />
                 </Form.Group>
-              </Col>
+              </Form>
 
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>
-                    Cargo <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    type="text"
-                    placeholder="Cargo de quien recibe"
-                    value={recibeCargo}
-                    onChange={(e) => setRecibeCargo(e.target.value)}
-                    required
-                  />
-                  <Form.Text className="text-muted">
-                    Cargo o posición en la empresa
-                  </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
+              <Alert variant="warning" className="mb-0 mt-3">
+                <small>
+                  <strong>Nota:</strong> Todos los campos son obligatorios. La firma confirma la recepción de la hoja de trabajo.
+                </small>
+              </Alert>
+            </Tab>
 
-            <Form.Group className="mb-3">
-              <Form.Label>
-                Firma <span className="text-danger">*</span>
-              </Form.Label>
-              <SignatureInput ref={createSignatureRef} onChange={handleCreateSignatureChange} />
-            </Form.Group>
-          </Form>
-
-          <Alert variant="warning" className="mb-0 mt-3">
-            <small>
-              <strong>Nota:</strong> Todos los campos son obligatorios. La firma confirma la recepción de la hoja de trabajo.
-            </small>
-          </Alert>
+            <Tab eventKey="remote" title="Firma Remota">
+              <RemoteSignSection
+                otId={otId}
+                reportIds={selectedEquipos}
+                clientEmail={customerData?.Email}
+                correousados={customerData?.correousados}
+                onSuccess={() => {
+                  setShowSignCreateModal(false);
+                  setSelectedEquipos([]);
+                  setTimeout(() => refetch(), 500);
+                }}
+              />
+            </Tab>
+          </Tabs>
         </Modal.Body>
         <Modal.Footer>
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={() => {
               setShowSignCreateModal(false);
               setShowCreateModal(true);
@@ -885,13 +962,87 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
           >
             Volver
           </Button>
+          {signCreateActiveTab === 'inplace' && (
+            <Button
+              variant="success"
+              onClick={handleCreateSheetWithSignature}
+              disabled={!hasCreateSignature}
+            >
+              <FaSignature className="me-1" />
+              Crear Hoja con Firma
+            </Button>
+          )}
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal Reenviar solicitud de firma (EnviadaAFirmar) */}
+      <ResendSignModal
+        show={showResendModal}
+        onHide={() => setShowResendModal(false)}
+        otId={otId}
+        sheetId={resendTarget?._id || null}
+        currentEmail={resendTarget?.remoteSignRequest?.email || customerData?.Email || null}
+        numeroHoja={resendTarget?.numeroHoja || null}
+      />
+
+      {/* Modal Firma en sitio (fallback para EnviadaAFirmar) */}
+      <Modal
+        show={showFallbackSignModal}
+        onHide={() => setShowFallbackSignModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaSignature className="me-2" />
+            Firmar HT {fallbackSignTarget?.numeroHoja || ''} en sitio
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="warning" className="mb-3">
+            El enlace de firma remota quedará invalidado. Solo continúa si el cliente
+            está firmando presencialmente.
+          </Alert>
+          <InPlaceSignSection
+            ref={fallbackSignRef}
+            onChange={() => setFallbackCanSubmit(!(fallbackSignRef.current?.hasErrors() ?? true))}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowFallbackSignModal(false)}>
+            Cancelar
+          </Button>
           <Button
             variant="success"
-            onClick={handleCreateSheetWithSignature}
-            disabled={!hasCreateSignature}
+            disabled={!fallbackCanSubmit || signInPlaceMutation.isPending}
+            onClick={async () => {
+              if (!fallbackSignTarget?._id) return;
+              const pngBase64 = fallbackSignRef.current?.getPngBase64();
+              if (!pngBase64) return;
+              const values = fallbackSignRef.current!.values();
+              try {
+                await signInPlaceMutation.mutateAsync({
+                  sheetId: fallbackSignTarget._id,
+                  signature: {
+                    imagePng: pngBase64,
+                    signerName: values.recibe,
+                    cargo: values.cargo,
+                    observaciones: values.observaciones,
+                  },
+                  personaRecibe: values.recibe,
+                  cargoRecibe: values.cargo,
+                  observaciones: values.observaciones,
+                });
+                setShowFallbackSignModal(false);
+                setFallbackSignTarget(null);
+                setTimeout(() => refetch(), 500);
+              } catch {
+                // toast surfaced by the hook
+              }
+            }}
           >
             <FaSignature className="me-1" />
-            Crear Hoja con Firma
+            Firmar y cerrar
           </Button>
         </Modal.Footer>
       </Modal>

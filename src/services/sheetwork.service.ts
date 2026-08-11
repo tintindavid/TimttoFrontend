@@ -128,6 +128,54 @@ export const sheetworkService = {
     );
     return response.data;
   },
+
+  /**
+   * Crea una HT en estado `EnviadaAFirmar` y dispara el correo de solicitud
+   * de firma al destinatario indicado.
+   */
+  remoteSignRequest: async (data: {
+    otId: string;
+    reportIds: string[];
+    email: string;
+    message?: string;
+  }) => {
+    const response = await api.post<
+      ApiResponse<{ sheetId: string; tokenId: string; expiresAt: string; emailSent: boolean; numeroHoja?: string }>
+    >(`/worksheets/remote-sign-request`, data);
+    return response.data;
+  },
+
+  /**
+   * Reenvía el correo de solicitud de firma para una HT que sigue en
+   * `EnviadaAFirmar`. Reutiliza el token si sigue vigente; upserts uno
+   * nuevo si vencido.
+   */
+  resendSignRequest: async (sheetId: string, data: { email: string; message?: string }) => {
+    const response = await api.post<
+      ApiResponse<{ sheetId: string; tokenId: string; expiresAt: string; email: string; emailSent: boolean }>
+    >(`/worksheets/${sheetId}/resend-sign-request`, data);
+    return response.data;
+  },
+
+  /**
+   * Firma en sitio una HT que estaba `EnviadaAFirmar` — corre el mismo
+   * cierre que la firma remota y marca el token remoto como superseded.
+   */
+  signInPlace: async (
+    sheetId: string,
+    data: {
+      signature: { imagePng: string; signerName: string; cargo?: string; observaciones?: string };
+      personaRecibe?: string;
+      cargoRecibe?: string;
+      observaciones?: string;
+    }
+  ) => {
+    const response = await api.post<ApiResponse<{ sheetId: string; estado: string; pdfStatus: string }>>(
+      `/worksheets/${sheetId}/sign-inplace`,
+      data
+    );
+    return response.data;
+  },
 };
 
 export default sheetworkService;

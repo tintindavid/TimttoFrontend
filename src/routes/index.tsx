@@ -65,6 +65,7 @@ import PublicTicketDashboard from '@/pages/Public/PublicTicketDashboard';
 import PortalLayout from '@/pages/Portal/PortalLayout';
 import PortalHome from '@/pages/Portal/PortalHome';
 import PortalSheetsHistory from '@/pages/Portal/PortalSheetsHistory';
+import RemoteSignPage from '@/pages/RemoteSign/RemoteSignPage';
 
 /**
  * /my-organization redirect:
@@ -96,6 +97,10 @@ const AppRoutes: React.FC = () => {
         <Route index element={<PortalHome />} />
         <Route path="historial" element={<PortalSheetsHistory />} />
       </Route>
+
+      {/* Remote sheet-sign — public opaque-token-gated single-sheet signing.
+          Own minimal layout inside the page component; no PortalLayout. */}
+      <Route path="/firma/:token" element={<RemoteSignPage />} />
 
       {/* ------------------------------------------------------------------ */}
       {/* Platform Console — SuperAdmin only (/admin/*)                      */}
