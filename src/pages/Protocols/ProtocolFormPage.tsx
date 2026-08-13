@@ -173,15 +173,26 @@ useEffect(() => {
 
   const handleCreateActividad = async (values: CreateActividadDto) => {
     try {
-      await createActividadMutation.mutateAsync(values);
-      
+      const response = await createActividadMutation.mutateAsync(values);
+
       // Refetch actividades
       await refetchActividades();
-      
+
+      // Auto-seleccionar la actividad recién creada — evita que el usuario
+      // olvide cuáles acaba de crear al enlazarlas al protocolo.
+      const newId = response?.data?._id;
+      if (newId) {
+        setFormData(prev =>
+          prev.actividadesMtto.includes(newId)
+            ? prev
+            : { ...prev, actividadesMtto: [...prev.actividadesMtto, newId] }
+        );
+      }
+
       // Cerrar modal y resetear form
       setShowActividadModal(false);
       resetActividad();
-      
+
       // Notificación de éxito
       Swal.fire({
         icon: 'success',

@@ -4,10 +4,30 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const useProtocolsMock = vi.fn();
+const createProtocolMutateMock = vi.fn();
+const getByIdMock = vi.fn();
+const navigateMock = vi.fn();
+
 vi.mock('@/hooks/useProtocols', () => ({
   useProtocols: (...args: any[]) => useProtocolsMock(...args),
   useDeleteProtocol: () => ({ mutateAsync: vi.fn() }),
+  useCreateProtocol: () => ({ mutateAsync: createProtocolMutateMock, isLoading: false }),
 }));
+
+vi.mock('@/services/protocol.service', () => ({
+  protocolService: {
+    getById: (...args: any[]) => getByIdMock(...args),
+  },
+}));
+
+vi.mock('sweetalert2', () => ({
+  default: { fire: vi.fn() },
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<any>('react-router-dom');
+  return { ...actual, useNavigate: () => navigateMock };
+});
 
 vi.mock('@/components/common/Pagination', () => ({
   __esModule: true,
@@ -29,6 +49,9 @@ const renderPage = () =>
 
 beforeEach(() => {
   useProtocolsMock.mockReset();
+  createProtocolMutateMock.mockReset();
+  getByIdMock.mockReset();
+  navigateMock.mockReset();
   useProtocolsMock.mockReturnValue({
     data: { data: [], pagination: { page: 1, pages: 1, total: 0 } },
     isLoading: false,
@@ -71,5 +94,103 @@ describe('ProtocolsPage — server-side search wiring', () => {
     renderPage();
     // "Mostrando 2 de 55"
     expect(screen.getByText(/Mostrando 2 de 55/i)).toBeInTheDocument();
+  });
+});
+
+describe('ProtocolsPage — Duplicar action', () => {
+  beforeEach(() => {
+    useProtocolsMock.mockReturnValue({
+      data: {
+        data: [
+          {
+            _id: 'src-1',
+            nombre: 'Mantenimiento Preventivo Trimestral',
+            Descripcion: 'Rutina trimestral',
+            actividadesMtto: [
+              { _id: 'act-a' },
+              { _id: 'act-b' },
+            ],
+          },
+        ],
+        pagination: { page: 1, pages: 1, total: 1 },
+      },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    });
+  });
+
+  it('composes getById + create with the "_copia" suffix and navigates to the copy edit page', async () => {
+    getByIdMock.mockResolvedValue({
+      data: {
+        _id: 'src-1',
+        nombre: 'Mantenimiento Preventivo Trimestral',
+        Descripcion: 'Rutina trimestral',
+        actividadesMtto: [{ _id: 'act-a' }, { _id: 'act-b' }],
+      },
+    });
+    createProtocolMutateMock.mockResolvedValue({
+      data: { _id: 'new-1' },
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
+    fireEvent.click(await screen.findByText(/^duplicar$/i));
+
+    await waitFor(() => expect(getByIdMock).toHaveBeenCalledWith('src-1'));
+    await waitFor(() =>
+      expect(createProtocolMutateMock).toHaveBeenCalledWith({
+        nombre: 'Mantenimiento Preventivo Trimestral_copia',
+        Descripcion: 'Rutina trimestral',
+        actividadesMtto: ['act-a', 'act-b'],
+      })
+    );
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/protocols/new-1/edit'));
+  });
+
+  it('sends an empty actividadesMtto array when the source has no activities', async () => {
+    useProtocolsMock.mockReturnValue({
+      data: {
+        data: [{ _id: 'src-2', nombre: 'Vacio', Descripcion: '', actividadesMtto: [] }],
+        pagination: { page: 1, pages: 1, total: 1 },
+      },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    });
+    getByIdMock.mockResolvedValue({
+      data: { _id: 'src-2', nombre: 'Vacio', Descripcion: '', actividadesMtto: [] },
+    });
+    createProtocolMutateMock.mockResolvedValue({ data: { _id: 'new-2' } });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
+    fireEvent.click(await screen.findByText(/^duplicar$/i));
+
+    await waitFor(() =>
+      expect(createProtocolMutateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ actividadesMtto: [], nombre: 'Vacio_copia' })
+      )
+    );
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/protocols/new-2/edit'));
+  });
+
+  it('does not navigate when the create mutation fails', async () => {
+    getByIdMock.mockResolvedValue({
+      data: {
+        _id: 'src-1',
+        nombre: 'Mantenimiento Preventivo Trimestral',
+        Descripcion: 'Rutina trimestral',
+        actividadesMtto: [{ _id: 'act-a' }],
+      },
+    });
+    createProtocolMutateMock.mockRejectedValue(new Error('boom'));
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /acciones/i }));
+    fireEvent.click(await screen.findByText(/^duplicar$/i));
+
+    await waitFor(() => expect(createProtocolMutateMock).toHaveBeenCalled());
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 });
