@@ -66,6 +66,7 @@ import PortalLayout from '@/pages/Portal/PortalLayout';
 import PortalHome from '@/pages/Portal/PortalHome';
 import PortalSheetsHistory from '@/pages/Portal/PortalSheetsHistory';
 import RemoteSignPage from '@/pages/RemoteSign/RemoteSignPage';
+import SheetDownloadPage from '@/pages/SheetDownload/SheetDownloadPage';
 
 /**
  * /my-organization redirect:
@@ -101,6 +102,10 @@ const AppRoutes: React.FC = () => {
       {/* Remote sheet-sign — public opaque-token-gated single-sheet signing.
           Own minimal layout inside the page component; no PortalLayout. */}
       <Route path="/firma/:token" element={<RemoteSignPage />} />
+
+      {/* Sheet-download share link — public opaque-token-gated download of a
+          signed HT (and optionally its reports ZIP). Minimal layout. */}
+      <Route path="/hoja-descarga/:token" element={<SheetDownloadPage />} />
 
       {/* ------------------------------------------------------------------ */}
       {/* Platform Console — SuperAdmin only (/admin/*)                      */}

@@ -43,6 +43,11 @@ vi.mock('@/components/ots/PdfReportsFilenameModal', () => ({
   },
 }));
 
+vi.mock('@/components/ots/SendSignedSheetModal', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 vi.mock('@/services/customer.service', () => ({
   customerService: { getById: vi.fn().mockResolvedValue({ data: { Email: 'x@y.com', correousados: [] } }) },
 }));

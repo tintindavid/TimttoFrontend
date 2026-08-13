@@ -208,15 +208,52 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   // Actividades del protocolo que no están realizadas
   const actividadesProtocolo = useMemo(() => {
     if (!protocolo?.data?.actividadesMtto) return [];
-    
+
     return protocolo.data.actividadesMtto.filter((actividadProto: ActividadMtto) => {
       // No mostrar la actividad si ya está en actividadesRealizadas (ya se hizo)
-      const yaRealizada = editedReporte?.actividadesRealizadas?.some(actividadRealizada => 
+      const yaRealizada = editedReporte?.actividadesRealizadas?.some(actividadRealizada =>
         actividadRealizada.actividadProtocoloId === actividadProto._id
       );
       return !yaRealizada;
     });
   }, [protocolo, editedReporte?.actividadesRealizadas]);
+
+  // Lookup: actividadProtocoloId → Descripción del protocolo. Usado por el
+  // checkbox "Incluir descripción" en las filas de "Actividades Realizadas"
+  // (donde la fila tiene el link vía `actividadProtocoloId` pero no la
+  // Descripción original en su payload).
+  const findProtocolDescripcion = useCallback(
+    (actividadProtocoloId?: string | null): string => {
+      if (!actividadProtocoloId || !protocolo?.data?.actividadesMtto) return '';
+      const found = (protocolo.data.actividadesMtto as ActividadMtto[]).find(
+        (a) => String(a._id) === String(actividadProtocoloId)
+      );
+      return found?.Descripcion || '';
+    },
+    [protocolo]
+  );
+
+  // Helpers idempotentes para el toggle "Incluir descripción". El checkbox
+  // deriva su estado de si el texto empieza con la descripción, así que
+  // toggling ON/OFF nunca choca con edits manuales del usuario en el resto
+  // del texto.
+  const activityIncludesDescripcion = (obs: string, descripcion: string): boolean => {
+    if (!descripcion) return false;
+    return obs.startsWith(descripcion);
+  };
+
+  const addDescripcionToText = (obs: string, descripcion: string): string => {
+    if (!descripcion) return obs;
+    if (activityIncludesDescripcion(obs, descripcion)) return obs;
+    return obs.trim() === '' ? descripcion : `${descripcion}\n\n${obs}`;
+  };
+
+  const removeDescripcionFromText = (obs: string, descripcion: string): string => {
+    if (!descripcion || !activityIncludesDescripcion(obs, descripcion)) return obs;
+    const rest = obs.slice(descripcion.length);
+    // Consume separator whitespace/newlines if present, then trim leading nl.
+    return rest.replace(/^\r?\n\r?\n?/, '').trimStart();
+  };
   
   // Calcular progreso de actividades (mejorado para tener en cuenta actividades ya completadas)
   const { actividadesCompletadas, totalActividades, progresoActividades } = useMemo(() => {
@@ -1197,10 +1234,35 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                     🗘️ Obligatoria
                                   </small>
                                 )}
-                                {/* Campo de observaciones */}
+                                {/* Campo de observaciones + toggle "Incluir descripción". */}
                                 <div className="mt-2">
+                                  {actividad.Descripcion && (
+                                    <Form.Check
+                                      type="checkbox"
+                                      id={`pendiente-incluir-desc-${actividad._id || ''}`}
+                                      label="Incluir descripción de la actividad"
+                                      className="mb-1"
+                                      checked={activityIncludesDescripcion(
+                                        observacionesActividades[actividad._id || ''] || '',
+                                        actividad.Descripcion
+                                      )}
+                                      onChange={(e) => {
+                                        const desc = actividad.Descripcion || '';
+                                        if (!desc) return;
+                                        setObservacionesActividades((prev) => {
+                                          const currentObs = prev[actividad._id || ''] || '';
+                                          const next = e.target.checked
+                                            ? addDescripcionToText(currentObs, desc)
+                                            : removeDescripcionFromText(currentObs, desc);
+                                          return { ...prev, [actividad._id || '']: next };
+                                        });
+                                      }}
+                                      disabled={editedReporte.procesado}
+                                    />
+                                  )}
                                   <Form.Control
-                                    type="text"
+                                    as="textarea"
+                                    rows={2}
                                     size="sm"
                                     placeholder="Observaciones de esta actividad (opcional)..."
                                     value={observacionesActividades[actividad._id || ''] || ''}
@@ -1245,26 +1307,36 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                     <span> • Fecha: {new Date(actividad.fecha).toLocaleDateString('es-ES')}</span>
                                   )}
                                 </small>
-                                {actividad.observaciones && (
+                                {/* Un solo input para observaciones (fix 2026-08-12): antes
+                                    había dos <Form.Control> condicionados por si la observación
+                                    estaba vacía; al escribir el primer carácter React desmontaba
+                                    uno y montaba el otro, perdiendo el foco. Ahora es uno solo. */}
+                                {(!!actividad.observaciones || !editedReporte.procesado) && (
                                   <div className="mt-2">
-                                    <Form.Label className="fw-bold small">Observaciones:</Form.Label>
+                                    {actividad.observaciones && (
+                                      <Form.Label className="fw-bold small">Observaciones:</Form.Label>
+                                    )}
+                                    <div className="d-flex align-items-center gap-2 mb-1">
+                                      <Form.Check
+                                        type="checkbox"
+                                        id={`realizada-incluir-desc-${index}`}
+                                        label="Incluir descripción de la actividad"
+                                        checked={activityIncludesDescripcion(actividad.observaciones || '', findProtocolDescripcion(actividad.actividadProtocoloId))}
+                                        onChange={(e) => {
+                                          const desc = findProtocolDescripcion(actividad.actividadProtocoloId);
+                                          if (!desc) return;
+                                          const next = e.target.checked
+                                            ? addDescripcionToText(actividad.observaciones || '', desc)
+                                            : removeDescripcionFromText(actividad.observaciones || '', desc);
+                                          handleActivityChange(index, 'observaciones', next);
+                                        }}
+                                        disabled={editedReporte.procesado || !findProtocolDescripcion(actividad.actividadProtocoloId)}
+                                      />
+                                    </div>
                                     <Form.Control
                                       as="textarea"
                                       rows={2}
-                                      value={actividad.observaciones || ''}
-                                      onChange={(e) => handleActivityChange(index, 'observaciones', e.target.value)}
-                                      disabled={editedReporte.procesado}
-                                      className="mt-1"
-                                      size="sm"
-                                    />
-                                  </div>
-                                )}
-                                {!actividad.observaciones && !editedReporte.procesado && (
-                                  <div className="mt-2">
-                                    <Form.Control
-                                      as="textarea"
-                                      rows={2}
-                                      placeholder="Agregar observaciones..."
+                                      placeholder={actividad.observaciones ? undefined : 'Agregar observaciones...'}
                                       value={actividad.observaciones || ''}
                                       onChange={(e) => handleActivityChange(index, 'observaciones', e.target.value)}
                                       disabled={editedReporte.procesado}

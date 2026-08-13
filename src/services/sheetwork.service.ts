@@ -158,6 +158,29 @@ export const sheetworkService = {
   },
 
   /**
+   * Comparte una HT ya firmada — genera un enlace público de descarga
+   * (3 descargas / 3 días; opcionalmente 2 descargas de reportes ZIP)
+   * y despacha el correo al destinatario.
+   */
+  share: async (
+    sheetId: string,
+    data: { email: string; allowReports?: boolean }
+  ) => {
+    const response = await api.post<
+      ApiResponse<{
+        sheetId: string;
+        token: string;
+        expiresAt: string;
+        downloadsAllowed: number;
+        allowReports: boolean;
+        reportDownloadsAllowed: number;
+        emailSent: boolean;
+      }>
+    >(`/worksheets/${sheetId}/share`, data);
+    return response.data;
+  },
+
+  /**
    * Firma en sitio una HT que estaba `EnviadaAFirmar` — corre el mismo
    * cierre que la firma remota y marca el token remoto como superseded.
    */
