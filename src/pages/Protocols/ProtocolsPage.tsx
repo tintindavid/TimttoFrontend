@@ -15,7 +15,9 @@ import {
 } from 'react-bootstrap';
 import { FaSearch, FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { useProtocols, useDeleteProtocol } from '@/hooks/useProtocols';
+import Swal from 'sweetalert2';
+import { useProtocols, useDeleteProtocol, useCreateProtocol } from '@/hooks/useProtocols';
+import { protocolService } from '@/services/protocol.service';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ProtocolMtto } from '@/types/protocol.types';
 import ConfirmModal from '@/components/common/ConfirmModal';
@@ -38,6 +40,7 @@ const ProtocolsPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortDirection>('asc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProtocol, setSelectedProtocol] = useState<ProtocolMtto | null>(null);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(searchInput, 300);
 
@@ -55,6 +58,7 @@ const ProtocolsPage: React.FC = () => {
   });
 
   const deleteMutation = useDeleteProtocol();
+  const duplicateMutation = useCreateProtocol();
 
   const protocols = data?.data ?? [];
   const totalPages = data?.pagination?.pages ?? 1;
@@ -74,6 +78,58 @@ const ProtocolsPage: React.FC = () => {
   const openDeleteModal = (protocol: ProtocolMtto): void => {
     setSelectedProtocol(protocol);
     setShowDeleteModal(true);
+  };
+
+  const handleDuplicate = async (protocol: ProtocolMtto): Promise<void> => {
+    if (!protocol._id) return;
+    setDuplicatingId(protocol._id);
+    try {
+      const sourceResp = await protocolService.getById(protocol._id);
+      const source = sourceResp?.data;
+      if (!source) throw new Error('Protocolo origen no disponible');
+
+      const activityIds = (source.actividadesMtto ?? [])
+        .map((act) => act._id)
+        .filter((actId): actId is string => Boolean(actId));
+
+      const createdResp = await duplicateMutation.mutateAsync({
+        nombre: `${source.nombre ?? ''}_copia`,
+        Descripcion: source.Descripcion ?? '',
+        actividadesMtto: activityIds,
+      });
+
+      const newId = createdResp?.data?._id;
+      if (newId) {
+        navigate(`/protocols/${newId}/edit`);
+        Swal.fire({
+          icon: 'success',
+          title: 'Protocolo duplicado',
+          text: 'Se creó la copia. Ajusta el nombre y las actividades.',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } else {
+        // El server aceptó la creación pero omitió _id — caso raro.
+        // La caché de protocolos ya fue invalidada por useCreateProtocol;
+        // el usuario verá la copia al refrescar el listado.
+        Swal.fire({
+          icon: 'warning',
+          title: 'Protocolo duplicado',
+          text: 'La copia se creó pero no pudimos abrir su edición. Búscala en el listado.',
+          confirmButtonText: 'Aceptar',
+        });
+      }
+    } catch (err) {
+      console.error('Error al duplicar protocolo:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo duplicar el protocolo. Inténtalo nuevamente.',
+        confirmButtonText: 'Aceptar',
+      });
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   if (isLoading && !data) {
@@ -204,6 +260,12 @@ const ProtocolsPage: React.FC = () => {
                                 onClick={() => navigate(`/protocols/${protocol._id}/edit`)}
                               >
                                 Editar
+                              </Dropdown.Item>
+                              <Dropdown.Item
+                                disabled={duplicatingId !== null}
+                                onClick={() => handleDuplicate(protocol)}
+                              >
+                                {duplicatingId === protocol._id ? 'Duplicando…' : 'Duplicar'}
                               </Dropdown.Item>
                               <Dropdown.Divider />
                               <Dropdown.Item
