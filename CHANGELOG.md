@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.12.0...v1.13.0) (2026-08-13)
+
+
+### Features
+
+* **ots:** sheetwork share modal + portal widening + report protocolo UX fixes ([dd023b8](https://github.com/tintindavid/TimttoFrontend/commit/dd023b8d58eb7e20615f542d2b83db1b37cbe468))
+
 # Unreleased (2026-08-12)
 
 
