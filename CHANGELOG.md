@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.13.0...v1.14.0) (2026-08-13)
+
+
+### Features
+
+* **protocols:** duplicar protocolo y auto-seleccionar actividad recién creada ([a4f2289](https://github.com/tintindavid/TimttoFrontend/commit/a4f2289670db0d7d78c09a7c1f7d53f9486e6f61))
+
 # [1.13.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.12.0...v1.13.0) (2026-08-13)
 
 
