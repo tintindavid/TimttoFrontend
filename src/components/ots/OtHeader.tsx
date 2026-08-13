@@ -47,10 +47,32 @@ const OtHeader: React.FC<OtHeaderProps> = ({ ot, equiposProcesados, totalEquipos
                 <FaUser className="me-2" />
                 Cliente
               </h6>
-              <h5>{ot.ClienteId?.Razonsocial || 'No especificado'}</h5>
-              <small className="text-muted">
-                {ot.ClienteId?.Ciudad} • {ot.ClienteId?.Email}
-              </small>
+              {ot.ClienteId?._id ? (
+                <a
+                  href={`/customers/${ot.ClienteId._id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ot-header-customer-link"
+                  style={{ color: 'inherit', textDecoration: 'none' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
+                  title="Abrir ficha del cliente en nueva pestaña"
+                >
+                  <h5 className="mb-0 d-inline">{ot.ClienteId?.Razonsocial || 'No especificado'}</h5>
+                </a>
+              ) : (
+                <h5>{ot.ClienteId?.Razonsocial || 'No especificado'}</h5>
+              )}
+              {ot.ClienteId?.Ciudad && (
+                <small className="text-muted d-block">
+                  {ot.ClienteId.Ciudad}
+                </small>
+              )}
+              {ot.ClienteId?.Email && (
+                <small className="text-muted d-block">
+                  {ot.ClienteId.Email}
+                </small>
+              )}
             </div>
 
             <Row>

@@ -696,6 +696,11 @@ const OtDetailPage: React.FC = () => {
           onHide={() => setShowAddEquipoModal(false)}
           otId={id!}
           clienteId={ot.ClienteId._id}
+          // Equipos ya en la OT (excluye reportes Cancelados — si el equipo
+          // solo tiene reportes cancelados, se puede re-agregar).
+          existingEquipoIds={reportes
+            .filter((r: any) => r?.estado !== 'Cancelado' && r?.Equipo?._id)
+            .map((r: any) => String(r.Equipo._id))}
           onSuccess={() => {
             refetchReportes();
             setShowAddEquipoModal(false);

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, Table, Button, Badge, Modal, Form, Alert, Row, Col, InputGroup, Spinner, Tabs, Tab } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { SheetWork } from '@/types/reporte.types';
-import { FaFilePdf, FaSignature, FaPlus, FaDownload, FaSearch, FaFilter, FaTimes, FaEye, FaPrint, FaCheckSquare, FaEnvelope } from 'react-icons/fa';
+import { FaFilePdf, FaSignature, FaPlus, FaDownload, FaSearch, FaFilter, FaTimes, FaEye, FaPrint, FaCheckSquare, FaEnvelope, FaPaperPlane } from 'react-icons/fa';
 import { useWorkSheets } from '@/hooks/useReportes';
 import { useCloseSheetReports } from '@/hooks/useCloseSheetReports';
 import { useSignInPlace } from '@/hooks/useSignInPlace';
@@ -17,6 +17,7 @@ import InPlaceSignSection, { InPlaceSignSectionHandle } from '@/components/ots/I
 import RemoteSignSection from '@/components/ots/RemoteSignSection';
 import ResendSignModal from '@/components/ots/ResendSignModal';
 import PdfReportsFilenameModal from '@/components/ots/PdfReportsFilenameModal';
+import SendSignedSheetModal from '@/components/ots/SendSignedSheetModal';
 import { sheetworkService } from '@/services/sheetwork.service';
 import tenantService from '@/services/tenant.service';
 import { customerService } from '@/services/customer.service';
@@ -62,6 +63,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [showFallbackSignModal, setShowFallbackSignModal] = useState(false);
   const [fallbackSignTarget, setFallbackSignTarget] = useState<SheetWork | null>(null);
   const [filenameModalTarget, setFilenameModalTarget] = useState<SheetWork | null>(null);
+  const [shareModalTarget, setShareModalTarget] = useState<SheetWork | null>(null);
   const fallbackSignRef = useRef<InPlaceSignSectionHandle>(null);
   const [fallbackCanSubmit, setFallbackCanSubmit] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<SheetWork | null>(null);
@@ -574,6 +576,16 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                             </Button>
                           );
                         })()}
+                        {hoja.estado === 'Firmada' && (
+                          <Button
+                            size="sm"
+                            variant="outline-success"
+                            title="Enviar HT firmada al cliente"
+                            onClick={() => setShareModalTarget(hoja)}
+                          >
+                            <FaPaperPlane className="me-1" /> Enviar
+                          </Button>
+                        )}
                         {hoja.estado === 'EnviadaAFirmar' && (
                           <>
                             <Button
@@ -1102,6 +1114,16 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
         sheetWork={selectedSheet}
         tenantData={tenantData}
         onDownloadPdf={handleDownloadPdf}
+      />
+
+      {/* Modal — Compartir HT firmada (sheetwork-share-and-portal-widening) */}
+      <SendSignedSheetModal
+        show={Boolean(shareModalTarget)}
+        onHide={() => setShareModalTarget(null)}
+        sheet={shareModalTarget}
+        customerEmail={customerData?.Email}
+        correousados={customerData?.correousados}
+        otId={otId}
       />
 
       {/* Modal — Nombre dinámico de los reportes PDF (pdf-reports-filename-builder) */}

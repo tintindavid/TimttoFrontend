@@ -23,6 +23,7 @@ import {
   FaEraser,
   FaPrint,
   FaDownload,
+  FaPaperPlane,
 } from 'react-icons/fa';
 import SignatureCanvas from 'react-signature-canvas';
 import { useAllWorkSheets, useSignWorkSheet } from '@/hooks/useReportes';
@@ -32,6 +33,7 @@ import { sheetworkService } from '@/services/sheetwork.service';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PreviewSheetWorkModal from '@/components/common/PreviewSheetWorkModal';
+import SendSignedSheetModal from '@/components/ots/SendSignedSheetModal';
 import tenantService from '@/services/tenant.service';
 import { useAuth } from '@/context/AuthContext';
 import { useCurrentUserData } from '@/context/userContext';
@@ -76,6 +78,7 @@ const HojasTrabajoTab: React.FC = () => {
   const [showSignModal, setShowSignModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState<SheetWork | null>(null);
+  const [shareModalTarget, setShareModalTarget] = useState<SheetWork | null>(null);
   const [tenantData, setTenantData] = useState<any>(null);
   const [firmaCliente, setFirmaCliente] = useState('');
   const signaturePadRef = useRef<SignatureCanvas>(null);
@@ -460,6 +463,17 @@ const HojasTrabajoTab: React.FC = () => {
                             )}
                             PDF
                           </Button>
+
+                          {(hoja.estado === 'Firmada' || hoja.firmaFile) && (
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              onClick={() => setShareModalTarget(hoja)}
+                              title="Enviar HT firmada al cliente"
+                            >
+                              <FaPaperPlane className="me-1" /> Enviar
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -576,6 +590,19 @@ const HojasTrabajoTab: React.FC = () => {
         sheetWork={selectedSheet}
         tenantData={tenantData}
         onDownloadPdf={() => selectedSheet && handleDownloadPdf(selectedSheet)}
+      />
+
+      {/* Modal — Compartir HT firmada (sheetwork-share-and-portal-widening) */}
+      <SendSignedSheetModal
+        show={Boolean(shareModalTarget)}
+        onHide={() => setShareModalTarget(null)}
+        sheet={shareModalTarget}
+        customerEmail={
+          (shareModalTarget?.clienteId as any)?.Email || null
+        }
+        correousados={
+          (shareModalTarget?.clienteId as any)?.correousados || []
+        }
       />
     </Card>
   );

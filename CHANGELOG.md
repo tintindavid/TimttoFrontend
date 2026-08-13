@@ -1,3 +1,33 @@
+# Unreleased (2026-08-12)
+
+
+### Bug Fixes
+
+* **reports:** en el tab Protocolo → "Actividades Realizadas", el input de observaciones perdía el foco al escribir el primer carácter. La causa era que había DOS `<Form.Control>` distintos condicionados por si el texto estaba vacío; al escribir el primer char React desmontaba uno y montaba el otro. Unificado a un solo input.
+
+### Features
+
+* **ots:** en el card del cliente del `OtHeader`, la Ciudad y el Email ahora se muestran en líneas separadas debajo del nombre (antes: `Ciudad • Email` en una sola línea).
+* **reports:** en el tab Protocolo, cada actividad tiene un checkbox "Incluir descripción de la actividad" que copia la descripción del protocolo al input de observaciones — disponible tanto en "Actividades Pendientes" como en "Actividades Realizadas". El check deriva su estado del propio texto (idempotente): activarlo prepende la descripción, desactivarlo la remueve, sin pisar ediciones manuales del resto del texto.
+
+### Features
+
+* **ots:** modal "+ Agregar Equipo" en `/ots/:id` ahora tiene 3 filtros nuevos en el tab "Seleccionar equipos existentes" (Sede como dropdown, Servicio como dropdown, Ubicación como texto). Además: check-all inteligente que selecciona/deselecciona SOLO los equipos filtrados visibles (respeta los que ya tenías seleccionados fuera del filtro). Los equipos que ya están en la OT (con reportes activos, no cancelados) se muestran deshabilitados con badge "Ya en la OT" — no se pueden seleccionar ni con el check-all.
+* **equipos:** en el tab "Crear Equipo Nuevo" (modal de la OT), los inputs Sede y Servicio quedan preseleccionados automáticamente cuando el cliente solo tiene una única opción de cada uno. Si el usuario elige otra manualmente después, no se pisa.
+
+# Unreleased (2026-08-11)
+
+
+### Features
+
+* **sheetwork:** botón "Enviar" en `/ots/:id → Hojas de Trabajo` y `/diario → hojas de trabajo` para HTs firmadas — abre `SendSignedSheetModal` con el correo del cliente prefilled (o el último usado desde `shareHistory`), editable, y checkbox "Permitir descargar los reportes". Al enviar se genera un enlace público de 3 descargas / 3 días (más 2 descargas de reportes ZIP si se habilita) y se despacha el correo al destinatario.
+* **sheetwork:** nueva página pública `/hoja-descarga/:token` con 4 estados (active / exhausted / expired / revoked). Vista activa muestra botón "Descargar Hoja de Trabajo" y, cuando `allowReports: true`, "Descargar Reportes"; cada botón muestra el contador de descargas restantes y el banner de expiración.
+* **portal-cliente:** el listado y descarga de HTs en el portal ahora incluye TODAS las HTs firmadas de las OTs del token, no solo las firmadas bajo el token actual. Rotar el token o crear uno nuevo ya no borra el histórico visible del cliente.
+
+### UX
+
+* **ots:** el nombre del cliente en el header de la OT ahora es un enlace que abre `/customers/:id` en una nueva pestaña (`target="_blank"`, con hover-underline). No cambia el layout del header.
+
 # [1.12.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.11.0...v1.12.0) (2026-08-11)
 
 

@@ -1,0 +1,49 @@
+.sheet-download-page {
+  min-height: 100vh;
+  background-color: #f4f5f7;
+  padding: 24px 12px;
+}
+
+.sheet-download-header {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  padding: 20px 24px;
+  margin: 0 auto 20px auto;
+  max-width: 640px;
+  text-align: center;
+}
+
+.sheet-download-header h1 {
+  font-size: 1.15rem;
+  margin: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.sheet-download-card {
+  max-width: 640px;
+  margin: 0 auto 16px auto;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  padding: 20px 24px;
+}
+
+.sheet-download-card .btn {
+  width: 100%;
+  padding: 12px;
+  font-weight: 600;
+}
+
+.sheet-download-card .counter {
+  color: #6b7280;
+  font-size: 0.875rem;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.sheet-download-banner {
+  max-width: 640px;
+  margin: 0 auto 16px auto;
+  font-size: 0.875rem;
+}

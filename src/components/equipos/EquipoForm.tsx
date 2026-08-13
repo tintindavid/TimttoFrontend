@@ -71,6 +71,28 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
 
   console.log('EquipoForm renderizado con formData:', formData);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Auto-select the single sede / servicio when the customer only has one of
+  // each — avoids forcing the admin to open a dropdown with a single option.
+  // Only fires when the field is still empty, so it doesn't override a manual
+  // pick and doesn't fight the user if they clear the value.
+  useEffect(() => {
+    if (sedes.length === 1 && !formData.SedeId) {
+      const only = sedes[0];
+      if (only?._id) {
+        setFormData((prev) => (prev.SedeId ? prev : { ...prev, SedeId: only._id! }));
+      }
+    }
+  }, [sedes, formData.SedeId]);
+
+  useEffect(() => {
+    if (servicios.length === 1 && !formData.Servicio) {
+      const only = servicios[0];
+      if (only?._id) {
+        setFormData((prev) => (prev.Servicio ? prev : { ...prev, Servicio: only._id! }));
+      }
+    }
+  }, [servicios, formData.Servicio]);
   
   // Items ordenados alfabéticamente
   const items = useMemo(() => {

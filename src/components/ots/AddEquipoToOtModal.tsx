@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Modal, Tab, Nav, Button, Alert, Spinner, Form, Row, Col, InputGroup } from 'react-bootstrap';
+import { Modal, Tab, Nav, Button, Alert, Spinner, Form, Row, Col, InputGroup, Badge } from 'react-bootstrap';
 import { FaPlus, FaTimes, FaCheck, FaSearch, FaFilter } from 'react-icons/fa';
 import EquipoForm from '@/components/equipos/EquipoForm';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
@@ -12,6 +12,12 @@ interface AddEquipoToOtModalProps {
   onHide: () => void;
   otId: string;
   clienteId: string;
+  /**
+   * IDs of equipos already attached to the OT (non-cancelled reports).
+   * Rendered as disabled rows with a "Ya en la OT" badge; excluded from
+   * selection state and from the check-all toggle.
+   */
+  existingEquipoIds?: string[];
   onSuccess?: () => void;
 }
 
@@ -20,23 +26,27 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
   onHide,
   otId,
   clienteId,
+  existingEquipoIds = [],
   onSuccess
 }) => {
   const [activeTab, setActiveTab] = useState<string>('new');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedEquipos, setSelectedEquipos] = useState<string[]>([]);
-  
+
   // Estados para filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMarca, setFilterMarca] = useState('');
   const [filterModelo, setFilterModelo] = useState('');
   const [filterSerie, setFilterSerie] = useState('');
+  const [filterSedeId, setFilterSedeId] = useState('');
+  const [filterServicioId, setFilterServicioId] = useState('');
+  const [filterUbicacion, setFilterUbicacion] = useState('');
 
   // Obtener equipos del cliente
-  const { data: equiposResponse, isLoading: loadingEquipos } = useEquipoItems({ 
+  const { data: equiposResponse, isLoading: loadingEquipos } = useEquipoItems({
     ClienteId: clienteId,
-    limit: 1000 // Límite aumentado para traer todos los equipos del cliente
+    limit: 1000
   });
 
   // Obtener sedes y servicios del cliente
@@ -47,49 +57,86 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
   const sedes = sedesData?.data || [];
   const servicios = serviciosData?.data || [];
 
+  const existingSet = useMemo(() => new Set(existingEquipoIds || []), [existingEquipoIds]);
+
   // Filtrar equipos según los criterios de búsqueda
   const filteredEquipos = useMemo(() => {
-    return equipos.filter((equipo) => {
-      const matchesSearch = !searchTerm || 
-        (equipo.ItemId?.Nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (equipo.Marca || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (equipo.Modelo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (equipo.Serie || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (equipo.Inventario || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.trim().toLowerCase();
+    const marca = filterMarca.trim().toLowerCase();
+    const modelo = filterModelo.trim().toLowerCase();
+    const serie = filterSerie.trim().toLowerCase();
+    const ubi = filterUbicacion.trim().toLowerCase();
 
-      const matchesMarca = !filterMarca || 
-        (equipo.Marca || '').toLowerCase().includes(filterMarca.toLowerCase());
+    return equipos.filter((equipo: any) => {
+      const matchesSearch = !term ||
+        (equipo.ItemId?.Nombre || '').toLowerCase().includes(term) ||
+        (equipo.Marca || '').toLowerCase().includes(term) ||
+        (equipo.Modelo || '').toLowerCase().includes(term) ||
+        (equipo.Serie || '').toLowerCase().includes(term) ||
+        (equipo.Inventario || '').toLowerCase().includes(term);
 
-      const matchesModelo = !filterModelo || 
-        (equipo.Modelo || '').toLowerCase().includes(filterModelo.toLowerCase());
+      const matchesMarca = !marca || (equipo.Marca || '').toLowerCase().includes(marca);
+      const matchesModelo = !modelo || (equipo.Modelo || '').toLowerCase().includes(modelo);
+      const matchesSerie = !serie || (equipo.Serie || '').toLowerCase().includes(serie);
+      const matchesUbi = !ubi || (equipo.Ubicacion || '').toLowerCase().includes(ubi);
 
-      const matchesSerie = !filterSerie || 
-        (equipo.Serie || '').toLowerCase().includes(filterSerie.toLowerCase());
+      const matchesSede = !filterSedeId || String(equipo.SedeId?._id || '') === filterSedeId;
+      const matchesServicio = !filterServicioId || String(equipo.Servicio?._id || '') === filterServicioId;
 
-      return matchesSearch && matchesMarca && matchesModelo && matchesSerie;
+      return matchesSearch && matchesMarca && matchesModelo && matchesSerie
+        && matchesUbi && matchesSede && matchesServicio;
     });
-  }, [equipos, searchTerm, filterMarca, filterModelo, filterSerie]);
+  }, [equipos, searchTerm, filterMarca, filterModelo, filterSerie, filterUbicacion, filterSedeId, filterServicioId]);
+
+  // Equipos filtrados que se pueden seleccionar (excluye los ya en la OT).
+  const selectableFilteredIds = useMemo(
+    () => filteredEquipos
+      .map((e: any) => e._id as string)
+      .filter((id) => !existingSet.has(id)),
+    [filteredEquipos, existingSet]
+  );
+
+  // ¿Todos los seleccionables filtrados están ya seleccionados?
+  const allSelectableFilteredSelected = useMemo(() => {
+    if (selectableFilteredIds.length === 0) return false;
+    return selectableFilteredIds.every((id) => selectedEquipos.includes(id));
+  }, [selectableFilteredIds, selectedEquipos]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setFilterMarca('');
     setFilterModelo('');
     setFilterSerie('');
+    setFilterSedeId('');
+    setFilterServicioId('');
+    setFilterUbicacion('');
   };
 
-  // Called by EquipoForm after it successfully creates the equipo. We take
-  // the freshly created equipoId and attach it to the OT in the same flow —
-  // before this, the user had to reopen the modal and search for it in the
-  // "existing" tab.
+  /**
+   * Toggle-all para lo filtrado visible (excluye equipos ya en la OT):
+   * - Si todos los seleccionables filtrados están ya en `selectedEquipos`, los quita.
+   * - Si no, los agrega (union), preservando cualquier selección previa fuera del filtro.
+   */
+  const handleToggleAllFiltered = () => {
+    if (selectableFilteredIds.length === 0) return;
+    setSelectedEquipos((prev) => {
+      if (allSelectableFilteredSelected) {
+        const toRemove = new Set(selectableFilteredIds);
+        return prev.filter((id) => !toRemove.has(id));
+      }
+      const merged = new Set(prev);
+      selectableFilteredIds.forEach((id) => merged.add(id));
+      return Array.from(merged);
+    });
+  };
+
   const handleCreateNew = async (created?: { _id?: string; [key: string]: unknown }) => {
     setLoading(true);
     setError(null);
 
     try {
       const newEquipoId = created?._id;
-      if (!newEquipoId) {
-        throw new Error('No se recibió el ID del equipo recién creado.');
-      }
+      if (!newEquipoId) throw new Error('No se recibió el ID del equipo recién creado.');
 
       const response = await api.post(`/ots/${otId}/equipos`, {
         equipos: [{ equipoId: newEquipoId }],
@@ -121,17 +168,14 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
     setError(null);
 
     try {
-      // Agregar equipos existentes a la OT
       const response = await api.post(`/ots/${otId}/equipos`, {
         equipos: selectedEquipos.map(equipoId => ({ equipoId })),
         createReport: true
       });
 
       if (response.data.success) {
-      handleClearFilters();
-        if (onSuccess) {
-          onSuccess();
-        }
+        handleClearFilters();
+        if (onSuccess) onSuccess();
         onHide();
         setSelectedEquipos([]);
         setActiveTab('new');
@@ -145,12 +189,10 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
   };
 
   const handleToggleEquipo = (equipoId: string) => {
+    if (existingSet.has(equipoId)) return; // no permite tocar los ya-en-OT
     setSelectedEquipos(prev => {
-      if (prev.includes(equipoId)) {
-        return prev.filter(id => id !== equipoId);
-      } else {
-        return [...prev, equipoId];
-      }
+      if (prev.includes(equipoId)) return prev.filter(id => id !== equipoId);
+      return [...prev, equipoId];
     });
   };
 
@@ -163,10 +205,15 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
     }
   };
 
+  const existingInFilteredCount = useMemo(
+    () => filteredEquipos.reduce((n: number, e: any) => (existingSet.has(e._id) ? n + 1 : n), 0),
+    [filteredEquipos, existingSet]
+  );
+
   return (
-    <Modal 
-      show={show} 
-      onHide={handleClose} 
+    <Modal
+      show={show}
+      onHide={handleClose}
       size="xl"
       backdrop={loading ? 'static' : true}
     >
@@ -234,6 +281,7 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
                   <strong>Seleccionar equipos existentes</strong>
                   <p className="mb-0 small">
                     Seleccione uno o más equipos del cliente para agregarlos a esta OT.
+                    Los equipos que ya están en la OT aparecen marcados y no se pueden seleccionar de nuevo.
                   </p>
                 </Alert>
 
@@ -247,15 +295,16 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
                     No hay equipos disponibles para este cliente.
                   </Alert>
                 ) : (
-                  <>{/* Filtros de Búsqueda */}
+                  <>
+                    {/* Filtros de Búsqueda */}
                     <div className="mb-4 p-3 bg-light rounded">
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <h6 className="mb-0">
                           <FaFilter className="me-2" />
                           Filtros de Búsqueda
                         </h6>
-                        <Button 
-                          variant="link" 
+                        <Button
+                          variant="link"
                           size="sm"
                           onClick={handleClearFilters}
                           className="text-decoration-none"
@@ -278,6 +327,45 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
                             />
                           </InputGroup>
                         </Col>
+
+                        <Col md={4}>
+                          <Form.Select
+                            value={filterSedeId}
+                            onChange={(e) => setFilterSedeId(e.target.value)}
+                          >
+                            <option value="">Todas las sedes</option>
+                            {sedes.map((s: any) => (
+                              <option key={s._id} value={s._id}>
+                                {s.nombreSede || 'Sin nombre'}
+                              </option>
+                            ))}
+                          </Form.Select>
+                          <Form.Text className="text-muted">Sede</Form.Text>
+                        </Col>
+                        <Col md={4}>
+                          <Form.Select
+                            value={filterServicioId}
+                            onChange={(e) => setFilterServicioId(e.target.value)}
+                          >
+                            <option value="">Todos los servicios</option>
+                            {servicios.map((s: any) => (
+                              <option key={s._id} value={s._id}>
+                                {s.nombre || 'Sin nombre'}
+                              </option>
+                            ))}
+                          </Form.Select>
+                          <Form.Text className="text-muted">Servicio</Form.Text>
+                        </Col>
+                        <Col md={4}>
+                          <Form.Control
+                            type="text"
+                            placeholder="Filtrar por ubicación..."
+                            value={filterUbicacion}
+                            onChange={(e) => setFilterUbicacion(e.target.value)}
+                          />
+                          <Form.Text className="text-muted">Ubicación</Form.Text>
+                        </Col>
+
                         <Col md={4}>
                           <Form.Control
                             type="text"
@@ -307,17 +395,34 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
                         </Col>
                       </Row>
 
-                      <div className="mt-2">
+                      <div className="mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <small className="text-muted">
                           Mostrando {filteredEquipos.length} de {equipos.length} equipos
+                          {existingInFilteredCount > 0 && (
+                            <> · {existingInFilteredCount} ya en la OT</>
+                          )}
                         </small>
                       </div>
                     </div>
 
-                    <div className="mb-3 d-flex justify-content-between align-items-center">
-                      <small className="text-muted">
-                        <strong>{selectedEquipos.length}</strong> equipo(s) seleccionado(s)
-                      </small>
+                    <div className="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                      <div className="d-flex align-items-center gap-3 flex-wrap">
+                        <Form.Check
+                          type="checkbox"
+                          id="check-all-filtered"
+                          label={
+                            allSelectableFilteredSelected
+                              ? `Deseleccionar ${selectableFilteredIds.length} filtrado${selectableFilteredIds.length !== 1 ? 's' : ''}`
+                              : `Seleccionar ${selectableFilteredIds.length} filtrado${selectableFilteredIds.length !== 1 ? 's' : ''}`
+                          }
+                          checked={allSelectableFilteredSelected}
+                          onChange={handleToggleAllFiltered}
+                          disabled={selectableFilteredIds.length === 0}
+                        />
+                        <small className="text-muted">
+                          <strong>{selectedEquipos.length}</strong> equipo(s) seleccionado(s) en total
+                        </small>
+                      </div>
                       {selectedEquipos.length > 0 && (
                         <Button
                           variant="link"
@@ -336,60 +441,80 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
                       </Alert>
                     ) : (
                       <div className="list-group" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                        {filteredEquipos.map((equipo) => (
-                          <label
-                            key={equipo._id}
-                            className={`list-group-item list-group-item-action ${
-                              selectedEquipos.includes(equipo._id!) ? 'active' : ''
-                            }`}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            <div className="d-flex align-items-center">
-                              <input
-                                type="checkbox"
-                                className="form-check-input me-3"
-                                checked={selectedEquipos.includes(equipo._id!)}
-                                onChange={() => handleToggleEquipo(equipo._id!)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                              <div className="flex-grow-1">
-                                <div className="fw-bold">
-                                  {equipo.ItemId?.Nombre || 'Sin nombre'}
+                        {filteredEquipos.map((equipo: any) => {
+                          const isInOt = existingSet.has(equipo._id);
+                          const isSelected = selectedEquipos.includes(equipo._id);
+                          const rowClasses = [
+                            'list-group-item',
+                            'list-group-item-action',
+                            isInOt ? 'text-muted' : '',
+                            !isInOt && isSelected ? 'active' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ');
+                          return (
+                            <label
+                              key={equipo._id}
+                              className={rowClasses}
+                              style={{
+                                cursor: isInOt ? 'not-allowed' : 'pointer',
+                                opacity: isInOt ? 0.65 : 1,
+                                background: isInOt ? '#f5f5f5' : undefined,
+                              }}
+                              title={isInOt ? 'Este equipo ya está en la OT' : undefined}
+                            >
+                              <div className="d-flex align-items-center">
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input me-3"
+                                  checked={isInOt ? true : isSelected}
+                                  disabled={isInOt}
+                                  onChange={() => handleToggleEquipo(equipo._id)}
+                                  style={{ cursor: isInOt ? 'not-allowed' : 'pointer' }}
+                                />
+                                <div className="flex-grow-1">
+                                  <div className="fw-bold d-flex align-items-center gap-2">
+                                    {equipo.ItemId?.Nombre || 'Sin nombre'}
+                                    {isInOt && (
+                                      <Badge bg="secondary" pill>Ya en la OT</Badge>
+                                    )}
+                                  </div>
+                                  <small className={!isInOt && isSelected ? 'text-white-50' : 'text-muted'}>
+                                    <span className="me-3"><strong>Marca:</strong> {equipo.Marca || 'N/A'}</span>
+                                    <span className="me-3"><strong>Modelo:</strong> {equipo.Modelo || 'N/A'}</span>
+                                    <span className="me-3"><strong>Serie:</strong> {equipo.Serie || 'N/A'}</span>
+                                    {equipo.Inventario && (
+                                      <span className="me-3"><strong>Inv:</strong> {equipo.Inventario}</span>
+                                    )}
+                                    {equipo.SedeId?.nombreSede && (
+                                      <span className="me-3"><strong>Sede:</strong> {equipo.SedeId.nombreSede}</span>
+                                    )}
+                                    {equipo.Servicio?.nombre && (
+                                      <span className="me-3"><strong>Servicio:</strong> {equipo.Servicio.nombre}</span>
+                                    )}
+                                    {equipo.Ubicacion && (
+                                      <span><strong>Ubicación:</strong> {equipo.Ubicacion}</span>
+                                    )}
+                                  </small>
                                 </div>
-                                <small className={selectedEquipos.includes(equipo._id!) ? 'text-white-50' : 'text-muted'}>
-                                  <span className="me-3">
-                                    <strong>Marca:</strong> {equipo.Marca || 'N/A'}
-                                  </span>
-                                  <span className="me-3">
-                                    <strong>Modelo:</strong> {equipo.Modelo || 'N/A'}
-                                  </span>
-                                  <span className="me-3">
-                                    <strong>Serie:</strong> {equipo.Serie || 'N/A'}
-                                  </span>
-                                  {equipo.Inventario && (
-                                    <span>
-                                      <strong>Inv:</strong> {equipo.Inventario}
-                                    </span>
-                                  )}
-                                </small>
                               </div>
-                            </div>
-                          </label>
-                        ))}
+                            </label>
+                          );
+                        })}
                       </div>
                     )}
 
                     <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         onClick={handleClose}
                         disabled={loading}
                       >
                         <FaTimes className="me-1" />
                         Cancelar
                       </Button>
-                      <Button 
-                        variant="primary" 
+                      <Button
+                        variant="primary"
                         onClick={handleAddExisting}
                         disabled={loading || selectedEquipos.length === 0}
                       >
