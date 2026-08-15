@@ -3,6 +3,7 @@ import { Navbar as BSNavbar, Container, Nav, NavDropdown, Button, Image } from '
 import { useNavigate } from 'react-router-dom';
 import { FaBars } from 'react-icons/fa';
 import { useAuth } from '../../../context/AuthContext';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 interface NavbarProps {
   onToggleMobileSidebar: () => void;
@@ -42,6 +43,7 @@ const Navbar: React.FC<NavbarProps> = ({ onToggleMobileSidebar }) => {
         <BSNavbar.Collapse className="justify-content-end">
           <Nav className="align-items-center">
             <span className="navbar-text me-3 d-none d-md-block">{user?.tenantId || ''}</span>
+            <NotificationBell />
             <NavDropdown title={user?.fullName || user?.email || 'Cuenta'} id="user-menu" align="end" onSelect={handleSelect}>
               <NavDropdown.Item eventKey="profile">Perfil</NavDropdown.Item>
               <NavDropdown.Divider />

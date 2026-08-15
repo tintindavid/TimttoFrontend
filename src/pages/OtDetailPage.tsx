@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, ReactElement } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, Row, Col, Nav, Tab, Alert, Button, Modal, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { 
   FaArrowLeft, 
@@ -42,6 +42,11 @@ import { OT } from '../types/ot.types';
 
 const OtDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // `?preview_sheet={sheetId}` — set by NotificationBell when the user
+  // clicks a `sheet.signed` notification. We pass it to <WorkSheets> so
+  // its PreviewSheetWorkModal opens on the specific HT.
+  const autoOpenPreviewSheetId = searchParams.get('preview_sheet') || undefined;
   const navigate = useNavigate();
   
   // State
@@ -679,6 +684,15 @@ const OtDetailPage: React.FC = () => {
                   clienteId={ot.ClienteId?._id!}
                   autoOpenCreate={autoOpenCreateSheet}
                   onAutoOpenHandled={() => setAutoOpenCreateSheet(false)}
+                  autoOpenPreviewSheetId={autoOpenPreviewSheetId}
+                  onAutoOpenPreviewHandled={() => {
+                    // Clean the URL so refreshing the page does not re-open
+                    // the modal, and so the notification's deep-link is a
+                    // one-shot action.
+                    const next = new URLSearchParams(searchParams);
+                    next.delete('preview_sheet');
+                    setSearchParams(next, { replace: true });
+                  }}
                 />
               </Tab.Pane>
             </Tab.Content>

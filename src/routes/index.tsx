@@ -67,6 +67,8 @@ import PortalHome from '@/pages/Portal/PortalHome';
 import PortalSheetsHistory from '@/pages/Portal/PortalSheetsHistory';
 import RemoteSignPage from '@/pages/RemoteSign/RemoteSignPage';
 import SheetDownloadPage from '@/pages/SheetDownload/SheetDownloadPage';
+import NotificationsPage from '@/pages/Notifications/NotificationsPage';
+import NotificationsSettingsPage from '@/pages/Settings/NotificationsSettingsPage';
 
 /**
  * /my-organization redirect:
@@ -197,7 +199,11 @@ const AppRoutes: React.FC = () => {
         <Route path="protocols/:id/edit" element={<ProtocolFormPage />} />
 
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings/notifications" element={<NotificationsSettingsPage />} />
         <Route path="roles" element={<RolesPage />} />
+
+        {/* Notifications history — private, no role gate (tab visibility inside the settings page handles the admin gate) */}
+        <Route path="notifications" element={<NotificationsPage />} />
 
         <Route path="hv-equipo" element={<HVEquipoPage />} />
         <Route path="items" element={<ItemsPage />} />
