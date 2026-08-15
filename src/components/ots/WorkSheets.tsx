@@ -35,6 +35,14 @@ interface WorkSheetsProps {
    */
   autoOpenCreate?: boolean;
   onAutoOpenHandled?: () => void;
+  /**
+   * When set (from NotificationBell → OtDetailPage `?preview_sheet={id}`),
+   * open PreviewSheetWorkModal on the matching HT as soon as the sheets
+   * list finishes loading. Consumed once, then `onAutoOpenPreviewHandled`
+   * clears the URL param so a refresh does not re-open the modal.
+   */
+  autoOpenPreviewSheetId?: string;
+  onAutoOpenPreviewHandled?: () => void;
 }
 const WorkSheets: React.FC<WorkSheetsProps> = ({
   otId,
@@ -44,6 +52,8 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   clienteId,
   autoOpenCreate,
   onAutoOpenHandled,
+  autoOpenPreviewSheetId,
+  onAutoOpenPreviewHandled,
 }) => {
   // Obtener usuario en sesión (useCurrentUserData ya maneja el caching con React Query)
   const { token } = useAuth();
@@ -92,6 +102,38 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
     setShowCreateModal(true);
     onAutoOpenHandled?.();
   }, [autoOpenCreate, onAutoOpenHandled]);
+
+  // NotificationBell deep-link: `?preview_sheet={sheetId}` on the URL
+  // opens PreviewSheetWorkModal for that HT.
+  //
+  // Race guard: React Query serves cached ['worksheets', otId] first when
+  // the user was already viewing this OT. If the click happens faster than
+  // the socket-driven invalidation propagates, the modal would render the
+  // pre-signature snapshot (technician's firma only, no cliente firma).
+  // We refetch and use the fresh result before selecting the target.
+  useEffect(() => {
+    if (!autoOpenPreviewSheetId) return;
+    let cancelled = false;
+    (async () => {
+      const result = await refetch();
+      if (cancelled) return;
+      const list: SheetWork[] = (result?.data as SheetWork[] | undefined) ?? hojasTrabajo;
+      const target = list.find((h) => h._id === autoOpenPreviewSheetId);
+      if (target) {
+        setSelectedSheet(target);
+        setShowPreviewModal(true);
+      }
+      onAutoOpenPreviewHandled?.();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally NOT including onAutoOpenPreviewHandled / hojasTrabajo /
+    // refetch — those change reference across renders and would re-fire the
+    // effect. The parent clears the URL param after handling, which flips
+    // autoOpenPreviewSheetId to undefined and prevents any re-run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenPreviewSheetId]);
 
   // Obtener tenant data para el PDF
   useEffect(() => {

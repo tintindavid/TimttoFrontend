@@ -22,3 +22,4 @@ export * from './platformAudit.types';
 export * from './platformAnalytics.types';
 export * from './clientAccessToken.types';
 export * from './publicPortal.types';
+export * from './notification.types';
