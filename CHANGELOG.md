@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.14.0...v1.15.0) (2026-08-15)
+
+
+### Features
+
+* **notifications:** infra real-time + primer evento sheet.signed ([1e73d59](https://github.com/tintindavid/TimttoFrontend/commit/1e73d592074a6a546798de1a2f28927a1e0386d7))
+
 # [1.14.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.13.0...v1.14.0) (2026-08-13)
 
 
