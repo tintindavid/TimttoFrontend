@@ -99,9 +99,19 @@ const OtDetailPage: React.FC = () => {
     [reportes]
   );
 
-  const porcentajeProcesados = useMemo(() => 
+  const porcentajeProcesados = useMemo(() =>
     reportes.length > 0 ? Math.round((reportesProcesados.length / reportes.length) * 100) : 0,
     [reportesProcesados.length, reportes.length]
+  );
+
+  // ot-responsables-programacion-trazable: `canWork` is computed server-side
+  // (GET /ots/:id) from the caller's userId vs. the active roster.
+  // `undefined` (legacy OTs / OTs without programaciones, or still loading)
+  // is treated as permissive, matching the backend's retro-compat rule.
+  const canWork = ot?.canWork !== false;
+  const activeResponsables = useMemo(
+    () => ot?.programaciones?.find((p) => p.isActive)?.responsables ?? [],
+    [ot?.programaciones],
   );
 
   // Event Handlers
@@ -652,6 +662,8 @@ const OtDetailPage: React.FC = () => {
                       reportes={reportes}
                       onReporteSelect={handleReporteSelect}
                       onDeleteReporte={handleDeleteReporte}
+                      canWork={canWork}
+                      activeResponsables={activeResponsables}
                     />
               </Tab.Pane>
 
@@ -662,15 +674,19 @@ const OtDetailPage: React.FC = () => {
                   onReporteSelect={handleReporteSelect}
                   onDeleteReporte={handleDeleteReporte}
                   showFilters={true}
+                  canWork={canWork}
+                  activeResponsables={activeResponsables}
                 />
               </Tab.Pane>
 
               {/* Closed Reports Tab */}
               <Tab.Pane eventKey="reports-closed">
-                <ReportsList 
+                <ReportsList
                   reportes={reportesCerrados}
                   onReporteSelect={handleReporteSelect}
                   showFilters={true}
+                  canWork={canWork}
+                  activeResponsables={activeResponsables}
                 />
               </Tab.Pane>
 
@@ -684,6 +700,8 @@ const OtDetailPage: React.FC = () => {
                   clienteId={ot.ClienteId?._id!}
                   autoOpenCreate={autoOpenCreateSheet}
                   onAutoOpenHandled={() => setAutoOpenCreateSheet(false)}
+                  canWork={canWork}
+                  activeResponsables={activeResponsables}
                   autoOpenPreviewSheetId={autoOpenPreviewSheetId}
                   onAutoOpenPreviewHandled={() => {
                     // Clean the URL so refreshing the page does not re-open

@@ -10,6 +10,14 @@ vi.mock('@/hooks/useRemoteSignRequest', () => ({
   useRemoteSignRequest: () => ({ mutateAsync, isPending: false }),
 }));
 
+vi.mock('@/hooks/useUsers', () => ({
+  useUsersWithSignature: () => ({ data: { data: [] } }),
+}));
+
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({ user: { _id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@x.com' } }),
+}));
+
 function withQC(node: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={qc}>{node}</QueryClientProvider>;
@@ -64,7 +72,7 @@ describe('RemoteSignSection', () => {
     expect(button).toBeDisabled();
   });
 
-  it('enables submit and calls the mutation with a valid email', async () => {
+  it('enables submit, opens the firmante confirmation, and calls the mutation with a valid email', async () => {
     render(
       withQC(
         <RemoteSignSection otId="ot-1" reportIds={['r1']} clientEmail="client@example.com" />
@@ -73,6 +81,12 @@ describe('RemoteSignSection', () => {
     const button = screen.getByRole('button', { name: /enviar solicitud/i });
     expect(button).not.toBeDisabled();
     fireEvent.click(button);
+
+    // Confirmation modal appears before the mutation fires.
+    const confirmButton = await screen.findByRole('button', { name: /confirmar y firmar/i });
+    expect(mutateAsync).not.toHaveBeenCalled();
+    fireEvent.click(confirmButton);
+
     // wait a tick for the async handler
     await new Promise((r) => setTimeout(r, 0));
     expect(mutateAsync).toHaveBeenCalledWith(

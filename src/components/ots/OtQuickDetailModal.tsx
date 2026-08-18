@@ -1,10 +1,19 @@
 import React from 'react';
-import { Alert, Badge, Button, Modal, OverlayTrigger, Popover, ProgressBar, Spinner, Table } from 'react-bootstrap';
-import { FaExternalLinkAlt, FaStickyNote } from 'react-icons/fa';
+import { Alert, Badge, Button, Col, Modal, OverlayTrigger, Popover, ProgressBar, Row, Spinner, Table } from 'react-bootstrap';
+import { FaExternalLinkAlt, FaStickyNote, FaUsers } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useOT } from '@/hooks/useOTs';
 import { useReportes } from '@/hooks/useReportes';
 import { Reporte } from '@/types/reporte.types';
+
+const fmtDate = (d: string | Date | undefined | null): string => {
+  if (!d) return '—';
+  try {
+    return new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: '2-digit' });
+  } catch {
+    return String(d);
+  }
+};
 
 interface OtQuickDetailModalProps {
   show: boolean;
@@ -107,17 +116,43 @@ const OtQuickDetailModal: React.FC<OtQuickDetailModalProps> = ({ show, onHide, o
               </div>
             </div>
 
-            {cliente && (
-              <div className="mb-4">
-                <div className="text-uppercase small text-muted fw-semibold">Cliente</div>
-                <div className="fw-semibold">{cliente.Razonsocial || 'N/A'}</div>
-                <div className="small text-muted">
-                  {cliente.Nit ? `NIT ${cliente.Nit} · ` : ''}
-                  {cliente.Ciudad || ''}
-                  {cliente.Direccion ? ` · ${cliente.Direccion}` : ''}
-                </div>
-              </div>
-            )}
+            <Row className="mb-4 g-3">
+              {cliente && (
+                <Col md={6}>
+                  <div className="text-uppercase small text-muted fw-semibold">Cliente</div>
+                  <div className="fw-semibold">{cliente.Razonsocial || 'N/A'}</div>
+                  <div className="small text-muted">
+                    {cliente.Nit ? `NIT ${cliente.Nit} · ` : ''}
+                    {cliente.Ciudad || ''}
+                    {cliente.Direccion ? ` · ${cliente.Direccion}` : ''}
+                  </div>
+                </Col>
+              )}
+              {(() => {
+                const activeEntry = ot?.programaciones?.find((p) => p.isActive);
+                return (
+                  <Col md={cliente ? 6 : 12}>
+                    <div className="text-uppercase small text-muted fw-semibold">
+                      <FaUsers className="me-1" /> Responsables y programación
+                    </div>
+                    {activeEntry ? (
+                      <>
+                        <div className="fw-semibold">
+                          {activeEntry.responsables.length > 0
+                            ? activeEntry.responsables.map((r) => r.snapshotName).join(', ')
+                            : <span className="text-muted">Sin responsables</span>}
+                        </div>
+                        <div className="small text-muted">
+                          {fmtDate(activeEntry.fechaInicio)} → {fmtDate(activeEntry.fechaFin)}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-muted small fst-italic">Sin programar</div>
+                    )}
+                  </Col>
+                );
+              })()}
+            </Row>
 
             <h6 className="text-uppercase text-muted small fw-semibold">
               Equipos en la OT ({reportes.length})

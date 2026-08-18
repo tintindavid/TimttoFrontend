@@ -138,6 +138,8 @@ export const sheetworkService = {
     reportIds: string[];
     email: string;
     message?: string;
+    /** Firmante técnico opcional; default backend = user en sesión. */
+    firmanteUserId?: string;
   }) => {
     const response = await api.post<
       ApiResponse<{ sheetId: string; tokenId: string; expiresAt: string; emailSent: boolean; numeroHoja?: string }>
@@ -191,6 +193,8 @@ export const sheetworkService = {
       personaRecibe?: string;
       cargoRecibe?: string;
       observaciones?: string;
+      /** Firmante técnico opcional; default backend = user en sesión. */
+      firmanteUserId?: string;
     }
   ) => {
     const response = await api.post<ApiResponse<{ sheetId: string; estado: string; pdfStatus: string }>>(

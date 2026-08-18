@@ -55,6 +55,13 @@ export interface Reporte {
   fechaMtto?: string;
   fechaFinalizado?: string;
   responsableProcesado?: string;
+  /**
+   * Trazabilidad — quién procesó el reporte (independiente de quién firma la
+   * HT). Se popula al transicionar el estado a Procesado o Cerrado.
+   * `snapshotName` ya viene en formato corto (ej. "M. Duran"), congelado en
+   * el momento del proceso.
+   */
+  procesadoPor?: { userId: string; snapshotName: string; fechaProceso: string };
   actividadesRealizadas?: ActividadRealizada[];
   duracion?: number;
   hojaDeTrabajo: string; // Nuevo campo para mostrar número de hoja de trabajo o estado como 'Cerrado'
@@ -196,6 +203,15 @@ export interface SheetWork {
   fechaCreacion: string;
   estado: 'Borrador' | 'EnviadaAFirmar' | 'Firmada' | 'Cerrada';
   observaciones?: string;
+  /**
+   * Trazabilidad — quién firmó técnicamente la HT (puede ser distinto de
+   * quien tramitó, para varios técnicos bajo un mismo user). `snapshotName`
+   * ya viene en formato corto (ej. "M. Duran"). `firmadoAt` queda `null`
+   * hasta que el cliente firma (remoto) o se completa el flujo in-place.
+   */
+  firmadoPor?: { userId: string; snapshotName: string; firmadoAt: string | null };
+  /** Firma del cliente vía portal público (D9/D14). Solo `signedAt` es de interés en el panel. */
+  clientSignature?: { signedAt?: string | null };
   remoteSignRequest?: {
     tokenId?: string;
     email?: string;

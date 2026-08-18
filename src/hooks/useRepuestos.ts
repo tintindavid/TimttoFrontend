@@ -117,7 +117,13 @@ export const useCreateOtFromRepuestos = () => {
       payload,
     }: {
       repuestoIds: string[];
-      payload: { ResponsableId: string; FechaEstimadaEntrega?: string; observacion?: string; OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente' };
+      payload: {
+        responsableUserIds: string[];
+        fechaInicio: string;
+        fechaFin: string;
+        nota?: string;
+        OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente';
+      };
     }) => repuestoService.createOtFromSolicitudes(repuestoIds, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['repuestos'] });

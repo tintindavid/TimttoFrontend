@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Badge,
@@ -14,6 +14,8 @@ import {
   ProgressBar,
   Row,
   Spinner,
+  Tab,
+  Tabs,
   Tooltip,
 } from 'react-bootstrap';
 import {
@@ -29,14 +31,17 @@ import {
   FaSearch,
   FaStickyNote,
   FaTrash,
-  FaUserPlus,
+  FaUsers,
 } from 'react-icons/fa';
 import { useOTs, useDeleteOt } from '@/hooks/useOTs';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useHasPermission } from '@/hooks/usePermission';
+import { PERMISSIONS } from '@/constants/permissions';
 import DataTable from '@/components/common/DataTable';
 import OtNotasModal from '@/components/ots/OtNotasModal';
 import OtQuickDetailModal from '@/components/ots/OtQuickDetailModal';
-import { useNavigate } from 'react-router-dom';
+import OtResponsablesModal from '@/components/ots/OtResponsablesModal';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const PAGE_SIZE = 20;
 
@@ -58,11 +63,16 @@ const ESTADO_OPTIONS = [
 const OTsPage: React.FC = () => {
   const navigate = useNavigate();
   const deleteMutation = useDeleteOt();
+  const canManageResponsables = useHasPermission(PERMISSIONS.OTS_MANAGE_RESPONSABLES);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [page, setPage] = useState(1);
   const [consecutivoInput, setConsecutivoInput] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('');
   const [clienteNameInput, setClienteNameInput] = useState('');
+  // "Todas las OTs" / "Mis OTs" — server-filtered via `?mine=true`, never
+  // filtered client-side (spec: Frontend tabs "Todas las OTs" / "Mis OTs").
+  const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
 
   const debouncedConsecutivo = useDebounce(consecutivoInput, 300);
   const debouncedClienteName = useDebounce(clienteNameInput, 300);
@@ -75,8 +85,9 @@ const OTsPage: React.FC = () => {
       EstadoOt: estadoFilter || undefined,
       // Partial match on Customer.Razonsocial resolved server-side (2026-08-02).
       clienteName: debouncedClienteName || undefined,
+      mine: activeTab === 'mine' ? true : undefined,
     }),
-    [page, debouncedConsecutivo, estadoFilter, debouncedClienteName],
+    [page, debouncedConsecutivo, estadoFilter, debouncedClienteName, activeTab],
   );
 
   const { data, isLoading, isFetching, error } = useOTs(queryParams);
@@ -87,6 +98,26 @@ const OTsPage: React.FC = () => {
 
   const [notasOtId, setNotasOtId] = useState<string | null>(null);
   const [quickDetailOtId, setQuickDetailOtId] = useState<string | null>(null);
+  const [responsablesOtId, setResponsablesOtId] = useState<string | null>(null);
+
+  // Deep-link `?open_ot={id}` — set by NotificationBell when the user clicks
+  // an `ot.responsible.assigned` notification (design.md D11). Opens the
+  // existing quick-detail modal, then cleans the URL so a refresh doesn't
+  // re-open it. `?open_notas={id}` follows the same pattern for the
+  // `ot.note.added` event → opens the OtNotasModal.
+  useEffect(() => {
+    const otId = searchParams.get('open_ot');
+    const notasId = searchParams.get('open_notas');
+    if (otId || notasId) {
+      if (otId) setQuickDetailOtId(otId);
+      if (notasId) setNotasOtId(notasId);
+      const next = new URLSearchParams(searchParams);
+      next.delete('open_ot');
+      next.delete('open_notas');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Confirma eliminar esta OT?')) {
@@ -96,7 +127,6 @@ const OTsPage: React.FC = () => {
 
   // Placeholder handlers — the actual mutations live elsewhere and get
   // wired up as the workflow features land.
-  const handleAssignResponsible = (id: string) => console.log('Asignar responsable a OT:', id);
   const handleStartOT = (id: string) => console.log('Iniciar OT:', id);
   const handlePauseOT = (id: string) => console.log('Pausar OT:', id);
   const handleCompleteOT = (id: string) => console.log('Finalizar OT:', id);
@@ -184,33 +214,63 @@ const OTsPage: React.FC = () => {
       },
     },
     {
-      key: 'TipoServicio',
-      label: 'Tipo Servicio',
+      // Column unification (design.md D13): "Tipo de servicio" + "Prioridad"
+      // collapse into a single "T. Servicio" column — type on the first
+      // line, priority badge on the second — so the table doesn't grow.
+      key: 'tipoServicio',
+      label: 'T. Servicio',
       render: (row: any) => (
-        <Badge bg="info" className="text-wrap">
-          {row.TipoServicio || row.tipoMantenimiento || 'N/A'}
-        </Badge>
+        <div style={{ minWidth: 110 }}>
+          <div>
+            <Badge bg="info" className="text-wrap">
+              {row.TipoServicio || row.tipoMantenimiento || 'N/A'}
+            </Badge>
+          </div>
+          <div className="mt-1">{getPrioridadBadge(row.OtPrioridad || row.urgencia || '')}</div>
+        </div>
       ),
     },
     {
-      key: 'OtPrioridad',
-      label: 'Prioridad',
-      render: (row: any) => getPrioridadBadge(row.OtPrioridad || row.urgencia || ''),
-    },
-    {
-      key: 'EstadoOt',
+      // "Estado" + "Avance" collapse into a single column (design.md D13).
+      key: 'estado',
       label: 'Estado',
-      render: (row: any) => getEstadoBadge(row.EstadoOt || 'Pendiente'),
-    },
-    {
-      key: 'Avance',
-      label: 'Avance',
       render: (row: any) => {
         const avance = typeof row.Avance === 'number' ? row.Avance : parseInt(row.Avance || '0');
         const variant = avance < 30 ? 'danger' : avance < 70 ? 'warning' : 'success';
         return (
-          <div style={{ minWidth: '120px' }}>
-            <ProgressBar now={avance} label={`${avance}%`} variant={variant} style={{ height: '20px' }} />
+          <div style={{ minWidth: 120 }}>
+            <div>{getEstadoBadge(row.EstadoOt || 'Pendiente')}</div>
+            <ProgressBar
+              now={avance}
+              label={`${avance}%`}
+              variant={variant}
+              className="mt-1"
+              style={{ height: '16px' }}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      key: 'responsables',
+      label: 'Responsable(s)',
+      render: (row: any) => {
+        const activeEntry = (row.programaciones || []).find((p: any) => p.isActive);
+        const responsables = activeEntry?.responsables || [];
+        if (responsables.length === 0) {
+          return (
+            <OverlayTrigger placement="top" overlay={<Tooltip id={`sin-programar-${row._id}`}>Sin programar</Tooltip>}>
+              <span className="text-muted">—</span>
+            </OverlayTrigger>
+          );
+        }
+        return (
+          <div>
+            {responsables.map((r: any) => (
+              <div key={r.userId} className="small">
+                {r.snapshotName}
+              </div>
+            ))}
           </div>
         );
       },
@@ -238,6 +298,18 @@ const OTsPage: React.FC = () => {
           </Button>
         </Col>
       </Row>
+
+      <Tabs
+        activeKey={activeTab}
+        onSelect={(key) => {
+          setActiveTab((key as 'all' | 'mine') || 'all');
+          setPage(1);
+        }}
+        className="mb-3"
+      >
+        <Tab eventKey="all" title="Todas las OTs" />
+        <Tab eventKey="mine" title="Mis OTs" />
+      </Tabs>
 
       {/* Filter row — pattern mirrors CustomersPage: debounced text +
           dropdowns, each reset to page 1 on change to avoid landing on an
@@ -287,6 +359,12 @@ const OTsPage: React.FC = () => {
         show={Boolean(quickDetailOtId)}
         onHide={() => setQuickDetailOtId(null)}
         otId={quickDetailOtId}
+      />
+
+      <OtResponsablesModal
+        show={Boolean(responsablesOtId)}
+        onHide={() => setResponsablesOtId(null)}
+        otId={responsablesOtId}
       />
 
       {data && (
@@ -342,13 +420,19 @@ const OTsPage: React.FC = () => {
                             Ver Detalles
                           </Dropdown.Item>
 
+                          {/* ots:manage-responsables gate — a technician who can't
+                              reprogram the OT should not even see the action. */}
+                          {canManageResponsables && (
+                            <Dropdown.Item onClick={() => setResponsablesOtId(row._id)}>
+                              <FaUsers className="me-2 text-primary" />
+                              Responsables
+                            </Dropdown.Item>
+                          )}
+
                           <Dropdown.Divider />
 
                           {isPendiente && (
                             <>
-                              <Dropdown.Item onClick={() => handleAssignResponsible(row._id)}>
-                                <FaUserPlus className="me-2 text-primary" /> Asignar Responsable
-                              </Dropdown.Item>
                               <Dropdown.Item onClick={() => handleStartOT(row._id)}>
                                 <FaPlay className="me-2 text-success" /> Iniciar OT
                               </Dropdown.Item>
@@ -417,7 +501,11 @@ const OTsPage: React.FC = () => {
               />
               {ots.length === 0 && !isLoading && (
                 <p className="text-center text-muted my-3 mb-0">
-                  {hasActiveFilter ? 'Ninguna OT coincide con los filtros.' : 'Aún no hay órdenes de trabajo registradas.'}
+                  {hasActiveFilter
+                    ? 'Ninguna OT coincide con los filtros.'
+                    : activeTab === 'mine'
+                      ? 'Aún no tienes OTs asignadas.'
+                      : 'Aún no hay órdenes de trabajo registradas.'}
                 </p>
               )}
             </Card.Body>

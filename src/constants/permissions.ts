@@ -71,6 +71,9 @@ export const PERMISSIONS = {
   OTS_DELETE: 'ots:delete',
   OTS_CLOSE: 'ots:close',
   OTS_REOPEN: 'ots:reopen',
+  // ot-responsables-programacion-trazable
+  OTS_MANAGE_RESPONSABLES: 'ots:manage-responsables',
+  OTS_CAN_BE_RESPONSIBLE: 'ots:can-be-responsible',
 
   REPORTS_READ: 'reports:read',
   REPORTS_CREATE: 'reports:create',

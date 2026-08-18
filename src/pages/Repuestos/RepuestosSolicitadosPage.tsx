@@ -35,8 +35,31 @@ const RepuestosSolicitadosPage: React.FC = () => {
     [repuestos]
   );
 
+  const clienteIdOf = (r: any): string | null => {
+    if (!r) return null;
+    if (typeof r.ClienteId === 'string') return r.ClienteId;
+    if (r.ClienteId?._id) return String(r.ClienteId._id);
+    return null;
+  };
+
   const toggleSelection = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelectedIds((prev) => {
+      // Deselect always allowed.
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      // Same-client enforcement (mirrors backend MULTIPLE_CLIENTS rejection).
+      // If the new row's client does not match the currently-selected client
+      // set, block the selection and toast an explanation.
+      if (prev.length > 0) {
+        const currentCliente = clienteIdOf(repuestos.find((r: any) => String(r._id) === prev[0]));
+        const nextRow = repuestos.find((r: any) => String(r._id) === id);
+        const nextCliente = clienteIdOf(nextRow);
+        if (currentCliente && nextCliente && currentCliente !== nextCliente) {
+          toast.error('Solo puedes seleccionar repuestos del mismo cliente para crear una OT.');
+          return prev;
+        }
+      }
+      return [...prev, id];
+    });
   };
 
   const handleStatusChange = async (id: string, value: any) => {
@@ -71,9 +94,10 @@ const RepuestosSolicitadosPage: React.FC = () => {
   };
 
   const handleCreateOt = async (payload: {
-    ResponsableId: string;
-    FechaEstimadaEntrega?: string;
-    observacion?: string;
+    responsableUserIds: string[];
+    fechaInicio: string;
+    fechaFin: string;
+    nota?: string;
     OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente';
   }) => {
     try {
@@ -189,7 +213,17 @@ const RepuestosSolicitadosPage: React.FC = () => {
                 <tbody>
                   {repuestos.map((r: any) => {
                     const id = String(r._id);
-                    const isSelectable = selectableIds.includes(id);
+                    // Disable rows of a DIFFERENT client once the user has
+                    // started a selection (same-client rule). Enforced on the
+                    // server too — this is UX guidance.
+                    const otherClienteSelected = selectedIds.length > 0
+                      && !selectedIds.includes(id)
+                      && (() => {
+                        const currentCliente = clienteIdOf(repuestos.find((rr: any) => String(rr._id) === selectedIds[0]));
+                        const rowCliente = clienteIdOf(r);
+                        return Boolean(currentCliente && rowCliente && currentCliente !== rowCliente);
+                      })();
+                    const isSelectable = selectableIds.includes(id) && !otherClienteSelected;
                     const clienteNombre = r?.ClienteId?.Razonsocial || '-';
                     const solicitante = [r?.ResponsableSolicitud?.firstName, r?.ResponsableSolicitud?.lastName].filter(Boolean).join(' ') || '-';
                     const equipoTxt = [r?.EquipoId?.item, r?.EquipoId?.Marca, r?.EquipoId?.Serie].filter(Boolean).join(' / ') || '-';

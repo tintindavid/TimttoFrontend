@@ -166,6 +166,16 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   };
 
   const estadoOptions = ['Operativo', 'En mantenimiento', 'Fuera de servicio'];
+
+  // Un reporte Cerrado o Cancelado es terminal — el cliente ya recibió a
+  // satisfacción (o se anuló) y editar la información posterior sería una
+  // mala práctica de trazabilidad. Procesado ya bloqueaba muchas ediciones
+  // (con excepciones vía "Editar Procesado"), esto lo extiende a los
+  // estados finales para todos los inputs y acciones del reporte.
+  const isReportLocked =
+    editedReporte.estado === 'Cerrado' ||
+    editedReporte.estado === 'Cancelado' ||
+    Boolean(editedReporte.procesado);
   // Hooks para autenticación
   const { user, token } = useAuth();
   // Obtener protocolo del equipo
@@ -871,7 +881,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               )}
             </div>
           </div>
-          {!editedReporte.procesado && (
+          {!isReportLocked && (
             <OverlayTrigger placement="left" overlay={<Tooltip id="edit-equipo-tooltip">Editar información del equipo</Tooltip>}>
               <Button
                 variant="link"
@@ -1113,9 +1123,10 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               <Form.Label className="mt-2">Falla reportada * </Form.Label>
                 <Form.Control as="textarea"
                   rows={3}
-                  placeholder="Falla reportada, causa encontrada, etc..." 
+                  placeholder="Falla reportada, causa encontrada, etc..."
                   value={editedReporte.fallaReportada || ''}
                   onChange={(e) => handleObservacionChange('fallaReportada', e.target.value)}
+                  disabled={isReportLocked}
                   className="mt-2"
                 />
                 {/*Si el tipoMtto es Correctivo o Diagnóstico Mostrar en rojo si editedReporte.fallaReportada existe*/}
@@ -1128,6 +1139,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                   placeholder="Causa encontrada, motivo fuera de servicio, etc..."
                   value={editedReporte.diagnostico || ''}
                   onChange={(e) => handleObservacionChange('diagnostico', e.target.value)}
+                  disabled={isReportLocked}
                   className="mt-2"
                 />
                 <span className="text-danger mt-1"> { (editedReporte?.diagnostico?.trim().length || 0) < 15 && <small>*Indique el diagnóstico para este servicio (min 15 caracteres).</small>} </span>
@@ -1138,7 +1150,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                   rows={3}
                   placeholder="Acción tomada, recomendaciones, etc..."
                   value={editedReporte.accionTomada || ''}
-                  onChange={(e) => handleObservacionChange('accionTomada', e.target.value)} 
+                  onChange={(e) => handleObservacionChange('accionTomada', e.target.value)}
+                  disabled={isReportLocked}
                   className="mt-2"
                 />
                 <span className="text-danger mt-1"> { (editedReporte?.accionTomada?.trim().length || 0) < 15 && <small>*Indique la acción tomada para este servicio (min 15 caracteres).</small>} </span>
@@ -1153,6 +1166,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               placeholder="Observaciones generales, recomendaciones, etc..."
               value={editedReporte.observacion || ''}
               onChange={(e) => handleObservacionChange('observacion', e.target.value)}
+              disabled={isReportLocked}
               className="mt-2"
             />
           </Form.Group>
@@ -1217,7 +1231,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                               <Form.Check
                                 type="checkbox"
                                 onChange={(e) => handleProtocolActivityToggle(actividad, e.target.checked)}
-                                disabled={editedReporte.procesado}
+                                disabled={isReportLocked}
                                 className="me-3 mt-1"
                               />
                               <div className="flex-grow-1">
@@ -1257,7 +1271,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                           return { ...prev, [actividad._id || '']: next };
                                         });
                                       }}
-                                      disabled={editedReporte.procesado}
+                                      disabled={isReportLocked}
                                     />
                                   )}
                                   <Form.Control
@@ -1272,7 +1286,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                         [actividad._id || '']: e.target.value
                                       }));
                                     }}
-                                    disabled={editedReporte.procesado}
+                                    disabled={isReportLocked}
                                   />
                                 </div>
                               </div>
@@ -1311,7 +1325,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                     había dos <Form.Control> condicionados por si la observación
                                     estaba vacía; al escribir el primer carácter React desmontaba
                                     uno y montaba el otro, perdiendo el foco. Ahora es uno solo. */}
-                                {(!!actividad.observaciones || !editedReporte.procesado) && (
+                                {(!!actividad.observaciones || !isReportLocked) && (
                                   <div className="mt-2">
                                     {actividad.observaciones && (
                                       <Form.Label className="fw-bold small">Observaciones:</Form.Label>
@@ -1330,7 +1344,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                             : removeDescripcionFromText(actividad.observaciones || '', desc);
                                           handleActivityChange(index, 'observaciones', next);
                                         }}
-                                        disabled={editedReporte.procesado || !findProtocolDescripcion(actividad.actividadProtocoloId)}
+                                        disabled={isReportLocked || !findProtocolDescripcion(actividad.actividadProtocoloId)}
                                       />
                                     </div>
                                     <Form.Control
@@ -1339,16 +1353,16 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                       placeholder={actividad.observaciones ? undefined : 'Agregar observaciones...'}
                                       value={actividad.observaciones || ''}
                                       onChange={(e) => handleActivityChange(index, 'observaciones', e.target.value)}
-                                      disabled={editedReporte.procesado}
+                                      disabled={isReportLocked}
                                       className="mt-1"
                                       size="sm"
                                     />
                                   </div>
                                 )}
-                                {!editedReporte.procesado && (
-                                  <Button 
-                                    variant="outline-danger" 
-                                    size="sm" 
+                                {!isReportLocked && (
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
                                     className="mt-2"
                                     onClick={() => {
                                       // Remover actividad del array
@@ -1403,7 +1417,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
             <EvidenceUploader
               reporteId={editedReporte._id}
               evidencias={editedReporte.evidencias ?? []}
-              disabled={Boolean(editedReporte.procesado)}
+              disabled={isReportLocked}
               onDirtyChange={setHasUnsavedEvidence}
               onSaved={(nuevas) =>
                 setEditedReporte((prev) => ({ ...prev, evidencias: nuevas }))
@@ -1426,7 +1440,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               reporteId={editedReporte._id}
               equipoId={editedReporte.Equipo?._id}
               value={editedReporte.verificationParam ?? []}
-              disabled={Boolean(editedReporte.procesado)}
+              disabled={isReportLocked}
               onDirtyChange={setHasUnsavedVerificationParams}
               onSaved={(nuevos) =>
                 setEditedReporte((prev) => ({ ...prev, verificationParam: nuevos }))
@@ -1563,7 +1577,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                               </Badge>
                             )}
                           </div>
-                          {!editedReporte.procesado && (
+                          {!isReportLocked && (
                             <div className="d-flex gap-1">
                               {/* Botón Instalar - solo para repuestos solicitados */}
                               {repuesto.EstadoSolicitud === 'Solicitado' && (

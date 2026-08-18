@@ -61,6 +61,8 @@ export const ACTION_LABELS: Record<string, string> = {
   reopen: 'Reabrir',
   reply: 'Responder',
   'assign-role': 'Asignar rol',
+  'manage-responsables': 'Gestionar responsables',
+  'can-be-responsible': 'Ser elegible como responsable',
 };
 
 /**
