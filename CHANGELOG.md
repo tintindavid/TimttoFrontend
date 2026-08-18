@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.15.0...v1.16.0) (2026-08-18)
+
+
+### Features
+
+* **ots:** responsables trazables + firmante selector + report edit-lock + fixes ([b9ee132](https://github.com/tintindavid/TimttoFrontend/commit/b9ee132236b436167d90f6d3b5adaa20caa03050))
+
 # [1.15.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.14.0...v1.15.0) (2026-08-15)
 
 
