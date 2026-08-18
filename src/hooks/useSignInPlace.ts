@@ -10,6 +10,8 @@ interface Variables {
   personaRecibe?: string;
   cargoRecibe?: string;
   observaciones?: string;
+  /** Firmante técnico opcional; default backend = user en sesión (report-processor-and-signer-traceability). */
+  firmanteUserId?: string;
 }
 
 interface Data {
@@ -27,6 +29,7 @@ export const useSignInPlace = (otId: string) => {
         personaRecibe: vars.personaRecibe,
         cargoRecibe: vars.cargoRecibe,
         observaciones: vars.observaciones,
+        firmanteUserId: vars.firmanteUserId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worksheets', otId] });

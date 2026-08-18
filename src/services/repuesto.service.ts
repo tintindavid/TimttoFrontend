@@ -83,10 +83,19 @@ export const repuestoService = {
     return response.data;
   },
 
-  // Crear OT desde solicitudes seleccionadas
+  // Crear OT desde solicitudes seleccionadas.
+  // The new shape mirrors the /maintenance-orders Responsables modal:
+  // multi-select responsables + date range + optional initial nota. TipoServicio
+  // is always Correctivo (hardcoded in the backend service).
   createOtFromSolicitudes: async (
     repuestoIds: string[],
-    payload: { ResponsableId: string; FechaEstimadaEntrega?: string; observacion?: string; OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente' }
+    payload: {
+      responsableUserIds: string[];
+      fechaInicio: string;
+      fechaFin: string;
+      nota?: string;
+      OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente';
+    }
   ) => {
     const response = await api.post<ApiResponse<any>>('/repuestos/ot-from-solicitudes', {
       repuestoIds,

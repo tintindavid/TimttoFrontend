@@ -97,6 +97,8 @@ const NotificationRuleFormModal: React.FC<Props> = ({ show, onHide, onSubmit, ru
                 classNamePrefix="react-select"
                 menuPortalTarget={document.body}
                 menuPosition="fixed"
+                // Modal z-index (1055) > react-select portal default (1) — force it above.
+                styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
                 aria-label="Roles destinatarios"
               />
             </Col>
@@ -111,6 +113,7 @@ const NotificationRuleFormModal: React.FC<Props> = ({ show, onHide, onSubmit, ru
                 classNamePrefix="react-select"
                 menuPortalTarget={document.body}
                 menuPosition="fixed"
+                styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
                 aria-label="Usuarios destinatarios"
               />
             </Col>

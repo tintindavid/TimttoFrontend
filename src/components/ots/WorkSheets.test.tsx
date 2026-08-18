@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import WorkSheets from './WorkSheets';
 
 const mockUseWorkSheets = vi.fn();
@@ -53,11 +53,18 @@ vi.mock('@/services/customer.service', () => ({
 }));
 
 vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => ({ token: 'tok-1' }),
+  useAuth: () => ({
+    token: 'tok-1',
+    user: { _id: 'user-1', role: 'admin', firstName: 'Admin', lastName: 'User', fullName: 'Admin User' },
+  }),
 }));
 
 vi.mock('@/context/userContext', () => ({
   useCurrentUserData: () => ({ _id: 'user-1', role: 'admin', fullName: 'Admin User' }),
+}));
+
+vi.mock('@/hooks/useUsers', () => ({
+  useUsersWithSignature: () => ({ data: { data: [] } }),
 }));
 
 vi.mock('@/services/tenant.service', () => ({
@@ -256,5 +263,96 @@ describe('WorkSheets — Reportes PDF opens filename builder modal', () => {
     render(<WorkSheets {...defaultProps} />);
     fireEvent.click(screen.getByRole('button', { name: /reportes pdf/i }));
     expect(screen.getByTestId('pdf-filename-modal').textContent).toContain('sheet-pdf');
+  });
+});
+
+describe('WorkSheets — canWork gating (ot-responsables-programacion-trazable)', () => {
+  beforeEach(() => {
+    mockUseWorkSheets.mockReset();
+    mockUseCloseSheetReports.mockReset();
+    mockUseCloseSheetReports.mockReturnValue({
+      mutate: mockCloseMutate,
+      isLoading: false,
+      variables: undefined,
+    });
+  });
+
+  const activeResponsables = [
+    { userId: 'u1', snapshotName: 'M. Duran' },
+    { userId: 'u2', snapshotName: 'J. Perez' },
+  ];
+
+  it('enables "Crear Hoja" and "Firmar" by default (canWork undefined behaves as true)', () => {
+    mockUseWorkSheets.mockReturnValue({
+      data: [baseSheet({ estado: 'Borrador', reports: [] })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(<WorkSheets {...defaultProps} reportesProcesados={[{ _id: 'r1', equipoSnapshot: {} }]} />);
+
+    expect(screen.getByRole('button', { name: /crear hoja/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /firmar/i })).toBeEnabled();
+  });
+
+  it('disables "Crear Hoja" and "Firmar" with a tooltip listing the active responsables when canWork is false', async () => {
+    mockUseWorkSheets.mockReturnValue({
+      data: [baseSheet({ estado: 'Borrador', reports: [] })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(
+      <WorkSheets
+        {...defaultProps}
+        reportesProcesados={[{ _id: 'r1', equipoSnapshot: {} }]}
+        canWork={false}
+        activeResponsables={activeResponsables}
+      />,
+    );
+
+    const crearHojaButton = screen.getByRole('button', { name: /crear hoja/i });
+    const firmarButton = screen.getByRole('button', { name: /^firmar$/i });
+    expect(crearHojaButton).toBeDisabled();
+    expect(firmarButton).toBeDisabled();
+
+    // Disabled buttons don't fire mouse events directly — OverlayTrigger's
+    // gateButton() wraps them in a focusable/hoverable <span>, matching the
+    // pattern react-bootstrap docs recommend for tooltips on disabled
+    // controls. Hover the wrapper to assert the tooltip copy.
+    fireEvent.mouseOver(crearHojaButton.parentElement as HTMLElement);
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Solo los responsables asignados pueden trabajar esta OT\. Responsables actuales: M\. Duran, J\. Perez/i),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it('disables "Firmar en sitio" when canWork is false', () => {
+    mockUseWorkSheets.mockReturnValue({
+      data: [baseSheet({ estado: 'EnviadaAFirmar', reports: [] })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(<WorkSheets {...defaultProps} canWork={false} activeResponsables={activeResponsables} />);
+
+    expect(screen.getByRole('button', { name: /firmar en sitio/i })).toBeDisabled();
+  });
+
+  it('does not gate read-only actions ("Ver HT") when canWork is false', () => {
+    mockUseWorkSheets.mockReturnValue({
+      data: [baseSheet({ estado: 'Firmada', reports: [] })],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    render(<WorkSheets {...defaultProps} canWork={false} activeResponsables={activeResponsables} />);
+
+    expect(screen.getByRole('button', { name: /ver ht/i })).toBeEnabled();
   });
 });

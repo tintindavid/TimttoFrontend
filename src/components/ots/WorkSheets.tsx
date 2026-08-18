@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Card, Table, Button, Badge, Modal, Form, Alert, Row, Col, InputGroup, Spinner, Tabs, Tab } from 'react-bootstrap';
+import { Card, Table, Button, Badge, Modal, Form, Alert, Row, Col, InputGroup, Spinner, Tabs, Tab, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { SheetWork } from '@/types/reporte.types';
 import { FaFilePdf, FaSignature, FaPlus, FaDownload, FaSearch, FaFilter, FaTimes, FaEye, FaPrint, FaCheckSquare, FaEnvelope, FaPaperPlane } from 'react-icons/fa';
 import { useWorkSheets } from '@/hooks/useReportes';
 import { useCloseSheetReports } from '@/hooks/useCloseSheetReports';
 import { useSignInPlace } from '@/hooks/useSignInPlace';
+import { useUsersWithSignature } from '@/hooks/useUsers';
 import { useAuth } from '@/context/AuthContext';
+import { nameShort } from '@/utils/nameShort';
 import './WorkSheets.css';
 import { useCurrentUserData } from '@/context/userContext';
 import { ca } from 'date-fns/locale';
@@ -43,6 +45,15 @@ interface WorkSheetsProps {
    */
   autoOpenPreviewSheetId?: string;
   onAutoOpenPreviewHandled?: () => void;
+  /**
+   * From the parent OT's computed `canWork` (ot-responsables-programacion-trazable).
+   * `undefined`/`true` behaves as before. `false` disables the mutating
+   * actions (Crear Hoja, Firmar, Firmar en sitio) — reading/downloading HTs
+   * stays available to any user with `sheetwork:read`.
+   */
+  canWork?: boolean;
+  /** Active roster snapshot, only used to render the disabled-button tooltip. */
+  activeResponsables?: Array<{ userId: string; snapshotName: string }>;
 }
 const WorkSheets: React.FC<WorkSheetsProps> = ({
   otId,
@@ -54,15 +65,21 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   onAutoOpenHandled,
   autoOpenPreviewSheetId,
   onAutoOpenPreviewHandled,
+  canWork = true,
+  activeResponsables = [],
 }) => {
   // Obtener usuario en sesión (useCurrentUserData ya maneja el caching con React Query)
-  const { token } = useAuth();
+  const { token, user: authUser } = useAuth();
   const currentUserData = useCurrentUserData();
-  
+
   // Obtener hojas de trabajo desde el backend
   const { data: hojasTrabajo = [], isLoading, isError, error, refetch } = useWorkSheets(otId);
   const closeReportsMutation = useCloseSheetReports(otId);
   const signInPlaceMutation = useSignInPlace(otId);
+  // Firmantes con firma cargada (report-processor-and-signer-traceability) —
+  // alimenta el selector "Firmante técnico" del modal de firma en sitio.
+  const { data: usersWithSignatureResp } = useUsersWithSignature();
+  const usersWithSignature = usersWithSignatureResp?.data || [];
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [showSignCreateModal, setShowSignCreateModal] = useState(false);
@@ -72,6 +89,8 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   const [resendTarget, setResendTarget] = useState<SheetWork | null>(null);
   const [showFallbackSignModal, setShowFallbackSignModal] = useState(false);
   const [fallbackSignTarget, setFallbackSignTarget] = useState<SheetWork | null>(null);
+  const [fallbackFirmanteUserId, setFallbackFirmanteUserId] = useState<string>('');
+  const [showFallbackFirmanteConfirm, setShowFallbackFirmanteConfirm] = useState(false);
   const [filenameModalTarget, setFilenameModalTarget] = useState<SheetWork | null>(null);
   const [shareModalTarget, setShareModalTarget] = useState<SheetWork | null>(null);
   const fallbackSignRef = useRef<InPlaceSignSectionHandle>(null);
@@ -87,6 +106,11 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
   // Estados para firma al crear hoja
   const [recibeNombre, setRecibeNombre] = useState('');
   const [recibeCargo, setRecibeCargo] = useState('');
+  // Firmante técnico para la tab "Firma en Sitio" del modal Crear HT.
+  // Default = user en sesión; puede cambiar a otro usuario con fileFirma
+  // (trazabilidad multi-técnico bajo mismo usuario firmante).
+  const [createFirmanteUserId, setCreateFirmanteUserId] = useState<string>('');
+  const [showCreateFirmanteConfirm, setShowCreateFirmanteConfirm] = useState(false);
   const createSignatureRef = useRef<SignatureInputHandle>(null);
   const [hasCreateSignature, setHasCreateSignature] = useState(false);
 
@@ -303,21 +327,38 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       return;
     }
 
+    // Firmante técnico — puede ser el user actual (default) o cualquier
+    // otro user con fileFirma. Su nombre + firma quedan estampados en el
+    // PDF, para trazabilidad multi-técnico bajo mismo usuario firmante.
+    const firmanteId = createFirmanteUserId || currentUserData._id;
+    const isSelf = firmanteId === currentUserData._id;
+    const firmante = isSelf
+      ? currentUserData
+      : usersWithSignature.find((u: any) => u._id === firmanteId);
+    if (!firmante) {
+      alert('Firmante inválido. Por favor selecciona un usuario con firma cargada.');
+      return;
+    }
+    if (!firmante.fileFirma) {
+      alert('El firmante seleccionado no tiene firma cargada en su perfil.');
+      return;
+    }
+
     // `onCreateSheet` expects a data URL (matches the previous
     // `SignatureCanvas.toDataURL()` contract); `SignatureInput` returns the
     // bare base64 payload, so re-add the prefix here.
     const pngBase64 = createSignatureRef.current?.getPngBase64();
     const firmaDataUrl = pngBase64 ? `data:image/png;base64,${pngBase64}` : '';
 
-    // Enviar equipos con datos de recepción
+    // Enviar equipos con datos de recepción + firmante seleccionado
     onCreateSheet(selectedEquipos, {
       recibe: recibeNombre,
       cargo: recibeCargo,
       firma: firmaDataUrl,
-      responsable: currentUserData._id,
-      cargoResponsable: currentUserData?.role || 'N/A',
-      fullName: currentUserData?.fullName || 'N/A',
-      firmaResponsableFile: currentUserData?.fileFirma || '',
+      responsable: firmante._id || '',
+      cargoResponsable: firmante.role || 'N/A',
+      fullName: firmante.fullName || [firmante.firstName, firmante.lastName].filter(Boolean).join(' ') || firmante.email || 'N/A',
+      firmaResponsableFile: firmante.fileFirma || '',
       clienteId: clienteId
     });
     // Recargar hojas de trabajo después de crear
@@ -412,6 +453,22 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
     }
   }
 
+  // ot-responsables-programacion-trazable: wraps a mutating action button
+  // (Crear Hoja / Firmar / Firmar en sitio) with a disabled state + tooltip
+  // naming the active roster when the caller is not in it. Reading/exporting
+  // HTs is never gated.
+  const notResponsibleTooltipText = `Solo los responsables asignados pueden trabajar esta OT. Responsables actuales: ${
+    activeResponsables.map((r) => r.snapshotName).join(', ') || 'sin asignar'
+  }`;
+  const gateButton = (button: React.ReactElement, key: string) => {
+    if (canWork) return button;
+    return (
+      <OverlayTrigger key={key} placement="top" overlay={<Tooltip id={`tooltip-canwork-${key}`}>{notResponsibleTooltipText}</Tooltip>}>
+        <span className="d-inline-block">{button}</span>
+      </OverlayTrigger>
+    );
+  };
+
   return (
     <Card className="mb-4" style={{ position: 'relative' }}>
       {/* Overlay de carga durante descarga de PDF */}
@@ -444,16 +501,19 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
         <h5 className="mb-0">
           📋 Hojas de Trabajo ({hojasTrabajo.length})
         </h5>
-        {reportesProcesados.length > 0 && (
-          <Button 
-            variant="primary" 
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <FaPlus className="me-1" />
-            Crear Hoja
-          </Button>
-        )}
+        {reportesProcesados.length > 0 &&
+          gateButton(
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowCreateModal(true)}
+              disabled={!canWork}
+            >
+              <FaPlus className="me-1" />
+              Crear Hoja
+            </Button>,
+            'crear-hoja',
+          )}
       </Card.Header>
       <Card.Body>
         {isLoading ? (
@@ -490,6 +550,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                   <th>Número</th>
                   <th>Equipos</th>
                   <th>Estado</th>
+                  <th>Cerrada por</th>
                   <th>Fecha</th>
                   <th>Acciones</th>
                 </tr>
@@ -516,6 +577,24 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                       <Badge bg={getEstadoColor(hoja.estado)}>
                         {hoja.estado}
                       </Badge>
+                      {(hoja.estado === 'Firmada' || hoja.estado === 'Cerrada') &&
+                        (() => {
+                          const signedAt = hoja.firmadoPor?.firmadoAt || hoja.clientSignature?.signedAt;
+                          if (!signedAt) return null;
+                          return (
+                            <div className="small text-muted mt-1">
+                              {new Date(signedAt).toLocaleDateString('es-CO', { dateStyle: 'medium' })}
+                            </div>
+                          );
+                        })()}
+                    </td>
+                    <td>
+                      <div>{hoja.firmadoPor?.snapshotName || '—'}</div>
+                      {hoja.firmadoPor?.firmadoAt && (
+                        <small className="text-muted">
+                          {new Date(hoja.firmadoPor.firmadoAt).toLocaleDateString('es-CO', { dateStyle: 'medium' })}
+                        </small>
+                      )}
                     </td>
                     <td>
                       {new Date(hoja.createdAt).toLocaleDateString('es-ES')}
@@ -533,19 +612,22 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                           <FaEye className="me-1" />
                           Ver HT
                         </Button>
-                        {hoja.estado === 'Borrador' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline-primary"
-                            onClick={() => {
-                              setSelectedSheet(hoja);
-                              setShowSignModal(true);
-                            }}
-                          >
-                            <FaSignature className="me-1" />
-                            Firmar
-                          </Button>
-                        )}
+                        {hoja.estado === 'Borrador' &&
+                          gateButton(
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              onClick={() => {
+                                setSelectedSheet(hoja);
+                                setShowSignModal(true);
+                              }}
+                              disabled={!canWork}
+                            >
+                              <FaSignature className="me-1" />
+                              Firmar
+                            </Button>,
+                            `firmar-${hoja._id}`,
+                          )}
                         <Button 
                           size="sm" 
                           variant="outline-secondary"
@@ -641,19 +723,24 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                             >
                               <FaEnvelope />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-warning"
-                              title="Firmar en sitio"
-                              onClick={() => {
-                                setFallbackSignTarget(hoja);
-                                fallbackSignRef.current?.reset();
-                                setFallbackCanSubmit(false);
-                                setShowFallbackSignModal(true);
-                              }}
-                            >
-                              <FaSignature />
-                            </Button>
+                            {gateButton(
+                              <Button
+                                size="sm"
+                                variant="outline-warning"
+                                title="Firmar en sitio"
+                                onClick={() => {
+                                  setFallbackSignTarget(hoja);
+                                  fallbackSignRef.current?.reset();
+                                  setFallbackCanSubmit(false);
+                                  setFallbackFirmanteUserId(authUser?._id || currentUserData?._id || '');
+                                  setShowFallbackSignModal(true);
+                                }}
+                                disabled={!canWork}
+                              >
+                                <FaSignature />
+                              </Button>,
+                              `firmar-en-sitio-${hoja._id}`,
+                            )}
                           </>
                         )}
                         {/* reason: the runtime SheetWork.reports payload includes `estado`
@@ -663,7 +750,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                           const isClosingThis =
                             closeReportsMutation.isLoading &&
                             closeReportsMutation.variables === hoja._id;
-                          return (
+                          return gateButton(
                             <Button
                               size="sm"
                               variant="outline-success"
@@ -674,7 +761,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                                   onError: () => toast.error('No se pudo cerrar los reportes'),
                                 })
                               }
-                              disabled={isClosingThis}
+                              disabled={isClosingThis || !canWork}
                             >
                               {isClosingThis ? (
                                 <Spinner
@@ -687,7 +774,8 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                               ) : (
                                 <FaCheckSquare />
                               )}
-                            </Button>
+                            </Button>,
+                            `cerrar-reportes-${hoja._id}`,
                           );
                         })()}
                       </div>
@@ -897,6 +985,9 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                           <div className="small text-success">
                             Procesado: {new Date(reporte.fechaProcesado).toLocaleDateString('es-ES')}
                           </div>
+                          <div className="small text-muted">
+                            Procesado por: {reporte.procesadoPor?.snapshotName || '—'}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -984,6 +1075,31 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                   </Form.Label>
                   <SignatureInput ref={createSignatureRef} onChange={handleCreateSignatureChange} />
                 </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Firmante técnico</Form.Label>
+                  <Form.Select
+                    aria-label="Firmante técnico"
+                    value={createFirmanteUserId || currentUserData?._id || ''}
+                    onChange={(e) => setCreateFirmanteUserId(e.target.value)}
+                  >
+                    {currentUserData?._id && (
+                      <option value={currentUserData._id}>
+                        {nameShort(currentUserData)} (tú)
+                      </option>
+                    )}
+                    {usersWithSignature
+                      .filter((u: any) => u._id !== currentUserData?._id)
+                      .map((u: any) => (
+                        <option key={u._id} value={u._id}>
+                          {nameShort(u)}
+                        </option>
+                      ))}
+                  </Form.Select>
+                  <Form.Text className="text-muted">
+                    El nombre y firma de este usuario quedarán estampados en el PDF de la HT.
+                  </Form.Text>
+                </Form.Group>
               </Form>
 
               <Alert variant="warning" className="mb-0 mt-3">
@@ -1021,13 +1137,50 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
           {signCreateActiveTab === 'inplace' && (
             <Button
               variant="success"
-              onClick={handleCreateSheetWithSignature}
+              onClick={() => setShowCreateFirmanteConfirm(true)}
               disabled={!hasCreateSignature}
             >
               <FaSignature className="me-1" />
               Crear Hoja con Firma
             </Button>
           )}
+        </Modal.Footer>
+      </Modal>
+
+      {/* Confirmación firmante — tab "Firma en Sitio" del modal Crear HT */}
+      <Modal show={showCreateFirmanteConfirm} onHide={() => setShowCreateFirmanteConfirm(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmar firmante</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {(() => {
+            const firmanteId = createFirmanteUserId || currentUserData?._id;
+            const isSelf = firmanteId === currentUserData?._id;
+            const firmante = isSelf
+              ? currentUserData
+              : usersWithSignature.find((u: any) => u._id === firmanteId);
+            const name = isSelf ? 'tú' : (firmante ? nameShort(firmante) : 'el firmante seleccionado');
+            return (
+              <p className="mb-0">
+                ¿Confirmar que <strong>{name}</strong> firmará esta hoja de trabajo?
+                La firma y el nombre quedarán estampados en el PDF.
+              </p>
+            );
+          })()}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCreateFirmanteConfirm(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="success"
+            onClick={() => {
+              setShowCreateFirmanteConfirm(false);
+              handleCreateSheetWithSignature();
+            }}
+          >
+            Confirmar y firmar
+          </Button>
         </Modal.Footer>
       </Modal>
 
@@ -1063,6 +1216,28 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
             ref={fallbackSignRef}
             onChange={() => setFallbackCanSubmit(!(fallbackSignRef.current?.hasErrors() ?? true))}
           />
+          <Form.Group className="mt-3">
+            <Form.Label>Firmante técnico</Form.Label>
+            <Form.Select
+              aria-label="Firmante técnico"
+              value={fallbackFirmanteUserId}
+              onChange={(e) => setFallbackFirmanteUserId(e.target.value)}
+            >
+              {authUser?._id && (
+                <option value={authUser._id}>{nameShort(authUser)} (tú)</option>
+              )}
+              {usersWithSignature
+                .filter((u) => u._id !== authUser?._id)
+                .map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {nameShort(u)}
+                  </option>
+                ))}
+            </Form.Select>
+            <Form.Text className="text-muted">
+              El nombre y la firma de este usuario quedarán en el PDF de la HT.
+            </Form.Text>
+          </Form.Group>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowFallbackSignModal(false)}>
@@ -1071,6 +1246,44 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
           <Button
             variant="success"
             disabled={!fallbackCanSubmit || signInPlaceMutation.isPending}
+            onClick={() => setShowFallbackFirmanteConfirm(true)}
+          >
+            <FaSignature className="me-1" />
+            Firmar y cerrar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal Confirmar firmante — Firma en sitio (report-processor-and-signer-traceability) */}
+      <Modal
+        show={showFallbackFirmanteConfirm}
+        onHide={() => setShowFallbackFirmanteConfirm(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmar firmante</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          ¿Confirmar que{' '}
+          <strong>
+            {fallbackFirmanteUserId === authUser?._id
+              ? 'tú'
+              : nameShort(usersWithSignature.find((u) => u._id === fallbackFirmanteUserId)) ||
+                'el firmante seleccionado'}
+          </strong>{' '}
+          firmará esta hoja de trabajo?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowFallbackFirmanteConfirm(false)}
+            disabled={signInPlaceMutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="success"
+            disabled={signInPlaceMutation.isPending}
             onClick={async () => {
               if (!fallbackSignTarget?._id) return;
               const pngBase64 = fallbackSignRef.current?.getPngBase64();
@@ -1088,7 +1301,9 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                   personaRecibe: values.recibe,
                   cargoRecibe: values.cargo,
                   observaciones: values.observaciones,
+                  firmanteUserId: fallbackFirmanteUserId || undefined,
                 });
+                setShowFallbackFirmanteConfirm(false);
                 setShowFallbackSignModal(false);
                 setFallbackSignTarget(null);
                 setTimeout(() => refetch(), 500);
@@ -1097,8 +1312,16 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
               }
             }}
           >
-            <FaSignature className="me-1" />
-            Firmar y cerrar
+            {signInPlaceMutation.isPending ? (
+              <>
+                <Spinner size="sm" animation="border" className="me-2" /> Firmando…
+              </>
+            ) : (
+              <>
+                <FaSignature className="me-1" />
+                Confirmar y firmar
+              </>
+            )}
           </Button>
         </Modal.Footer>
       </Modal>

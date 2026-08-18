@@ -9,6 +9,8 @@ interface Variables {
   reportIds: string[];
   email: string;
   message?: string;
+  /** Firmante técnico opcional; default backend = user en sesión (report-processor-and-signer-traceability). */
+  firmanteUserId?: string;
 }
 
 interface Data {
@@ -32,6 +34,7 @@ export const useRemoteSignRequest = (otId: string) => {
         reportIds: vars.reportIds,
         email: vars.email,
         message: vars.message,
+        firmanteUserId: vars.firmanteUserId,
       }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['worksheets', otId] });

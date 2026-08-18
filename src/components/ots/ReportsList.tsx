@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Card, Table, Button, Badge, Modal, OverlayTrigger, Popover, Spinner, Alert } from 'react-bootstrap';
+import { Card, Table, Button, Badge, Modal, OverlayTrigger, Popover, Spinner, Alert, Tooltip } from 'react-bootstrap';
 import { Reporte } from '@/types/reporte.types';
 import { FaPlay, FaCheck, FaTimes, FaClock, FaTrash, FaStickyNote } from 'react-icons/fa';
 import ReportSearchBar, { matchesReportSearch } from './ReportSearchBar';
@@ -18,9 +18,24 @@ interface ReportsListProps {
   onDeleteReporte?: (reporte: Reporte) => Promise<void> | void;
   /** Reserved for future filter chips (marca/modelo/estado). Search input is always on. */
   showFilters?: boolean;
+  /**
+   * From the parent OT's computed `canWork` (ot-responsables-programacion-trazable).
+   * `undefined`/`true` behaves as before (retro-compat / responsible user).
+   * `false` disables the "Trabajar" action with a tooltip naming the active
+   * roster — reading the report (Ver Detalle) stays available.
+   */
+  canWork?: boolean;
+  /** Active roster snapshot, only used to render the disabled-button tooltip. */
+  activeResponsables?: Array<{ userId: string; snapshotName: string }>;
 }
 
-const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, onDeleteReporte }) => {
+const ReportsList: React.FC<ReportsListProps> = ({
+  reportes,
+  onReporteSelect,
+  onDeleteReporte,
+  canWork = true,
+  activeResponsables = [],
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Reporte | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -112,6 +127,7 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, on
                   <th>Equipo</th>
                   <th>Ubicación</th>
                   <th>Estado</th>
+                  <th>Procesado por</th>
                   <th className="text-center">Acciones</th>
                 </tr>
               </thead>
@@ -193,26 +209,72 @@ const ReportsList: React.FC<ReportsListProps> = ({ reportes, onReporteSelect, on
                         )}
                       </div>
                     </td>
+                    <td>
+                      {(() => {
+                        // Nuevo campo: snapshot congelado en `procesar()`.
+                        if (reporte.procesadoPor?.snapshotName) {
+                          return reporte.procesadoPor.snapshotName;
+                        }
+                        // Fallback histórico: ResponsableMtto (populated ref
+                        // User) que ya se guardaba en el flow anterior.
+                        const legacy = (reporte as any).ResponsableMtto;
+                        if (legacy && typeof legacy === 'object') {
+                          const first = (legacy.firstName || '').trim();
+                          const last = (legacy.lastName || '').trim();
+                          const initial = first ? `${first.charAt(0)}.` : '';
+                          const combined = [initial, last].filter(Boolean).join(' ');
+                          return combined || legacy.email || '—';
+                        }
+                        if (typeof legacy === 'string' && legacy.trim()) return legacy;
+                        return '—';
+                      })()}
+                    </td>
                     <td className="text-center">
                       <div className="d-inline-flex gap-1">
-                        <Button
-                          size="sm"
-                          variant={reporte.procesado ? 'outline-primary' : 'primary'}
-                          onClick={() => onReporteSelect(reporte)}
-                          disabled={reporte.estado === 'Cancelado'}
-                        >
-                          {reporte.estado === 'Procesado' || reporte.estado === 'Cerrado' || reporte.estado === 'Cancelado' ? (
-                            <>
-                              <FaCheck className="me-1" />
-                              Ver Detalle
-                            </>
-                          ) : (
-                            <>
-                              <FaPlay className="me-1" />
-                              Trabajar
-                            </>
-                          )}
-                        </Button>
+                        {(() => {
+                          const isReadOnlyEstado =
+                            reporte.estado === 'Procesado' || reporte.estado === 'Cerrado' || reporte.estado === 'Cancelado';
+                          // Reading is always allowed; only the "Trabajar" (procesar)
+                          // action for a not-yet-processed report is gated by the
+                          // active roster (ot-responsables-programacion-trazable).
+                          const trabajarDisabled = !isReadOnlyEstado && !canWork;
+                          const button = (
+                            <Button
+                              size="sm"
+                              variant={reporte.procesado ? 'outline-primary' : 'primary'}
+                              onClick={() => onReporteSelect(reporte)}
+                              disabled={reporte.estado === 'Cancelado' || trabajarDisabled}
+                            >
+                              {isReadOnlyEstado ? (
+                                <>
+                                  <FaCheck className="me-1" />
+                                  Ver Detalle
+                                </>
+                              ) : (
+                                <>
+                                  <FaPlay className="me-1" />
+                                  Trabajar
+                                </>
+                              )}
+                            </Button>
+                          );
+                          if (!trabajarDisabled) return button;
+                          const responsablesText =
+                            activeResponsables.map((r) => r.snapshotName).join(', ') || 'sin asignar';
+                          return (
+                            <OverlayTrigger
+                              placement="top"
+                              overlay={
+                                <Tooltip id={`tooltip-trabajar-${reporte._id}`}>
+                                  Solo los responsables asignados pueden trabajar esta OT. Responsables actuales:{' '}
+                                  {responsablesText}
+                                </Tooltip>
+                              }
+                            >
+                              <span className="d-inline-block">{button}</span>
+                            </OverlayTrigger>
+                          );
+                        })()}
                         {onDeleteReporte && reporte.estado === 'Pendiente' && (
                           <Button
                             size="sm"
