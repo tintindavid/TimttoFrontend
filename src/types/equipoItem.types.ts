@@ -67,3 +67,31 @@ export interface UpdateEquipoItemDto {
   Riesgo?: string;
   Invima?: string;
 }
+
+/** Query params for `GET /equipo-items/duplicate-check`. */
+export interface DuplicateCheckParams {
+  ClienteId: string;
+  ItemId?: string;
+  Marca?: string;
+  Serie?: string;
+  /** Excludes this equipo id from the comparison — used when editing. */
+  excludeId?: string;
+}
+
+/** One row of a bulk duplicate-check request. */
+export interface DuplicateCheckBulkItem {
+  rowId: string;
+  ClienteId: string;
+  ItemId?: string;
+  Marca?: string;
+  Serie?: string;
+}
+
+export interface DuplicateCheckResult {
+  conflict: boolean;
+  existing?: EquipoItem;
+}
+
+export interface DuplicateCheckBulkResult {
+  results: Record<string, DuplicateCheckResult>;
+}

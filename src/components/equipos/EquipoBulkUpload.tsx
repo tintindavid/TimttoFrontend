@@ -9,12 +9,14 @@ import { useItems } from '@/hooks/useItems';
 import { useCreateEquipoItem } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
+import { equipoItemService } from '@/services/equipoItem.service';
 import { Sede } from '@/types/sede.types';
 import { Servicio } from '@/types/servicio.types';
-import { CreateEquipoItemDto } from '@/types/equipoItem.types';
+import { CreateEquipoItemDto, EquipoItem } from '@/types/equipoItem.types';
 import SedeFormModal from '@/components/customers/SedeFormModal';
 import ServicioFormModal from '@/components/customers/ServicioFormModal';
 import ItemFormModal from '@/components/items/ItemFormModal';
+import EquipoDuplicateModal from '@/components/equipos/EquipoDuplicateModal';
 import Swal from 'sweetalert2';
 
 interface EquipoBulkUploadProps {
@@ -44,6 +46,8 @@ interface ProcessedRow extends ExcelRow {
   valid: boolean;
   errors: string[];
   selectedItemId?: string; // Para ItemId seleccionado manualmente
+  /** Populated when the duplicate-check found an existing equipo for this row. */
+  duplicateExisting?: EquipoItem;
 }
 
 const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({ 
@@ -82,7 +86,9 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
   console.log('Excel Data:', excelData);
   const [showPreview, setShowPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [viewingDuplicate, setViewingDuplicate] = useState<EquipoItem | null>(null);
 
   // Items ordenados alfabéticamente
   const items = useMemo(() => {
@@ -167,16 +173,16 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
 
   const readExcelFile = (file: File) => {
     const reader = new FileReader();
-    
-    reader.onload = (e) => {
+
+    reader.onload = async (e) => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        
+
         // Leer la primera hoja
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        
+
         // Convertir a JSON
         const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(worksheet, {
           raw: false, // Mantener valores como strings
@@ -194,21 +200,49 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
         // Procesar y validar cada fila con auto-selección de items
         const processedData = jsonData.map((row, index) => {
           // Buscar coincidencia automática del item por nombre
-          const matchingItem = items.find(item => 
+          const matchingItem = items.find(item =>
             item.Nombre?.toLowerCase().trim() === row.Equipo?.toLowerCase().trim()
           );
-          
+
           // Crear objeto con datos actualizados incluyendo auto-selección
           const updatedRow = {
             ...row,
             ItemId: matchingItem?._id || row.ItemId,
             selectedItemId: matchingItem?._id
           };
-          
+
           return validateRow(updatedRow, index + 1);
         });
 
-        setExcelData(processedData);
+        // Pre-check de duplicados antes de mostrar el preview. No es
+        // bloqueante: si el endpoint falla, se muestra el preview igual
+        // (sin badges de duplicado) para no impedir la carga masiva.
+        let rowsWithDuplicates = processedData;
+        const rowsToCheck = processedData.filter(row => row.valid);
+        if (rowsToCheck.length > 0) {
+          setCheckingDuplicates(true);
+          try {
+            const bulkResult = await equipoItemService.checkDuplicateBulk(
+              rowsToCheck.map(row => ({
+                rowId: String(row.id),
+                ClienteId: customerId,
+                ItemId: row.selectedItemId || row.ItemId,
+                Marca: row.Marca,
+                Serie: row.Serie,
+              }))
+            );
+            rowsWithDuplicates = processedData.map(row => {
+              const result = bulkResult.results[String(row.id)];
+              return result?.conflict ? { ...row, duplicateExisting: result.existing } : row;
+            });
+          } catch (dupError) {
+            console.error('Error verificando duplicados en carga masiva:', dupError);
+          } finally {
+            setCheckingDuplicates(false);
+          }
+        }
+
+        setExcelData(rowsWithDuplicates);
         setShowPreview(true);
       } catch (error) {
         console.error('Error leyendo archivo Excel:', error);
@@ -270,10 +304,30 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
     }));
   };
 
+  const buildRowPayload = (row: ProcessedRow): CreateEquipoItemDto => ({
+    item: row.Equipo || 'No definido',
+    ClienteId: customerId,
+    ItemId: row.selectedItemId || row.ItemId,
+    Marca: row.Marca || 'No definido',
+    Modelo: row.Modelo || 'No definido',
+    Serie: row.Serie || 'No definido',
+    Servicio: contextData.Servicio,
+    SedeId: contextData.SedeId,
+    Ubicacion: row.Ubicacion || 'No definido',
+    Inventario: row.Inventario || 'No definido',
+    Riesgo: row.Riesgo || 'No definido',
+    Invima: row.Invima || 'No definido',
+    Estado: 'Operativo',
+    Precio: row.Precio || 0,
+    mesesMtto: contextData.mesesMtto
+  });
+
   const handleBulkImport = async () => {
-    const validRows = excelData.filter(row => row.valid);
-    
-    if (validRows.length === 0) {
+    // Las filas marcadas como duplicado se omiten por defecto — no se crean.
+    const rowsToImport = excelData.filter(row => row.valid && !row.duplicateExisting);
+    const omittedDuplicate = excelData.filter(row => row.valid && row.duplicateExisting).length;
+
+    if (rowsToImport.length === 0 && omittedDuplicate === 0) {
       alert('No hay filas válidas para importar');
       return;
     }
@@ -281,30 +335,23 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
     setUploading(true);
 
     try {
-      // Procesar cada fila válida
-      const promises = validRows.map(async (row) => {
-        const payload: CreateEquipoItemDto = {
-          item: row.Equipo || 'No definido',
-          ClienteId: customerId,
-          ItemId: row.selectedItemId || row.ItemId,
-          Marca: row.Marca || 'No definido',
-          Modelo: row.Modelo || 'No definido',
-          Serie: row.Serie || 'No definido',
-          Servicio: contextData.Servicio,
-          SedeId: contextData.SedeId,
-          Ubicacion: row.Ubicacion || 'No definido',
-          Inventario: row.Inventario || 'No definido',
-          Riesgo: row.Riesgo || 'No definido',
-          Invima: row.Invima || 'No definido',
-          Estado: 'Operativo',
-          Precio: row.Precio || 0,
-          mesesMtto: contextData.mesesMtto
-        };
+      const results = await Promise.allSettled(
+        rowsToImport.map((row) => createMutation.mutateAsync(buildRowPayload(row)))
+      );
 
-        return createMutation.mutateAsync(payload);
+      const created = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .forEach(r => console.error('Error creando equipo en carga masiva:', r.reason));
+
+      await Swal.fire({
+        icon: failed > 0 ? 'warning' : 'success',
+        title: 'Importación finalizada',
+        text: `${created} creados, ${omittedDuplicate} omitidos por duplicado, ${failed} fallidos`,
+        confirmButtonText: 'Aceptar',
       });
 
-      await Promise.all(promises);
       onSuccess?.();
     } catch (error) {
       console.error('Error en importación masiva:', error);
@@ -338,6 +385,8 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
 
   const validRowsCount = excelData.filter(row => row.valid).length;
   const invalidRowsCount = excelData.length - validRowsCount;
+  const duplicateRowsCount = excelData.filter(row => row.duplicateExisting).length;
+  const importableRowsCount = excelData.filter(row => row.valid && !row.duplicateExisting).length;
 
   return (
     <Card>
@@ -465,12 +514,19 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
               className="mb-3"
               style={{ maxWidth: 400, margin: '0 auto' }}
             />
-            <Button 
+            <Button
               variant="outline-primary"
               onClick={() => fileInputRef.current?.click()}
+              disabled={checkingDuplicates}
             >
               Examinar Archivos
             </Button>
+            {checkingDuplicates && (
+              <div className="mt-3 text-muted">
+                <Spinner size="sm" className="me-2" />
+                Verificando duplicados...
+              </div>
+            )}
           </div>
         )}
 
@@ -482,16 +538,17 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
                 <h6 className="mb-0">Preview de Equipos</h6>
                 <small className="text-muted">
                   {validRowsCount} válidos, {invalidRowsCount} con errores
+                  {duplicateRowsCount > 0 && `, ${duplicateRowsCount} duplicados`}
                 </small>
               </div>
               <div className="d-flex gap-2">
                 <Button variant="outline-secondary" onClick={resetUpload}>
                   Cambiar Archivo
                 </Button>
-                <Button 
-                  variant="success" 
+                <Button
+                  variant="success"
                   onClick={handleBulkImport}
-                  disabled={validRowsCount === 0 || uploading}
+                  disabled={importableRowsCount === 0 || uploading}
                 >
                   {uploading ? (
                     <>
@@ -499,7 +556,7 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
                       Importando...
                     </>
                   ) : (
-                    `Importar ${validRowsCount} Equipos`
+                    `Importar ${importableRowsCount} Equipos`
                   )}
                 </Button>
               </div>
@@ -520,7 +577,10 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
                 </thead>
                 <tbody>
                   {excelData.map((row) => (
-                    <tr key={row.id} className={row.valid ? '' : 'table-warning'}>
+                    <tr
+                      key={row.id}
+                      className={row.duplicateExisting ? 'table-danger' : row.valid ? '' : 'table-warning'}
+                    >
                       <td><strong>{row.Equipo}</strong></td>
                       <td>
                         <div>{row.Marca}</div>
@@ -570,7 +630,19 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
                         />
                       </td>
                       <td>
-                        {row.valid ? (
+                        {row.duplicateExisting ? (
+                          <div className="d-flex flex-column gap-1 align-items-start">
+                            <Badge bg="danger">Duplicado</Badge>
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="p-0"
+                              onClick={() => setViewingDuplicate(row.duplicateExisting || null)}
+                            >
+                              Ver equipo existente
+                            </Button>
+                          </div>
+                        ) : row.valid ? (
                           <Badge bg="success">✓ Válido</Badge>
                         ) : (
                           <Badge bg="warning" title={row.errors.join(', ')}>
@@ -584,6 +656,15 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
               </Table>
             </div>
           </>
+        )}
+
+        {viewingDuplicate && (
+          <EquipoDuplicateModal
+            show={!!viewingDuplicate}
+            onHide={() => setViewingDuplicate(null)}
+            existing={viewingDuplicate}
+            readOnly
+          />
         )}
 
         {/* Botones de Acción */}

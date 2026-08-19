@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert, Spinner, Card } from 'react-bootstrap';
 import Select from 'react-select';
+import { useNavigate } from 'react-router-dom';
 import { FaEdit, FaSave } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import { equipoItemService } from '@/services/equipoItem.service';
@@ -8,6 +9,9 @@ import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import useItems from '@/hooks/useItems';
 import { useEquipoItem } from '@/hooks/useEquipoItems';
+import EquipoDuplicateModal from '@/components/equipos/EquipoDuplicateModal';
+import { EquipoItem } from '@/types/equipoItem.types';
+import { handleEquipoDuplicateError } from '@/utils/handleEquipoDuplicateError';
 
 interface EditEquipoModalProps {
   show: boolean;
@@ -32,9 +36,11 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
   onHide, 
   equipo,
   reporteId = undefined,
-  onSuccess 
+  onSuccess
 }) => {
-    
+    const navigate = useNavigate();
+    const [duplicateExisting, setDuplicateExisting] = useState<EquipoItem | null>(null);
+
     const shouldLoadContext = show && !!equipo?.ClienteId;
     
     const { data: sedesData } = useSedesByCustomer(equipo?.ClienteId || '', {}, {
@@ -186,7 +192,13 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
       onHide();
     } catch (err: any) {
       console.error('Error al actualizar equipo:', err);
-      
+
+      const duplicateResult = handleEquipoDuplicateError(err);
+      if (duplicateResult.isDuplicate) {
+        setDuplicateExisting(duplicateResult.existing);
+        return;
+      }
+
       // Mostrar alerta de error
       await Swal.fire({
         icon: 'error',
@@ -194,7 +206,7 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
         text: err.response?.data?.message || 'No se pudo actualizar el equipo. Inténtelo de nuevo.',
         confirmButtonColor: '#d33'
       });
-      
+
       setError(err.response?.data?.message || 'Error al actualizar el equipo. Inténtelo de nuevo.');
     } finally {
       setUpdating(false);
@@ -522,6 +534,19 @@ const meses = [
           </Button>
         </Modal.Footer>
       </Form>
+
+      {duplicateExisting && (
+        <EquipoDuplicateModal
+          show={!!duplicateExisting}
+          onHide={() => setDuplicateExisting(null)}
+          existing={duplicateExisting}
+          primaryLabel="Ver equipo duplicado"
+          onUseExisting={(existing) => {
+            onHide();
+            navigate(`/hv-equipo/${existing._id}`);
+          }}
+        />
+      )}
     </Modal>
   );
 };

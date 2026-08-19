@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Button, Table, Badge, Row, Col, 
-  Spinner, Alert, Form, Card 
+import {
+  Button, Table, Badge, Row, Col,
+  Spinner, Alert, Form, Card, OverlayTrigger, Tooltip
 } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
+import { FaEye } from 'react-icons/fa';
 import { useOTs } from '@/hooks/useOTs';
 import { OT } from '@/types/ot.types';
+import OtQuickDetailModal from '@/components/ots/OtQuickDetailModal';
 
 interface CustomerOTsSectionProps {
   customerId: string;
@@ -14,6 +17,7 @@ const CustomerOTsSection: React.FC<CustomerOTsSectionProps> = ({ customerId }) =
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(1);
+  const [quickDetailOtId, setQuickDetailOtId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useOTs({
     ClienteId: customerId,
@@ -186,76 +190,110 @@ const CustomerOTsSection: React.FC<CustomerOTsSectionProps> = ({ customerId }) =
             <Table hover>
               <thead className="table-light">
                 <tr>
-                  <th>Número OT</th>
                   <th>Consecutivo</th>
                   <th>Tipo de Servicio</th>
                   <th>Estado</th>
                   <th>Avance</th>
                   <th>Fecha Creación</th>
-                  <th>Responsable</th>
+                  <th>Responsable(s)</th>
                   <th>Prioridad</th>
+                  <th className="text-center" style={{ width: 80 }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {ots.map((ot) => (
-                  <tr key={ot._id}>
-                    <td>
-                      <div>
-                        <strong>{ot.numeroOT || 'N/A'}</strong>
-                      </div>
-                    </td>
-                    <td>{ot.Consecutivo || 'N/A'}</td>
-                    <td>{ot.TipoServicio || 'N/A'}</td>
-                    <td>
-                      <Badge bg={getOtStatusColor(ot.EstadoOt)}>
-                        {ot.EstadoOt || 'N/A'}
-                      </Badge>
-                    </td>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <div 
-                          className="progress me-2" 
-                          style={{ width: 60, height: 8 }}
-                        >
-                          <div 
-                            className="progress-bar" 
-                            style={{ 
-                              width: `${getAvanceValue(ot.Avance)}%`,
-                              backgroundColor: getAvanceColor(ot.Avance)
-                            }}
-                          />
-                        </div>
-                        <small>{getAvanceValue(ot.Avance)}%</small>
-                      </div>
-                    </td>
-                    <td>
-                      {ot.FechaCreacion ? (
-                        <small>
-                          {new Date(ot.FechaCreacion).toLocaleDateString('es-ES')}
-                        </small>
-                      ) : (
-                        <span className="text-muted">Sin fecha</span>
-                      )}
-                    </td>
-                    <td>
-                      {ot.ResponsableId ? (
-                        <small>{ot.ResponsableId}</small>
-                      ) : (
-                        <span className="text-muted">Sin asignar</span>
-                      )}
-                    </td>
-                    <td>
-                      {ot.OtPrioridad && (
-                        <Badge bg={getPriorityColor(ot.OtPrioridad)}>
-                          {ot.OtPrioridad}
+                {ots.map((ot) => {
+                  const activeEntry = (ot.programaciones || []).find((p) => p.isActive);
+                  const responsables = activeEntry?.responsables || [];
+                  return (
+                    <tr key={ot._id}>
+                      <td>
+                        {ot._id ? (
+                          <Link to={`/ots/${ot._id}`} className="fw-semibold">
+                            {ot.Consecutivo || 'N/A'}
+                          </Link>
+                        ) : (
+                          ot.Consecutivo || 'N/A'
+                        )}
+                      </td>
+                      <td>{ot.TipoServicio || 'N/A'}</td>
+                      <td>
+                        <Badge bg={getOtStatusColor(ot.EstadoOt)}>
+                          {ot.EstadoOt || 'N/A'}
                         </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <div
+                            className="progress me-2"
+                            style={{ width: 60, height: 8 }}
+                          >
+                            <div
+                              className="progress-bar"
+                              style={{
+                                width: `${getAvanceValue(ot.Avance)}%`,
+                                backgroundColor: getAvanceColor(ot.Avance)
+                              }}
+                            />
+                          </div>
+                          <small>{getAvanceValue(ot.Avance)}%</small>
+                        </div>
+                      </td>
+                      <td>
+                        {ot.FechaCreacion ? (
+                          <small>
+                            {new Date(ot.FechaCreacion).toLocaleDateString('es-ES')}
+                          </small>
+                        ) : (
+                          <span className="text-muted">Sin fecha</span>
+                        )}
+                      </td>
+                      <td>
+                        {responsables.length === 0 ? (
+                          <span className="text-muted small">Sin programar</span>
+                        ) : (
+                          <div>
+                            {responsables.map((r) => (
+                              <div key={r.userId} className="small">
+                                {r.snapshotName}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        {ot.OtPrioridad && (
+                          <Badge bg={getPriorityColor(ot.OtPrioridad)}>
+                            {ot.OtPrioridad}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="text-center">
+                        <OverlayTrigger
+                          placement="top"
+                          overlay={<Tooltip id={`peek-${ot._id}`}>Ver detalle rápido</Tooltip>}
+                        >
+                          <Button
+                            size="sm"
+                            variant="outline-primary"
+                            onClick={() => ot._id && setQuickDetailOtId(ot._id)}
+                            aria-label={`Ver detalle rápido de la OT ${ot.Consecutivo || ot._id}`}
+                          >
+                            <FaEye />
+                          </Button>
+                        </OverlayTrigger>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </Table>
           </div>
+
+          <OtQuickDetailModal
+            show={Boolean(quickDetailOtId)}
+            onHide={() => setQuickDetailOtId(null)}
+            otId={quickDetailOtId}
+          />
 
           {/* Paginación simple */}
           {pagination && pagination.pages > 1 && (
