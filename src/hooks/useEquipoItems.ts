@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { equipoItemService } from '@/services/equipoItem.service';
-import { EquipoItem, CreateEquipoItemDto, UpdateEquipoItemDto } from '@/types/equipoItem.types';
+import {
+  EquipoItem,
+  CreateEquipoItemDto,
+  UpdateEquipoItemDto,
+  DuplicateCheckParams,
+} from '@/types/equipoItem.types';
 
 export const useEquipoItems = (params?: any) => {
   // Si no se especifica limit, usar 100 por defecto (en lugar del 10 del backend)
@@ -46,6 +51,24 @@ export const useUpdateEquipoItem = () => {
       qc.invalidateQueries(['equipo-items', vars.id]);
     },
   });
+};
+
+// Live duplicate pre-check used by EquipoForm. Gated by `options.enabled`
+// (caller is responsible for the "all required fields present" + debounce
+// logic) so the query does not fire on every keystroke.
+export const useEquipoDuplicateCheck = (
+  params: DuplicateCheckParams,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery(
+    ['equipo-items', 'duplicate-check', params],
+    () => equipoItemService.checkDuplicate(params),
+    {
+      enabled: options?.enabled ?? true,
+      keepPreviousData: true,
+      staleTime: 30_000,
+    }
+  );
 };
 
 export const useDeleteEquipoItem = () => {

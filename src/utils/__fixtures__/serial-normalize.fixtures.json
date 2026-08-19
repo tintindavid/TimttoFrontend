@@ -1,0 +1,37 @@
+{
+  "$comment": "Copied from ai-specs/fixtures/serial-normalize.fixtures.json (canonical source). Do NOT edit either implementation (TimttoApp/src/utils/serial.util.js, TimttoFrontend/src/utils/serial.ts) without updating the canonical fixture and this copy in the same commit.",
+  "normalize": [
+    { "in": "AB-123", "out": "AB-123" },
+    { "in": "  ab-123  ", "out": "AB-123" },
+    { "in": " ab-123 ", "out": "AB-123" },
+    { "in": "ab-123", "out": "AB-123" },
+    { "in": "AB 123", "out": "AB 123" },
+    { "in": "A   1", "out": "A 1" },
+    { "in": "\tA\t1\n", "out": "A 1" },
+    { "in": "", "out": "" },
+    { "in": "   ", "out": "" },
+    { "in": "No tiene", "out": "NO TIENE" },
+    { "in": "no  visible", "out": "NO VISIBLE" },
+    { "in": "N/V", "out": "N/V" },
+    { "in": "SIN SERIE", "out": "SIN SERIE" },
+    { "in": "sn: 2024-XYZ", "out": "SN: 2024-XYZ" },
+    { "in": "3", "out": "3" },
+    { "in": " 3 ", "out": "3" },
+    { "in": "café-1", "out": "CAFÉ-1" }
+  ],
+  "hasDigit": [
+    { "in": "AB-123", "expected": true },
+    { "in": "A123", "expected": true },
+    { "in": "2024-XYZ", "expected": true },
+    { "in": "3", "expected": true },
+    { "in": "A 1", "expected": true },
+    { "in": "CAFÉ-1", "expected": true },
+    { "in": "NO TIENE", "expected": false },
+    { "in": "NO VISIBLE", "expected": false },
+    { "in": "N/V", "expected": false },
+    { "in": "SIN SERIE", "expected": false },
+    { "in": "", "expected": false },
+    { "in": "ABC", "expected": false },
+    { "in": "A-B", "expected": false }
+  ]
+}

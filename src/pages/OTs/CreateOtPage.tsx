@@ -150,6 +150,23 @@ const CreateOtPage: React.FC = () => {
   
   const equipos = useMemo(() => equiposData?.data || [], [equiposData?.data]);
 
+  // Shared by EquipoForm's onSuccess (fresh create) and onUseExisting (user
+  // chose to reuse a duplicate) — both cases end with the equipo available
+  // for selection, so the follow-up UX is identical.
+  const handleEquipoCreatedOrExisting = useCallback(async () => {
+    setShowCreateEquipoModal(false);
+
+    await Swal.fire({
+      icon: 'success',
+      title: '¡Equipo creado!',
+      text: 'El equipo ha sido creado exitosamente y está disponible para selección',
+      confirmButtonText: 'Aceptar',
+      timer: 3000
+    });
+
+    await refetchEquipos();
+  }, [refetchEquipos]);
+
 
 
   // Equipos filtrados
@@ -1102,23 +1119,10 @@ const CreateOtPage: React.FC = () => {
               customerId={formData.customerId}
               sedes={sedes}
               servicios={servicios}
-              onSuccess={async () => {
-                // Cerrar el modal
-                setShowCreateEquipoModal(false);
-                
-                // Notificación con SweetAlert2
-                await Swal.fire({
-                  icon: 'success',
-                  title: '¡Equipo creado!',
-                  text: 'El equipo ha sido creado exitosamente y está disponible para selección',
-                  confirmButtonText: 'Aceptar',
-                  timer: 3000
-                });
-                
-                // Refrescar la lista de equipos
-                await refetchEquipos();
-              }}
+              onSuccess={handleEquipoCreatedOrExisting}
               onCancel={() => setShowCreateEquipoModal(false)}
+              onUseExisting={handleEquipoCreatedOrExisting}
+              onUseExistingLabel="Agregar a la OT"
             />
           )}
         </Modal.Body>

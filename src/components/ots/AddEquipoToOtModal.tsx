@@ -6,6 +6,7 @@ import { useEquipoItems } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { api } from '@/services/api';
+import { EquipoItem } from '@/types/equipoItem.types';
 
 interface AddEquipoToOtModalProps {
   show: boolean;
@@ -130,7 +131,7 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
     });
   };
 
-  const handleCreateNew = async (created?: { _id?: string; [key: string]: unknown }) => {
+  const handleCreateNew = async (created?: { _id?: string }) => {
     setLoading(true);
     setError(null);
 
@@ -269,6 +270,8 @@ const AddEquipoToOtModal: React.FC<AddEquipoToOtModalProps> = ({
                     servicios={servicios}
                     onSuccess={handleCreateNew}
                     onCancel={handleClose}
+                    onUseExisting={(existing: EquipoItem) => handleCreateNew(existing)}
+                    onUseExistingLabel="Agregar a la OT"
                   />
                 )}
               </div>

@@ -6,16 +6,18 @@ import {
 import Select from 'react-select';
 import { FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import { useEquipoItems } from '@/hooks/useEquipoItems';
+import { useEquipoItems, useDeleteEquipoItem } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { EquipoItem } from '@/types/equipoItem.types';
 import EquipoForm from '@/components/equipos/EquipoForm';
 import EquipoBulkUpload from '@/components/equipos/EquipoBulkUpload';
+import EditEquipoModal from '@/components/ots/EditEquipoModal';
 import AppPagination from '@/components/common/Pagination';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import DownloadInventarioModal from './DownloadInventarioModal';
 import { generarCronogramaPDF } from '@/services/cronograma.service';
+import Swal from 'sweetalert2';
 
 interface CustomerEquiposSectionProps {
   customerId: string;
@@ -32,8 +34,10 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const [limit] = useState(20); // Items por página
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [loadingCronograma, setLoadingCronograma] = useState(false);
+  const [editingEquipo, setEditingEquipo] = useState<EquipoItem | null>(null);
 
   const navigate = useNavigate();
+  const deleteMutation = useDeleteEquipoItem();
 
   // Parámetros de query - solo para paginación, filtros en cliente
   const queryParams = useMemo(() => {
@@ -178,6 +182,17 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
     refetch();
   }, [refetch]);
 
+  const handleUseExistingEquipo = useCallback((existing: EquipoItem) => {
+    setActiveTab('list');
+    setPage(1);
+    refetch();
+    toast.info(
+      <span>
+        Usando equipo existente: <Link to={`/hv-equipo/${existing._id}`}>Abrir hoja de vida</Link>
+      </span>
+    );
+  }, [refetch]);
+
   const handleBulkUploadSuccess = useCallback(() => {
     setActiveTab('list');
     setPage(1); // Reset a página 1
@@ -196,6 +211,35 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
     setSortOrder('asc');
     setPage(1); // Reset a página 1 al limpiar filtros
   }, []);
+
+  const handleEdit = useCallback((equipo: EquipoItem) => {
+    setEditingEquipo(equipo);
+  }, []);
+
+  const handleDelete = useCallback(async (equipo: EquipoItem) => {
+    if (!equipo?._id) return;
+
+    const nombre = equipo.ItemId?.Nombre || equipo.Marca || 'este equipo';
+    const confirm = await Swal.fire({
+      icon: 'warning',
+      title: '¿Eliminar equipo?',
+      html: `<div><strong>${nombre}</strong></div><small class="text-muted">El equipo se marcará como eliminado. Su historial (OTs, reportes, HV) se conserva.</small>`,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#d33',
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await deleteMutation.mutateAsync(equipo._id);
+      toast.success('Equipo eliminado correctamente');
+      refetch();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo eliminar el equipo';
+      toast.error(message);
+    }
+  }, [deleteMutation, refetch]);
 
   // Early return para loading state
   if (isLoading && !equiposRaw.length) {
@@ -485,17 +529,15 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                             Acciones
                           </Dropdown.Toggle>
                           <Dropdown.Menu>
-                            <Dropdown.Item>
-                              Ver detalle
-                            </Dropdown.Item>
-                            <Dropdown.Item>
+                            <Dropdown.Item onClick={() => handleEdit(equipo)}>
                               Editar
                             </Dropdown.Item>
-                            <Dropdown.Item>
-                              Historial
-                            </Dropdown.Item>
                             <Dropdown.Divider />
-                            <Dropdown.Item className="text-danger">
+                            <Dropdown.Item
+                              className="text-danger"
+                              onClick={() => handleDelete(equipo)}
+                              disabled={deleteMutation.isLoading}
+                            >
                               Eliminar
                             </Dropdown.Item>
                           </Dropdown.Menu>
@@ -528,6 +570,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
           servicios={servicios}
           onSuccess={handleEquipoCreated}
           onCancel={() => setActiveTab('list')}
+          onUseExisting={handleUseExistingEquipo}
         />
       )}
 
@@ -546,6 +589,23 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
         customerId={customerId}
         onHide={() => setShowDownloadModal(false)}
       />
+
+      {editingEquipo?._id && (
+        <EditEquipoModal
+          show={!!editingEquipo}
+          onHide={() => setEditingEquipo(null)}
+          equipo={{
+            _id: editingEquipo._id,
+            ClienteId: customerId,
+            ItemId: editingEquipo.ItemId,
+          }}
+          reporteId={undefined}
+          onSuccess={() => {
+            setEditingEquipo(null);
+            refetch();
+          }}
+        />
+      )}
     </div>
   );
 };

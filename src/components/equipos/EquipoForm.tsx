@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Card, Form, Button, Row, Col, Spinner, Alert, Modal 
+import {
+  Card, Form, Button, Row, Col, Spinner, Alert, Modal
 } from 'react-bootstrap';
 import Select from 'react-select';
 import { useItems } from '@/hooks/useItems';
-import { useCreateEquipoItem } from '@/hooks/useEquipoItems';
+import { useCreateEquipoItem, useEquipoDuplicateCheck } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Sede } from '@/types/sede.types';
 import { Servicio } from '@/types/servicio.types';
-import { CreateEquipoItemDto } from '@/types/equipoItem.types';
+import { CreateEquipoItemDto, EquipoItem } from '@/types/equipoItem.types';
 import SedeFormModal from '@/components/customers/SedeFormModal';
 import ServicioFormModal from '@/components/customers/ServicioFormModal';
 import ItemFormModal from '@/components/items/ItemFormModal';
+import EquipoDuplicateModal from '@/components/equipos/EquipoDuplicateModal';
+import { normalizeSerial, serialHasDigit } from '@/utils/serial';
+import { handleEquipoDuplicateError } from '@/utils/handleEquipoDuplicateError';
 import Swal from 'sweetalert2';
 
 interface EquipoFormProps {
@@ -27,21 +31,31 @@ interface EquipoFormProps {
    */
   onSuccess?: (created?: { _id?: string; [key: string]: unknown }) => void | Promise<void>;
   onCancel?: () => void;
+  /**
+   * Called when the user chooses to use the pre-existing equipo shown by
+   * `EquipoDuplicateModal` (either from the live check or a 409 on submit).
+   * Semantics are owned by the caller (attach to OT, reuse, navigate...).
+   */
+  onUseExisting?: (existing: EquipoItem) => void | Promise<void>;
+  /** Overrides the modal's primary button label. Default: "Usar este equipo". */
+  onUseExistingLabel?: string;
 }
 
-const EquipoForm: React.FC<EquipoFormProps> = ({ 
-  customerId, 
-  sedes, 
-  servicios,  
-  onSuccess, 
-  onCancel 
+const EquipoForm: React.FC<EquipoFormProps> = ({
+  customerId,
+  sedes,
+  servicios,
+  onSuccess,
+  onCancel,
+  onUseExisting,
+  onUseExistingLabel,
 }) => {
   const { data: itemsData, isLoading: loadingItems } = useItems({
     limit: 100 // Cargar muchos items para el dropdown
   });
 
   const createMutation = useCreateEquipoItem();
-  
+
   // Refetch sedes, servicios e items
   const { refetch: refetchSedes } = useSedesByCustomer(customerId);
   const { refetch: refetchServicios } = useServiciosByCustomer(customerId);
@@ -71,6 +85,36 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
 
   console.log('EquipoForm renderizado con formData:', formData);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Equipo devuelto por el backend (o por el live-check) cuando se detecta un
+  // duplicado. No-null abre el EquipoDuplicateModal.
+  const [duplicateExisting, setDuplicateExisting] = useState<EquipoItem | null>(null);
+
+  // Live duplicate check: debounced (400ms) sobre el trío ItemId/Marca/Serie
+  // para no golpear el endpoint en cada tecla.
+  const duplicateCheckTuple = useMemo(
+    () => ({ ItemId: formData.ItemId, Marca: formData.Marca, Serie: formData.Serie }),
+    [formData.ItemId, formData.Marca, formData.Serie]
+  );
+  const debouncedDuplicateCheckTuple = useDebounce(duplicateCheckTuple, 400);
+  const duplicateCheckEnabled = Boolean(
+    debouncedDuplicateCheckTuple.ItemId &&
+    debouncedDuplicateCheckTuple.Marca &&
+    debouncedDuplicateCheckTuple.Serie &&
+    serialHasDigit(normalizeSerial(debouncedDuplicateCheckTuple.Serie))
+  );
+
+  const { data: duplicateCheckData } = useEquipoDuplicateCheck(
+    {
+      ClienteId: customerId,
+      ItemId: debouncedDuplicateCheckTuple.ItemId,
+      Marca: debouncedDuplicateCheckTuple.Marca,
+      Serie: debouncedDuplicateCheckTuple.Serie,
+    },
+    { enabled: duplicateCheckEnabled }
+  );
+
+  const hasLiveConflict = duplicateCheckEnabled && duplicateCheckData?.conflict === true;
 
   // Auto-select the single sede / servicio when the customer only has one of
   // each — avoids forcing the admin to open a dropdown with a single option.
@@ -190,7 +234,19 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
       await onSuccess?.(created);
     } catch (error) {
       console.error('Error al crear equipo:', error);
+
+      // On EQUIPO_DUPLICATE, open the modal instead of a bare error — form
+      // state is left intact so the user can cancel and keep editing.
+      const duplicateResult = handleEquipoDuplicateError(error);
+      if (duplicateResult.isDuplicate) {
+        setDuplicateExisting(duplicateResult.existing);
+      }
     }
+  };
+
+  const handleUseExisting = async (existing: EquipoItem) => {
+    setDuplicateExisting(null);
+    await onUseExisting?.(existing);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -420,7 +476,21 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                   value={formData.Serie}
                   onChange={(e) => handleInputChange('Serie', e.target.value)}
                   placeholder="Número de serie"
+                  isInvalid={hasLiveConflict}
                 />
+                {hasLiveConflict && (
+                  <Form.Text className="text-danger d-block">
+                    Ya existe un equipo con este ítem, marca y serie en este cliente.{' '}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 align-baseline"
+                      onClick={() => duplicateCheckData?.existing && setDuplicateExisting(duplicateCheckData.existing)}
+                    >
+                      Ver equipo
+                    </Button>
+                  </Form.Text>
+                )}
               </Form.Group>
 
                             <Form.Group className="mb-3">
@@ -482,7 +552,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
             <Button
               variant="primary"
               type="submit"
-              disabled={createMutation.isLoading}
+              disabled={createMutation.isLoading || hasLiveConflict}
             >
               {createMutation.isLoading ? (
                 <>
@@ -546,6 +616,16 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
           });
         }}
       />
+
+      {duplicateExisting && (
+        <EquipoDuplicateModal
+          show={!!duplicateExisting}
+          onHide={() => setDuplicateExisting(null)}
+          existing={duplicateExisting}
+          onUseExisting={handleUseExisting}
+          primaryLabel={onUseExistingLabel}
+        />
+      )}
     </Card>
   );
 };
