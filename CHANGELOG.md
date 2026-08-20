@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/tintindavid/TimttoFrontend/compare/v1.17.0...v1.17.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* **reports,customers:** raise report-by-ot list limit and gate inventario by permission ([554a906](https://github.com/tintindavid/TimttoFrontend/commit/554a906c70785252b47c12e825dff26bfa52be65))
+
 # [1.17.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.16.0...v1.17.0) (2026-08-19)
 
 
