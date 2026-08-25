@@ -9,7 +9,13 @@ function basePayload(): InformePayload {
     meta: {
       clienteId: 'c1',
       clienteNombre: 'Clínica Ejemplo',
+      clienteNit: '900123456',
       clienteCiudad: 'Bogotá',
+      clienteDepartamento: 'Cundinamarca',
+      clienteDireccion: 'Cra 7 #100-20',
+      clienteEmail: 'admin@acme.co',
+      clienteTelefono: '3001234567',
+      clienteContacto: 'Juana Perez',
       clienteLogo: null,
       periodoDesde: 'ene',
       periodoHasta: 'ene',
