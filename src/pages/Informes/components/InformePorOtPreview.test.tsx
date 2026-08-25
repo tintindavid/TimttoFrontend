@@ -33,7 +33,13 @@ function basePayload(overrides: Partial<InformePorOtPayload> = {}): InformePorOt
     meta: {
       clienteId: 'c1',
       clienteNombre: 'Clínica Ejemplo',
+      clienteNit: '900123456',
       clienteCiudad: 'Bogotá',
+      clienteDepartamento: 'Cundinamarca',
+      clienteDireccion: 'Cra 7 #100-20',
+      clienteEmail: 'admin@acme.co',
+      clienteTelefono: '3001234567',
+      clienteContacto: 'Juana Perez',
       clienteLogo: null,
       tenantNombre: 'Timtto SAS',
       fechaGeneracion: '2026-01-10T00:00:00.000Z',

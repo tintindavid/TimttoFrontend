@@ -20,7 +20,28 @@ function formatCOP(amount: number): string {
 }
 
 function formatDateEs(value: string | null): string {
-  return value ? new Date(value).toLocaleDateString('es-CO') : '—';
+  if (!value) return '—';
+  // Backend helper `formatDate` in informeReport.helpers.js already returns
+  // dates as locale-formatted strings ("22/08/2026") — feeding those back to
+  // `new Date(...)` yields `Invalid Date`. Detect that case and pass the raw
+  // string through instead of rendering literal "Invalid Date" in the UI.
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('es-CO');
+}
+
+/**
+ * Shorten OT.Consecutivo: "OT000031" → "OT0031". Preserves the "OT" prefix
+ * and keeps a minimum of 4 digits so the label stays visually stable up to
+ * 9999 OTs; auto-widens beyond that (backend keeps its full padding).
+ */
+function shortenOtConsecutivo(consecutivo: string): string {
+  if (!consecutivo) return '';
+  const m = consecutivo.match(/^(OT|Ot|ot)(\d+)$/);
+  if (!m) return consecutivo;
+  const num = m[2].replace(/^0+/, '') || '0';
+  const padded = num.length < 4 ? num.padStart(4, '0') : num;
+  return `${m[1].toUpperCase()}${padded}`;
 }
 
 function formatPct(pct: number | null): string {
@@ -163,14 +184,12 @@ const EquiposTable: React.FC<{ reportes: ReporteOtRow[] }> = ({ reportes }) => {
       <Table bordered hover size="sm" className="align-middle">
         <thead className="table-dark" style={{ fontSize: '0.68rem', textTransform: 'uppercase' }}>
           <tr>
-            <th>Reporte</th>
-            <th>OT</th>
+            <th>Reporte / OT</th>
             <th>Equipo</th>
             <th>Serie / Inventario</th>
             <th>Ubicación</th>
             <th>Estado Operativo</th>
             <th>Estado del reporte</th>
-            <th>F. Programada</th>
             <th>F. Realizado</th>
             <th>Técnico</th>
           </tr>
@@ -178,19 +197,23 @@ const EquiposTable: React.FC<{ reportes: ReporteOtRow[] }> = ({ reportes }) => {
         <tbody style={{ fontSize: '0.78rem' }}>
           {reportes.map((r) => (
             <tr key={r.reporteId}>
-              <td className="fw-semibold">{r.consecutivo}</td>
-              <td>{r.otConsecutivo}</td>
+              <td style={{ whiteSpace: 'nowrap' }}>
+                <div className="fw-bold">{r.consecutivo}</div>
+                <div className="text-muted" style={{ fontSize: '0.7rem' }}>{shortenOtConsecutivo(r.otConsecutivo)}</div>
+              </td>
               <td>
                 <div className="fw-semibold">{r.equipoNombre}</div>
                 <div className="text-muted" style={{ fontSize: '0.72rem' }}>
                   {[r.marca, r.modelo].filter(Boolean).join(' — ') || '—'}
                 </div>
               </td>
-              <td>{[r.serie, r.inventario].filter(Boolean).join(' / ') || '—'}</td>
+              <td style={{ whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: '0.72rem' }}>
+                <div>SN: {r.serie || '—'}</div>
+                <div>Inv: {r.inventario || '—'}</div>
+              </td>
               <td>{r.ubicacion || '—'}</td>
               <td>{estadoOperativoBadge(r.estadoOperativo)}</td>
               <td>{estadoReporteBadge(r.estadoReporte)}</td>
-              <td>{formatDateEs(r.fechaProgramada)}</td>
               <td>{formatDateEs(r.fechaRealizado)}</td>
               <td>{r.tecnico || '—'}</td>
             </tr>
