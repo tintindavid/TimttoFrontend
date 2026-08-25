@@ -10,8 +10,10 @@ import { useServiciosByCustomer } from '@/hooks/useServicios';
 import useItems from '@/hooks/useItems';
 import { useEquipoItem } from '@/hooks/useEquipoItems';
 import EquipoDuplicateModal from '@/components/equipos/EquipoDuplicateModal';
+import EstadoOperativoSelect from '@/components/equipos/EstadoOperativoSelect';
 import { EquipoItem } from '@/types/equipoItem.types';
 import { handleEquipoDuplicateError } from '@/utils/handleEquipoDuplicateError';
+import { EstadoOperativo, EstadoOperativoDefault } from '@/constants/estadoOperativo';
 
 interface EditEquipoModalProps {
   show: boolean;
@@ -53,7 +55,7 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
         enabled: shouldLoadContext
     });
     const { data: itemsData, isLoading: loadingItems } = useItems({
-    limit: 100 // Cargar muchos items para el dropdown
+    limit: 500 // Cargar muchos items para el dropdown
     });
 
     const {data:equipoData, isLoading: loadingEquipo} = useEquipoItem(equipo._id);
@@ -132,7 +134,15 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
         Riesgo: equipoData?.data.Riesgo || '',
         Invima: equipoData?.data.Invima || '',
         mesesMtto: equipoData?.data.mesesMtto || [],
+        EstadoOperativo: (equipoData?.data.EstadoOperativo as EstadoOperativo) || EstadoOperativoDefault,
     });
+
+  const [estadoOperativoMotivo, setEstadoOperativoMotivo] = useState('');
+
+  // Value loaded from the backend when the modal opened — used as the
+  // "currentValue" reference so the motivo textarea only appears when the
+  // user actually changes the select, not on every re-render.
+  const loadedEstadoOperativo = (equipoData?.data.EstadoOperativo as EstadoOperativo) || EstadoOperativoDefault;
 
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,14 +175,21 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
 
     setUpdating(true);
     try {
+      // Solo se envía estadoOperativoMotivo cuando el usuario efectivamente
+      // cambió el estado y escribió algo en la textarea (opcional).
+      const motivoToSend =
+        formData.EstadoOperativo !== loadedEstadoOperativo && estadoOperativoMotivo.trim()
+          ? estadoOperativoMotivo.trim()
+          : undefined;
+
       // Si hay reporteId, actualizar snapshot (para reportes)
       // Si NO hay reporteId, actualizar equipo directamente (para cronogramas, etc.)
       if (reporteId && reporteId.trim()) {
-        await equipoItemService.updateSnapshot(equipo._id, formData);
+        await equipoItemService.updateSnapshot(equipo._id, { ...formData, estadoOperativoMotivo: motivoToSend });
       } else {
         // Para actualización normal, no enviar reportId
         const { reportId, ...updateData } = formData;
-        await equipoItemService.update(equipo._id, updateData);
+        await equipoItemService.update(equipo._id, { ...updateData, estadoOperativoMotivo: motivoToSend });
       }
        
       // Mostrar alerta de éxito
@@ -243,7 +260,9 @@ const EditEquipoModal: React.FC<EditEquipoModalProps> = ({
             Riesgo: equipoData?.data.Riesgo || '',
             Invima: equipoData?.data.Invima || '',
             mesesMtto: equipoData?.data.mesesMtto || [],
+            EstadoOperativo: (equipoData?.data.EstadoOperativo as EstadoOperativo) || EstadoOperativoDefault,
         });
+        setEstadoOperativoMotivo('');
     }
   }, [show, equipoData, reporteId]);
 
@@ -485,6 +504,20 @@ const meses = [
                     </Form.Group>
               </Col>
             </Row>
+            <Row>
+              <Col md={6}>
+                <EstadoOperativoSelect
+                  id="edit-equipo-estado-operativo"
+                  value={formData.EstadoOperativo}
+                  currentValue={loadedEstadoOperativo}
+                  withMotivo
+                  motivo={estadoOperativoMotivo}
+                  onMotivoChange={setEstadoOperativoMotivo}
+                  disabled={updating}
+                  onChange={(value) => setFormData(prev => ({ ...prev, EstadoOperativo: value }))}
+                />
+              </Col>
+            </Row>
           </div>
         {/* Meses de Mantenimiento */}
             <Card className="mb-4">
@@ -543,7 +576,7 @@ const meses = [
           primaryLabel="Ver equipo duplicado"
           onUseExisting={(existing) => {
             onHide();
-            navigate(`/hv-equipo/${existing._id}`);
+            window.open(`/hv-equipo/${existing._id}`, '_blank', 'noopener,noreferrer');
           }}
         />
       )}

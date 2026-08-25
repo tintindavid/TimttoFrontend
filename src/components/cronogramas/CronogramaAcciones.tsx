@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, ButtonGroup, Form } from 'react-bootstrap';
+import { Button, ButtonGroup, Form, OverlayTrigger, Tooltip } from 'react-bootstrap';
 import { FaPrint, FaPlus, FaCheckSquare, FaTimesCircle } from 'react-icons/fa';
 
 interface CronogramaAccionesProps {
@@ -51,15 +51,24 @@ export const CronogramaAcciones: React.FC<CronogramaAccionesProps> = ({
       </div>
 
       <ButtonGroup>
-        <Button
-          variant="outline-primary"
-          onClick={onImprimir}
-          disabled={false}
+        <OverlayTrigger
+          placement="top"
+          overlay={
+            <Tooltip id="tooltip-imprimir-visible">
+              Descarga solo los equipos actualmente filtrados/visibles en el cronograma
+            </Tooltip>
+          }
         >
-          <FaPrint className="me-2" />
-          Imprimir Visible
-        </Button>
-        
+          <Button
+            variant="outline-primary"
+            onClick={onImprimir}
+            disabled={false}
+          >
+            <FaPrint className="me-2" />
+            Imprimir Visible
+          </Button>
+        </OverlayTrigger>
+
         {mostrarCrearOT && (
           <Button
             variant="success"

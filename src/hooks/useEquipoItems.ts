@@ -49,6 +49,7 @@ export const useUpdateEquipoItem = () => {
     onSuccess: (_, vars) => {
       qc.invalidateQueries(['equipo-items']);
       qc.invalidateQueries(['equipo-items', vars.id]);
+      qc.invalidateQueries(['equipo-items', 'populated', vars.id]);
     },
   });
 };

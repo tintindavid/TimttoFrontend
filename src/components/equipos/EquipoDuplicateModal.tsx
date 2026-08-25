@@ -84,7 +84,7 @@ const EquipoDuplicateModal: React.FC<EquipoDuplicateModalProps> = ({
 
         {existing._id && (
           <div className="mt-3">
-            <Link to={`/hv-equipo/${existing._id}`}>Abrir hoja de vida</Link>
+            <Link to={`/hv-equipo/${existing._id}`} target="_blank" rel="noopener noreferrer">Abrir hoja de vida</Link>
           </div>
         )}
       </Modal.Body>

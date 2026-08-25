@@ -15,7 +15,7 @@ import { useCronograma } from '@/hooks/useCronograma';
 import { useCreateOt } from '@/hooks/useOTs';
 
 // Servicios
-import { generarCronogramaPDF } from '@/services/cronograma.service';
+import { generarCronogramaPDF, generarCronogramaExcel } from '@/services/cronograma.service';
 
 // Componentes
 import { CronogramaStatsCard } from '@/components/cronogramas/CronogramaStatsCard';
@@ -23,6 +23,7 @@ import { CronogramaAcciones } from '@/components/cronogramas/CronogramaAcciones'
 import { CronogramaFiltros } from '@/components/cronogramas/CronogramaFiltros';
 import { CronogramaGrid } from '@/components/cronogramas/CronogramaGrid';
 import { CronogramaPaginacion } from '@/components/cronogramas/CronogramaPaginacion';
+import { CronogramaDownloadModal } from '@/components/cronogramas/CronogramaDownloadModal';
 import EditEquipoModal from '@/components/ots/EditEquipoModal';
 
 // Tipos
@@ -42,6 +43,9 @@ export const CronogramaPorCliente: React.FC = () => {
   // Estado del modal de edición
   const [showEditModal, setShowEditModal] = useState(false);
   const [equipoAEditar, setEquipoAEditar] = useState<any>(null);
+
+  // Estado del modal de descarga (PDF / Excel)
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   console.log('equipo a editar:', equipoAEditar);
   // Queries
@@ -126,7 +130,20 @@ export const CronogramaPorCliente: React.FC = () => {
     });
   }, [refetchEquipos]);
 
-  const handleImprimir = useCallback(async () => {
+  // Enviar solo clienteId y filtros estructurales (sin grupos ni cliente completo).
+  // El backend consulta y agrupa los equipos desde DB. Compartido por PDF y Excel.
+  const buildDescargaPayload = useCallback(() => ({
+    clienteId: clienteSeleccionado,
+    filtros: {
+      ...(filtros.sedeIds?.length && { sedeIds: filtros.sedeIds }),
+      ...(filtros.servicioIds?.length && { servicioIds: filtros.servicioIds }),
+      ...(filtros.meses?.length && { meses: filtros.meses.map(m => m.toLowerCase()) }),
+      ...(filtros.ubicaciones?.length && { ubicaciones: filtros.ubicaciones }),
+      ...(filtros.estado && { estado: filtros.estado }),
+    },
+  }), [clienteSeleccionado, filtros]);
+
+  const handleImprimir = useCallback(() => {
     if (!clienteSeleccionado) {
       toast.warning('Debe seleccionar un cliente');
       return;
@@ -137,24 +154,13 @@ export const CronogramaPorCliente: React.FC = () => {
       return;
     }
 
+    setShowDownloadModal(true);
+  }, [clienteSeleccionado, equiposFiltrados.length]);
+
+  const handleDescargarPDF = useCallback(async () => {
     try {
       toast.info('Generando PDF del cronograma...', { autoClose: 2000 });
-
-      // Enviar solo clienteId y filtros estructurales (sin grupos ni cliente completo).
-      // El backend consulta y agrupa los equipos desde DB.
-      const payload = {
-        clienteId: clienteSeleccionado,
-        filtros: {
-          ...(filtros.sedeIds?.length && { sedeIds: filtros.sedeIds }),
-          ...(filtros.servicioIds?.length && { servicioIds: filtros.servicioIds }),
-          ...(filtros.meses?.length && { meses: filtros.meses.map(m => m.toLowerCase()) }),
-          ...(filtros.ubicaciones?.length && { ubicaciones: filtros.ubicaciones }),
-          ...(filtros.estado && { estado: filtros.estado }),
-        },
-      };
-
-      await generarCronogramaPDF(payload);
-
+      await generarCronogramaPDF(buildDescargaPayload());
       toast.success('PDF generado correctamente');
     } catch (error) {
       console.error('Error al generar PDF:', error);
@@ -164,7 +170,22 @@ export const CronogramaPorCliente: React.FC = () => {
           : 'Error al generar el PDF del cronograma'
       );
     }
-  }, [clienteSeleccionado, equiposFiltrados.length, filtros]);
+  }, [buildDescargaPayload]);
+
+  const handleDescargarExcel = useCallback(async () => {
+    try {
+      toast.info('Generando Excel del cronograma...', { autoClose: 2000 });
+      await generarCronogramaExcel(buildDescargaPayload());
+      toast.success('Excel generado correctamente');
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Error al generar el Excel del cronograma'
+      );
+    }
+  }, [buildDescargaPayload]);
 
   // Crear OT con equipos seleccionados
   const handleCrearOT = useCallback(async () => {
@@ -422,6 +443,14 @@ export const CronogramaPorCliente: React.FC = () => {
           onSuccess={handleEditSuccess}
         />
       )}
+
+      {/* Modal de Descarga (PDF / Excel) */}
+      <CronogramaDownloadModal
+        show={showDownloadModal}
+        onHide={() => setShowDownloadModal(false)}
+        onDescargarPDF={handleDescargarPDF}
+        onDescargarExcel={handleDescargarExcel}
+      />
     </div>
   );
 };

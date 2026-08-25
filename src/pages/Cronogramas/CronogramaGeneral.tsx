@@ -560,7 +560,7 @@ export const CronogramaGeneral: React.FC = () => {
                                       <small 
                                         className="text-truncate d-block"
                                         title={itemName}
-                                        onClick={() => navigate(`/hv-equipo/${equipo._id}`)}
+                                        onClick={() => window.open(`/hv-equipo/${equipo._id}`, '_blank', 'noopener,noreferrer')}
                                         style={{ cursor: 'pointer', color: '#0d6efd' }}
                                       >
                                         {itemName}

@@ -1,9 +1,25 @@
+import { EstadoOperativo, EstadoOperativoSource } from '../constants/estadoOperativo';
+
+/** One append-only entry in `EquipoItem.estadoOperativoHistory[]`. */
+export interface EstadoOperativoEntry {
+  _id?: string;
+  from: EstadoOperativo | null;
+  to: EstadoOperativo;
+  motivo?: string | null;
+  changedBy?: string | null;
+  changedByName: string;
+  source: EstadoOperativoSource;
+  reportId?: string | null;
+  at: string; // ISO
+}
+
 export interface EquipoItem {
   _id?: string;
   item?: string;
   ClienteId?: string;
   Estado?: string;
   EstadoOperativo?: string;
+  estadoOperativoHistory?: EstadoOperativoEntry[];
   ItemId?: {
     _id: string;
     Nombre?: string;
@@ -62,6 +78,8 @@ export interface UpdateEquipoItemDto {
   Ubicacion?: string;
   Estado?: string;
   EstadoOperativo?: string;
+  /** Optional textarea shown only when `EstadoOperativo` differs from the loaded value. */
+  estadoOperativoMotivo?: string;
   mesesMtto?: string[];
   Precio?: number;
   Riesgo?: string;

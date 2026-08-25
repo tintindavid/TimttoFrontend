@@ -16,7 +16,8 @@ import EditEquipoModal from '@/components/ots/EditEquipoModal';
 import AppPagination from '@/components/common/Pagination';
 import { Navigate, useNavigate, Link } from 'react-router-dom';
 import DownloadInventarioModal from './DownloadInventarioModal';
-import { generarCronogramaPDF } from '@/services/cronograma.service';
+import { CronogramaDownloadModal } from '@/components/cronogramas/CronogramaDownloadModal';
+import { generarCronogramaPDF, generarCronogramaExcel } from '@/services/cronograma.service';
 import Swal from 'sweetalert2';
 
 interface CustomerEquiposSectionProps {
@@ -33,7 +34,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const [page, setPage] = useState(1);
   const [limit] = useState(20); // Items por página
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [loadingCronograma, setLoadingCronograma] = useState(false);
+  const [showCronogramaDownloadModal, setShowCronogramaDownloadModal] = useState(false);
   const [editingEquipo, setEditingEquipo] = useState<EquipoItem | null>(null);
 
   const navigate = useNavigate();
@@ -155,9 +156,12 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
   const totalEquipos = filteredAndSortedEquipos.length;
 
   // Event handlers optimizados con useCallback
-  const handleImprimirCronograma = useCallback(async () => {
+  const handleImprimirCronograma = useCallback(() => {
+    setShowCronogramaDownloadModal(true);
+  }, []);
+
+  const handleDescargarCronogramaPDF = useCallback(async () => {
     try {
-      setLoadingCronograma(true);
       toast.info('Generando PDF del cronograma...', { autoClose: 2000 });
       await generarCronogramaPDF({ clienteId: customerId });
       toast.success('PDF generado correctamente');
@@ -167,8 +171,20 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
           ? error.message
           : 'Error al generar el cronograma PDF'
       );
-    } finally {
-      setLoadingCronograma(false);
+    }
+  }, [customerId]);
+
+  const handleDescargarCronogramaExcel = useCallback(async () => {
+    try {
+      toast.info('Generando Excel del cronograma...', { autoClose: 2000 });
+      await generarCronogramaExcel({ clienteId: customerId });
+      toast.success('Excel generado correctamente');
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Error al generar el cronograma Excel'
+      );
     }
   }, [customerId]);
 
@@ -188,7 +204,7 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
     refetch();
     toast.info(
       <span>
-        Usando equipo existente: <Link to={`/hv-equipo/${existing._id}`}>Abrir hoja de vida</Link>
+        Usando equipo existente: <Link to={`/hv-equipo/${existing._id}`} target="_blank" rel="noopener noreferrer">Abrir hoja de vida</Link>
       </span>
     );
   }, [refetch]);
@@ -294,13 +310,8 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
               variant="outline-danger"
               size="sm"
               onClick={handleImprimirCronograma}
-              disabled={loadingCronograma}
             >
-              {loadingCronograma ? (
-                <><Spinner as="span" animation="border" size="sm" className="me-1" />Generando...</>
-              ) : (
-                'Cronograma PDF'
-              )}
+              Cronograma PDF
             </Button>
             <Button
               variant="outline-success"
@@ -481,8 +492,8 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                     <tr key={equipo._id}>
                       <td>{(page - 1) * limit + index + 1}</td>
                       <td>
-                        <div 
-                          onClick={() => navigate(`/hv-equipo/${equipo?._id}`)}
+                        <div
+                          onClick={() => window.open(`/hv-equipo/${equipo?._id}`, '_blank', 'noopener,noreferrer')}
                           style={{ cursor: 'pointer' }}
                           >
                           <strong>{equipo?.ItemId?.Nombre || 'N/A'}</strong>
@@ -588,6 +599,13 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
         show={showDownloadModal}
         customerId={customerId}
         onHide={() => setShowDownloadModal(false)}
+      />
+
+      <CronogramaDownloadModal
+        show={showCronogramaDownloadModal}
+        onHide={() => setShowCronogramaDownloadModal(false)}
+        onDescargarPDF={handleDescargarCronogramaPDF}
+        onDescargarExcel={handleDescargarCronogramaExcel}
       />
 
       {editingEquipo?._id && (

@@ -246,6 +246,11 @@ const AppRoutes: React.FC = () => {
 
         {/* QR de Servicios — rollout admin-only — widen role list when feature opens to technician/user */}
         <Route path="configuracion/qr-services" element={<PrivateRoute roles={['admin']}><ServiceQrsPage /></PrivateRoute>} />
+
+        {/* Notificaciones — alias del existente /settings/notifications (mismo componente, dos URLs equivalentes).
+            Sin roles gate externo: el componente ya oculta el tab "Reglas" cuando user.role !== 'admin',
+            y un gate estricto por nombre de rol rebota a los roles custom que en la práctica sí son admin. */}
+        <Route path="configuracion/notifications" element={<NotificationsSettingsPage />} />
       </Route>
 
       <Route path="*" element={<div>404 - Not Found</div>} />
