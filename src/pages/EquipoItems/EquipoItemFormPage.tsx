@@ -61,7 +61,7 @@ export const EquipoItemFormPage: React.FC = () => {
           show={!!duplicateExisting}
           onHide={() => setDuplicateExisting(null)}
           existing={duplicateExisting}
-          onUseExisting={(existing) => navigate(`/hv-equipo/${existing._id}`)}
+          onUseExisting={(existing) => window.open(`/hv-equipo/${existing._id}`, '_blank', 'noopener,noreferrer')}
         />
       )}
     </Container>

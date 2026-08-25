@@ -137,6 +137,21 @@ const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   </h5>
 );
 
+/** Hide count/monetary cards when value is 0 to avoid noise in the informe. Cumplimiento always visible. */
+function buildKpiCards(
+  kpis: InformePayload['kpis'],
+): { label: string; value: string | number; description?: string; border: string }[] {
+  const cumBorder = kpis.cumplimientoPreventivo >= 90 ? '#27ae60' : kpis.cumplimientoPreventivo >= 70 ? '#f39c12' : '#e74c3c';
+  const cards: { label: string; value: string | number; description?: string; border: string; hide?: boolean }[] = [
+    { label: 'Cumplimiento Preventivo', value: `${kpis.cumplimientoPreventivo}%`, description: `${kpis.totalRealizados} de ${kpis.totalProgramados} realizados`, border: cumBorder },
+    { label: 'Mtto. Correctivos', value: kpis.totalCorrectivos, description: 'Intervenciones no programadas', border: '#3498db', hide: kpis.totalCorrectivos === 0 },
+    { label: 'Repuestos Solicitados', value: kpis.totalRepuestosSolicitados, description: `${kpis.totalRepuestosInstalados} instalados`, border: '#f39c12', hide: kpis.totalRepuestosSolicitados === 0 },
+    { label: 'Costo Repuestos', value: formatCOP(kpis.costoTotalRepuestos), description: 'Solo piezas instaladas', border: '#e74c3c', hide: kpis.costoTotalRepuestos === 0 },
+    { label: 'Horas de Servicio', value: `${kpis.horasServicio} h`, description: 'Tiempo total de intervención', border: '#9b59b6', hide: kpis.horasServicio === 0 },
+  ];
+  return cards.filter((c) => !c.hide).map(({ hide, ...rest }) => rest);
+}
+
 const KpiCard: React.FC<{
   label: string;
   value: string | number;
@@ -168,8 +183,9 @@ const ReportsTable: React.FC<{ rows: ReportRow[]; showDiagnostico?: boolean }> =
       <Table striped bordered hover size="sm" className="align-middle">
         <thead className="table-dark" style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}>
           <tr>
-            <th>#</th>
+            <th>Reporte</th>
             <th>Equipo</th>
+            <th>Serie / Inventario</th>
             <th>Sede</th>
             <th>F. Programada</th>
             <th>F. Realizado</th>
@@ -182,15 +198,16 @@ const ReportsTable: React.FC<{ rows: ReportRow[]; showDiagnostico?: boolean }> =
         <tbody style={{ fontSize: '0.8rem' }}>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td>{r.consecutivo}</td>
+              <td className="fw-bold">{r.consecutivo}</td>
               <td>
                 <div className="fw-semibold">{r.equipoNombre}</div>
-                {(r.modelo || r.serie || r.inventario) && (
+                {(r.marca || r.modelo) && (
                   <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                    {[r.modelo && `Modelo: ${r.modelo}`, r.serie && `Serie: ${r.serie}`, r.inventario && `Inv: ${r.inventario}`].filter(Boolean).join(' | ')}
+                    {[r.marca, r.modelo].filter(Boolean).join(' — ')}
                   </div>
                 )}
               </td>
+              <td>{[r.serie, r.inventario].filter(Boolean).join(' / ') || '—'}</td>
               <td>{r.sede || '—'}</td>
               <td>{r.fechaProgramada || '—'}</td>
               <td>{r.fechaRealizado || '—'}</td>
@@ -362,62 +379,57 @@ export const InformePreview: React.FC<InformePreviewProps> = ({ payload }) => {
 
   return (
     <div style={{ fontFamily: 'inherit' }}>
-      {/* ── Header ── */}
+      {/* ── Tenant header (mirrors the individual report PDF header) ── */}
       <div
-        className="p-4 mb-4 text-white rounded"
-        style={{ background: 'linear-gradient(135deg, #1a2332 0%, #2c3e50 100%)' }}
+        className="p-3 mb-3 rounded d-flex align-items-center justify-content-between"
+        style={{ background: '#ffffff', border: '2px solid #1a2332' }}
       >
-        <Row className="align-items-center g-3">
-          <Col>
-            {meta.clienteLogo ? (
-              <img src={meta.clienteLogo} alt={meta.clienteNombre} style={{ maxHeight: 60, maxWidth: 150 }} />
-            ) : (
-              <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{meta.clienteNombre}</div>
-            )}
-          </Col>
-          <Col className="text-end">
-            <div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{meta.periodoLabel.toUpperCase()}</div>
-            <div style={{ opacity: 0.85, fontSize: '0.85rem' }}>Informe Mensual de Mantenimiento</div>
-          </Col>
-        </Row>
-        <Row className="mt-3 pt-3 g-3" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-          {[
-            ['Cliente', meta.clienteNombre],
-            ['Ciudad', meta.clienteCiudad || '—'],
-            ['Periodo', meta.periodoLabel],
-            ['Generado', new Date(meta.fechaGeneracion).toLocaleDateString('es-CO')],
-            ['Responsable', meta.responsableNombre || '—'],
-          ].map(([label, value]) => (
-            <Col key={label} xs="auto">
-              <div style={{ fontSize: '0.65rem', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{value}</div>
-            </Col>
-          ))}
-        </Row>
+        <div style={{ width: 150 }}>
+          {meta.tenantLogo ? (
+            <img src={meta.tenantLogo} alt={meta.tenantNombre} style={{ maxHeight: 60, maxWidth: 150 }} />
+          ) : null}
+        </div>
+        <div className="text-center">
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1a2332', letterSpacing: '0.5px' }}>
+            {meta.tenantNombre || 'TIMTTO'}
+          </div>
+          <div style={{ fontSize: '0.7rem', color: '#6c757d', letterSpacing: '2px' }}>ESPECIALISTAS EN BIOINGENIERÍA</div>
+          <hr className="my-2" />
+          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1a2332', letterSpacing: '1px' }}>
+            INFORME MENSUAL DE MANTENIMIENTO — {meta.periodoLabel.toUpperCase()}
+          </div>
+        </div>
+        <div style={{ width: 150 }} className="text-end">
+          {meta.clienteLogo ? (
+            <img src={meta.clienteLogo} alt={meta.clienteNombre} style={{ maxHeight: 60, maxWidth: 150 }} />
+          ) : null}
+        </div>
       </div>
 
-      {/* ── KPIs ── */}
+      {/* ── Cliente info card (full detail, like the individual report PDF) ── */}
+      <Card className="mb-4 shadow-sm">
+        <Card.Body>
+          <SectionTitle>Información del Cliente</SectionTitle>
+          <Row className="g-2" style={{ fontSize: '0.85rem' }}>
+            <Col md={6}><strong>Cliente:</strong> {meta.clienteNombre || '—'}</Col>
+            <Col md={6}><strong>NIT:</strong> {meta.clienteNit || '—'}</Col>
+            <Col md={6}><strong>Ciudad:</strong> {[meta.clienteCiudad, meta.clienteDepartamento].filter(Boolean).join(', ') || '—'}</Col>
+            <Col md={6}><strong>Dirección:</strong> {meta.clienteDireccion || '—'}</Col>
+            <Col md={6}><strong>Teléfono:</strong> {meta.clienteTelefono || '—'}</Col>
+            <Col md={6}><strong>Email:</strong> {meta.clienteEmail || '—'}</Col>
+            <Col md={6}><strong>Contacto:</strong> {meta.clienteContacto || '—'}</Col>
+            <Col md={6}><strong>Periodo:</strong> {meta.periodoLabel}</Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
+      {/* ── KPIs — hide count cards when value=0 to keep the informe clean ── */}
       <Row className="g-3 mb-4">
-        <Col xs={12} md={3}>
-          <KpiCard
-            label="Cumplimiento Preventivo"
-            value={`${kpis.cumplimientoPreventivo}%`}
-            description={`${kpis.totalRealizados} de ${kpis.totalProgramados} realizados`}
-            border={kpis.cumplimientoPreventivo >= 90 ? '#27ae60' : kpis.cumplimientoPreventivo >= 70 ? '#f39c12' : '#e74c3c'}
-          />
-        </Col>
-        <Col xs={12} md={3}>
-          <KpiCard label="Mtto. Correctivos" value={kpis.totalCorrectivos} description="Intervenciones no programadas" border="#3498db" />
-        </Col>
-        <Col xs={12} md={3}>
-          <KpiCard label="Repuestos Solicitados" value={kpis.totalRepuestosSolicitados} description={`${kpis.totalRepuestosInstalados} instalados`} border="#f39c12" />
-        </Col>
-        <Col xs={12} md={3}>
-          <KpiCard label="Costo Repuestos" value={formatCOP(kpis.costoTotalRepuestos)} description="Solo piezas instaladas" border="#e74c3c" />
-        </Col>
-        <Col xs={12} md={3}>
-          <KpiCard label="Horas de Servicio" value={`${kpis.horasServicio} h`} description="Tiempo total de intervención" border="#9b59b6" />
-        </Col>
+        {buildKpiCards(kpis).map((c) => (
+          <Col xs={12} md={3} key={c.label}>
+            <KpiCard label={c.label} value={c.value} description={c.description} border={c.border} />
+          </Col>
+        ))}
       </Row>
 
       {/* ── Resumen Ejecutivo ── */}
@@ -547,22 +559,33 @@ export const InformePreview: React.FC<InformePreviewProps> = ({ payload }) => {
         </Card.Body>
       </Card>
 
-      {/* ── Footer ── */}
+      {/* ── Footer con firma del usuario en sesión ── */}
       <div className="p-4 rounded bg-light text-center text-muted" style={{ fontSize: '0.8rem' }}>
         Informe generado el {new Date(meta.fechaGeneracion).toLocaleString('es-CO')} — {meta.tenantNombre}
         <Row className="mt-4 g-4 justify-content-center">
-          {[
-            [meta.responsableNombre || 'Técnico Responsable', 'Responsable de Mantenimiento'],
-            [meta.clienteNombre, 'Representante del Cliente'],
-          ].map(([name, role]) => (
-            <Col key={role} xs={12} md={5}>
-              <div className="text-center">
-                <div style={{ borderTop: '2px solid #2c3e50', margin: '40px 20px 8px 20px' }} />
-                <div className="fw-semibold text-dark">{name}</div>
-                <div className="text-muted">{role}</div>
-              </div>
-            </Col>
-          ))}
+          <Col xs={12} md={5}>
+            <div className="text-center">
+              {meta.responsableFirmaUrl ? (
+                <img
+                  src={meta.responsableFirmaUrl}
+                  alt="Firma del responsable"
+                  style={{ maxHeight: 60, maxWidth: 200, objectFit: 'contain', marginBottom: 6 }}
+                />
+              ) : (
+                <div style={{ height: 60 }} />
+              )}
+              <div style={{ borderTop: '2px solid #2c3e50', margin: '0 20px 8px 20px' }} />
+              <div className="fw-semibold text-dark">{meta.responsableNombre || 'Técnico Responsable'}</div>
+              <div className="text-muted">Responsable de Mantenimiento</div>
+            </div>
+          </Col>
+          <Col xs={12} md={5}>
+            <div className="text-center">
+              <div style={{ borderTop: '2px solid #2c3e50', margin: '68px 20px 8px 20px' }} />
+              <div className="fw-semibold text-dark">{meta.clienteNombre}</div>
+              <div className="text-muted">Representante del Cliente</div>
+            </div>
+          </Col>
         </Row>
       </div>
     </div>

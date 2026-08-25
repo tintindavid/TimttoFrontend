@@ -93,7 +93,7 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
                     <td>
                       <small 
                       className="text-truncate d-block " title={itemName}
-                      onClick={() => navigate(`/hv-equipo/${equipo?._id}`)}
+                      onClick={() => window.open(`/hv-equipo/${equipo?._id}`, '_blank', 'noopener,noreferrer')}
                       style={{ cursor: 'pointer' }}
 
                       >

@@ -27,6 +27,7 @@ import GuiaRapidaTab, { GuiaRapidaSection } from '@/components/hvEquipo/GuiaRapi
 import Swal from 'sweetalert2';
 import './HVEquipoPage.css';
 import { useCurrentUserData } from '@/context/userContext';
+import { EstadoOperativoSourceLabels, EstadoOperativoSource } from '@/constants/estadoOperativo';
 
 const HVEquipoPage: React.FC = () => {
   const { equipoId } = useParams<{ equipoId: string }>();
@@ -159,23 +160,20 @@ const HVEquipoPage: React.FC = () => {
     [reportes]
   );
 
-  // Timeline data - Changes in location/service
+  // Timeline data - Changes in location/service, merged with EstadoOperativo history
   const timelineData = useMemo(() => {
-    if (!reportes.length) return [];
-    
-    // Ordenar reportes por fecha
+    // Detectar cambios entre reportes sucesivos
+    const cambios: any[] = [];
+
     const sortedReportes = reportes
       .filter(r => r.equipoSnapshot)
       .sort((a, b) => new Date(a.fechaProcesado || a.fechaMtto || '').getTime() - new Date(b.fechaProcesado || b.fechaMtto || '').getTime());
 
-    if (sortedReportes.length === 0) return [];
-
-    // Detectar cambios entre reportes sucesivos
-    const cambios: any[] = [];
-    
+    if (sortedReportes.length > 0) {
     // Siempre incluir el primer registro (estado inicial)
     const primerReporte = sortedReportes[0];
     cambios.push({
+      type: 'diff',
       fecha: primerReporte.fechaProcesado || primerReporte.fechaMtto || '',
       reporteId: primerReporte._id,
       consecutivo: primerReporte.consecutivo,
@@ -221,6 +219,7 @@ const HVEquipoPage: React.FC = () => {
       // Solo agregar si hay cambios detectados
       if (cambiosEncontrados.length > 0) {
         cambios.push({
+          type: 'diff',
           fecha: reporteActual.fechaProcesado || reporteActual.fechaMtto || '',
           reporteId: reporteActual._id,
           consecutivo: reporteActual.consecutivo,
@@ -231,9 +230,20 @@ const HVEquipoPage: React.FC = () => {
         });
       }
     }
-    
-    return cambios;
-  }, [reportes]);
+    }
+
+    // EstadoOperativo history — append-only entries populated on the equipo.
+    const estadoOperativoEventos: any[] = (equipoInfo?.estadoOperativoHistory || []).map((entry) => ({
+      type: 'estado-operativo',
+      fecha: entry.at,
+      entry,
+    }));
+
+    // Merge diff-derived events with EstadoOperativo history and sort by date descending.
+    return [...cambios, ...estadoOperativoEventos].sort(
+      (a, b) => new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime()
+    );
+  }, [reportes, equipoInfo]);
   // Repuestos data
 
 
@@ -2047,6 +2057,29 @@ const HVEquipoPage: React.FC = () => {
                   <div className="timeline-container mb-4">
                     <div className="timeline">
                       {timelineData.map((item, index) => (
+                        item.type === 'estado-operativo' ? (
+                          <div key={item.entry._id || index} className="timeline-item">
+                            <div className="timeline-dot estado"></div>
+                            <div className="timeline-content">
+                              <div className="d-flex justify-content-between align-items-start mb-2">
+                                <div className="timeline-date">{formatDate(item.fecha)}</div>
+                                <Badge bg="warning" text="dark">
+                                  {EstadoOperativoSourceLabels[item.entry.source as EstadoOperativoSource] || item.entry.source}
+                                </Badge>
+                              </div>
+                              <div className="timeline-estado-operativo">
+                                <div>
+                                  <strong>Estado Operativo:</strong>{' '}
+                                  {item.entry.from ?? 'Sin registro'} → {item.entry.to}
+                                </div>
+                                <div><strong>Responsable:</strong> {item.entry.changedByName}</div>
+                                {item.entry.motivo && (
+                                  <div className="fst-italic text-muted mt-1">{item.entry.motivo}</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
                         <div key={item.reporteId || index} className="timeline-item">
                           <div className={`timeline-dot ${item.esInicial ? 'initial' : 'change'}`}></div>
                           <div className="timeline-content">
@@ -2059,7 +2092,7 @@ const HVEquipoPage: React.FC = () => {
                                 </Badge>
                               </div>
                             </div>
-                            
+
                             {item.esInicial ? (
                               <div className="timeline-initial">
                                 <Badge bg="info" className="mb-2">📍 Estado Inicial del Equipo</Badge>
@@ -2093,11 +2126,12 @@ const HVEquipoPage: React.FC = () => {
                             )}
                           </div>
                         </div>
+                        )
                       ))}
                     </div>
                   </div>
 
-                  {/* Tabla de cambios detallados */}
+                  {/* Tabla de cambios detallados (solo cambios de ubicación/servicio derivados de reportes) */}
                   <h6 className="mt-4 mb-3">📊 Tabla Detallada de Cambios</h6>
                   <Table striped bordered hover size="sm" responsive>
                     <thead>
@@ -2115,7 +2149,7 @@ const HVEquipoPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {timelineData.map((item, index) => (
+                      {timelineData.filter((item) => item.type === 'diff').map((item, index) => (
                         <tr key={item.reporteId || index} className={item.esInicial ? 'table-info' : ''}>
                           <td>{formatDate(item.fecha)}</td>
                           <td>

@@ -8,7 +8,15 @@ import {
   DuplicateCheckResult,
   DuplicateCheckBulkResult,
 } from '@/types/equipoItem.types';
+import { ApiResponse } from '@/types/api.types';
 import { api } from './api';
+
+/** Options accepted by `create` — `source` is threaded to the backend so the
+ * `estadoOperativoHistory` seed entry attributes the origin correctly
+ * (e.g. bulk-uploaded equipos get `source: 'bulk-upload'` instead of `'manual'`). */
+interface CreateEquipoItemOptions {
+  source?: 'bulk-upload';
+}
 
 // Bulk pre-check endpoint caps at 500 items per request (see spec).
 const DUPLICATE_CHECK_BULK_CHUNK_SIZE = 500;
@@ -22,6 +30,15 @@ class EquipoItemService extends BaseService<EquipoItem, CreateEquipoItemDto, Upd
   async getByCliente(clienteId: string) {
     const response = await this.getAll({ clienteId });
     return response;
+  }
+
+  // Override de `create` para poder pasar `source` como query param (ej.
+  // 'bulk-upload' desde EquipoBulkUpload) sin afectar la firma genérica de
+  // BaseService usada por el resto de servicios.
+  async create(data: CreateEquipoItemDto, options?: CreateEquipoItemOptions): Promise<ApiResponse<EquipoItem>> {
+    const url = options?.source ? `/equipo-items?source=${options.source}` : '/equipo-items';
+    const response = await api.post<ApiResponse<EquipoItem>>(url, data);
+    return response.data;
   }
 
   // Pre-check unario usado por el live-check de EquipoForm

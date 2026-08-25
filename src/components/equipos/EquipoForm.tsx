@@ -15,8 +15,10 @@ import SedeFormModal from '@/components/customers/SedeFormModal';
 import ServicioFormModal from '@/components/customers/ServicioFormModal';
 import ItemFormModal from '@/components/items/ItemFormModal';
 import EquipoDuplicateModal from '@/components/equipos/EquipoDuplicateModal';
+import EstadoOperativoSelect from '@/components/equipos/EstadoOperativoSelect';
 import { normalizeSerial, serialHasDigit } from '@/utils/serial';
 import { handleEquipoDuplicateError } from '@/utils/handleEquipoDuplicateError';
+import { EstadoOperativo, EstadoOperativoDefault } from '@/constants/estadoOperativo';
 import Swal from 'sweetalert2';
 
 interface EquipoFormProps {
@@ -80,6 +82,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
     Ubicacion: '',
     Inventario: '',
     Estado: 'Activo',
+    EstadoOperativo: EstadoOperativoDefault as EstadoOperativo,
     mesesMtto: [] as string[]
   });
 
@@ -225,6 +228,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
         SedeId: formData.SedeId,
         Ubicacion: formData.Ubicacion || undefined,
         Estado: formData.Estado || undefined,
+        EstadoOperativo: formData.EstadoOperativo,
         mesesMtto: formData.mesesMtto,
         Precio: formData.Precio || 0
       };
@@ -381,6 +385,15 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
                       placeholder="Ej: UCI, Quirófano, Laboratorio..."
                     />
                   </Form.Group>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={3}>
+                  <EstadoOperativoSelect
+                    id="equipo-form-estado-operativo"
+                    value={formData.EstadoOperativo}
+                    onChange={(value) => setFormData(prev => ({ ...prev, EstadoOperativo: value }))}
+                  />
                 </Col>
               </Row>
             </Card.Body>

@@ -81,8 +81,18 @@ const CreateOtPage: React.FC = () => {
   // Estados para modal de crear equipo
   const [showCreateEquipoModal, setShowCreateEquipoModal] = useState(false);
 
-  // Queries principales
-  const { data: customersData, isLoading: loadingCustomers } = useCustomers();
+  // Cliente searchable: mismo patrón que InformesPage. Debounce 350ms + search DB-side.
+  // Sin `search` (o < 3 chars) pide `limit: 20` para poblar el default; con búsqueda pide con el string.
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCustomerSearch(customerSearch), 350);
+    return () => clearTimeout(t);
+  }, [customerSearch]);
+
+  const { data: customersData, isLoading: loadingCustomers } = useCustomers(
+    debouncedCustomerSearch.length >= 3 ? { search: debouncedCustomerSearch, limit: 50 } : { limit: 20 }
+  );
   const customers = useMemo(() => customersData?.data || [], [customersData?.data]);
 
   // Queries dependientes del customer seleccionado
@@ -475,27 +485,43 @@ const CreateOtPage: React.FC = () => {
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>Cliente <span className="text-danger">*</span></Form.Label>
-                <div className="d-flex gap-2"> 
-                  {}
-                  <Form.Select 
-                    value={formData.customerId}
-                    onChange={(e) => handleCustomerChange(e.target.value)}
-                    disabled={loadingCustomers}
-                    className="flex-grow-1"
-                  >
-                    <option value="">Seleccionar cliente...</option>
-                    <option value="__CREATE_NEW__" style={{ fontWeight: 'bold', color: '#0d6efd' }}>
-                      ➕ Crear nuevo cliente...
-                    </option>
-                    <option disabled>──────────</option>
-                    {customers.map(customer => (
-                      <option key={customer._id} value={customer._id}>
-                        {customer.Razonsocial}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Button 
-                    variant="outline-primary" 
+                <div className="d-flex gap-2">
+                  <div className="flex-grow-1">
+                    <Select
+                      options={customerOptions}
+                      value={customerOptions.find(o => o.value === formData.customerId) || null}
+                      onChange={(selected) => handleCustomerChange(selected?.value || '')}
+                      onInputChange={(input, meta) => {
+                        // 'input-change' fires while the user types; other actions
+                        // ('set-value', 'menu-close', 'input-blur') pass their own
+                        // synthetic strings we must ignore or the search resets.
+                        if (meta.action === 'input-change') setCustomerSearch(input);
+                      }}
+                      inputValue={customerSearch}
+                      placeholder="Escriba para buscar cliente..."
+                      isLoading={loadingCustomers}
+                      isClearable
+                      isSearchable
+                      noOptionsMessage={({ inputValue }) =>
+                        inputValue.length < 3
+                          ? 'Escriba al menos 3 caracteres para buscar...'
+                          : 'No se encontraron clientes'
+                      }
+                      filterOption={null} // server-side filtering only — DO NOT re-filter on the client
+                      styles={{
+                        option: (base, { data }: any) => ({
+                          ...base,
+                          color: data.isSpecial ? '#0d6efd' : base.color,
+                          fontWeight: data.isSpecial ? 'bold' : base.fontWeight,
+                        }),
+                        menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                      }}
+                      menuPortalTarget={document.body}
+                      menuPosition="fixed"
+                    />
+                  </div>
+                  <Button
+                    variant="outline-primary"
                     onClick={() => setShowCreateCustomerModal(true)}
                     disabled={loadingCustomers}
                     style={{ whiteSpace: 'nowrap' }}
@@ -504,7 +530,6 @@ const CreateOtPage: React.FC = () => {
                     <FaPlus className="me-1" /> Nuevo
                   </Button>
                 </div>
-                {loadingCustomers && <small className="text-muted">Cargando clientes...</small>}
               </Form.Group>
             </Col>
             <Col md={3}>
@@ -803,7 +828,7 @@ const CreateOtPage: React.FC = () => {
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleEquipoSelect(equipo._id!)}
                         >
-                          <td>
+                          <td onClick={(e) => e.stopPropagation()}>
                             <Form.Check
                               type="checkbox"
                               checked={isSelected}

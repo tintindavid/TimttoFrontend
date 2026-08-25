@@ -19,6 +19,8 @@ interface AuthContextType {
   login: (email: string, password: string, tenantId?: string) => Promise<{ mustChangePassword?: boolean }>;
   logout: () => void;
   setTenantId: (tenantId: string) => void;
+  /** Re-fetches `/auth/me` and updates the cached `user` — used after a profile change (e.g. signature capture). */
+  refreshUser: () => Promise<void>;
   enterViewAs: (tenantId: string, tenantName: string) => Promise<void>;
   exitViewAs: () => Promise<void>;
 }
@@ -180,6 +182,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTenant(tid);
   };
 
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const res = await authService.me();
+      setUser(res.data);
+    } catch (e) {
+      logger.debug('refreshUser: authService.me() failed', e);
+    }
+  };
+
   // ---------------------------------------------------------------------------
   // View-as actions
   // ---------------------------------------------------------------------------
@@ -222,6 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         setTenantId,
+        refreshUser,
         enterViewAs,
         exitViewAs,
       }}

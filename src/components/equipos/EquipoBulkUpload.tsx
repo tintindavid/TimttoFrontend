@@ -6,7 +6,6 @@ import {
 import Select from 'react-select';
 import * as XLSX from 'xlsx';
 import { useItems } from '@/hooks/useItems';
-import { useCreateEquipoItem } from '@/hooks/useEquipoItems';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { equipoItemService } from '@/services/equipoItem.service';
@@ -17,6 +16,7 @@ import SedeFormModal from '@/components/customers/SedeFormModal';
 import ServicioFormModal from '@/components/customers/ServicioFormModal';
 import ItemFormModal from '@/components/items/ItemFormModal';
 import EquipoDuplicateModal from '@/components/equipos/EquipoDuplicateModal';
+import { EstadoOperativo, EstadoOperativoDefault, EstadoOperativoValues } from '@/constants/estadoOperativo';
 import Swal from 'sweetalert2';
 
 interface EquipoBulkUploadProps {
@@ -39,6 +39,7 @@ interface ExcelRow {
   ItemId?: string;
   ItemName?: string; // Para mostrar en preview cuando ItemId esté vacío
   Precio?: number; // Para mostrar en preview y usar en payload
+  'Estado Operativo'?: string;
 }
 
 interface ProcessedRow extends ExcelRow {
@@ -59,7 +60,6 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: itemsData } = useItems({ limit: 500 });
-  const createMutation = useCreateEquipoItem();
 
   // Refetch sedes, servicios e items
   const { refetch: refetchSedes } = useSedesByCustomer(customerId);
@@ -272,6 +272,12 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
       valid = false;
     }
 
+    const estadoOperativoRaw = row['Estado Operativo']?.trim();
+    if (estadoOperativoRaw && !(EstadoOperativoValues as readonly string[]).includes(estadoOperativoRaw)) {
+      errors.push(`Estado Operativo debe ser uno de: ${EstadoOperativoValues.join(', ')}`);
+      valid = false;
+    }
+
     return {
       ...row,
       id,
@@ -318,6 +324,7 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
     Riesgo: row.Riesgo || 'No definido',
     Invima: row.Invima || 'No definido',
     Estado: 'Operativo',
+    EstadoOperativo: (row['Estado Operativo']?.trim() as EstadoOperativo) || EstadoOperativoDefault,
     Precio: row.Precio || 0,
     mesesMtto: contextData.mesesMtto
   });
@@ -336,7 +343,9 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
 
     try {
       const results = await Promise.allSettled(
-        rowsToImport.map((row) => createMutation.mutateAsync(buildRowPayload(row)))
+        rowsToImport.map((row) =>
+          equipoItemService.create(buildRowPayload(row), { source: 'bulk-upload' })
+        )
       );
 
       const created = results.filter(r => r.status === 'fulfilled').length;
@@ -504,7 +513,7 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
           <div className="text-center py-4 border border-dashed rounded">
             <h6>Seleccionar archivo Excel</h6>
             <p className="text-muted mb-3">
-              El archivo debe contener columnas: Equipo, Marca, Modelo, Serie, Ubicacion, Inventario, Riesgo, Invima
+              El archivo debe contener columnas: Equipo, Marca, Modelo, Serie, Ubicacion, Inventario, Riesgo, Invima, Estado Operativo (opcional: {EstadoOperativoValues.join(', ')})
             </p>
             <Form.Control
               ref={fileInputRef}
@@ -572,6 +581,7 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
                     <th>Ubicación</th>
                     <th>Item</th>
                     <th>Estado</th>
+                    <th>Estado Operativo</th>
                     <th>Validación</th>
                   </tr>
                 </thead>
@@ -629,6 +639,7 @@ const EquipoBulkUpload: React.FC<EquipoBulkUploadProps> = ({
                           menuPosition="fixed"
                         />
                       </td>
+                      <td>{row['Estado Operativo'] || EstadoOperativoDefault}</td>
                       <td>
                         {row.duplicateExisting ? (
                           <div className="d-flex flex-column gap-1 align-items-start">
