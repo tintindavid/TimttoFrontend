@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.17.1...v1.18.0) (2026-08-25)
+
+
+### Features
+
+* **informes,equipos,cronograma:** por-ot tab + estado op trazable + polish ([43013f5](https://github.com/tintindavid/TimttoFrontend/commit/43013f5c450948054a6be24618e97e4217d0cf67))
+
 ## [1.17.1](https://github.com/tintindavid/TimttoFrontend/compare/v1.17.0...v1.17.1) (2026-08-20)
 
 
