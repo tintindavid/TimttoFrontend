@@ -9,7 +9,9 @@ import { ActividadMtto } from '@/types/actividad.types';
 import { FaSave, FaCheck, FaTimes, FaArrowLeft, FaTools, FaEdit, FaList, FaCheckCircle, FaPlus, FaWrench, FaCog, FaEye, FaCamera, FaExternalLinkAlt } from 'react-icons/fa';
 import { useProtocol } from '@/hooks/useProtocols';
 import { useRepuestosByEquipo, useRepuestosByReporte, useUpdateRepuesto, useDeleteRepuesto } from '@/hooks/useRepuestos';
+import { useRemoveActividadExtra } from '@/hooks/useReportes';
 import { useAuth } from '@/context/AuthContext';
+import AddExtraActivitiesModal from './AddExtraActivitiesModal';
 import { SolicitarRepuestoModal } from '@/components/repuestos/SolicitarRepuestoModal';
 import { InstalarRepuestoModal } from '@/components/repuestos/InstalarRepuestoModal';
 import { InstalarRepuestoDirectoModal } from '@/components/repuestos/InstalarRepuestoDirectoModal';
@@ -68,6 +70,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   const [repuestoToEdit, setRepuestoToEdit] = useState<Repuesto | null>(null);
   // Estado para modal de edición de equipo
   const [showEditEquipoModal, setShowEditEquipoModal] = useState(false);
+  // Estado para modal de adición de actividades extra (report-actividades-extra)
+  const [showAddExtraModal, setShowAddExtraModal] = useState(false);
   // Estados para modal de cancelación
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
@@ -193,6 +197,10 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   const updateRepuestoMutation = useUpdateRepuesto();
   const deleteRepuestoMutation = useDeleteRepuesto();
 
+  // Hook para quitar una actividad extra del reporte (report-actividades-extra).
+  // Solo aplica a extras — el backend rechaza intentos de quitar entries de protocolo.
+  const removeExtraMutation = useRemoveActividadExtra();
+
   // Combinar y deduplicar repuestos
   const repuestosCombinados = useMemo(() => {
     const repuestosMap = new Map();
@@ -227,6 +235,30 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       return !yaRealizada;
     });
   }, [protocolo, editedReporte?.actividadesRealizadas]);
+
+  // `_id`s de las actividades del protocolo del ítem — usado para deshabilitar
+  // esas filas en el modal "Adicionar actividades" (report-actividades-extra).
+  const protocoloActividadIds = useMemo(
+    () => (protocolo?.data?.actividadesMtto ?? []).map((a: ActividadMtto) => a._id as string),
+    [protocolo]
+  );
+
+  // `actividadMttoId`s ya agregados como extra en este reporte — también se
+  // deshabilitan en el modal para evitar duplicados.
+  const extrasYaAgregadasIds = useMemo(
+    () =>
+      (editedReporte.actividadesRealizadas ?? [])
+        .filter((a) => !!a.actividadMttoId)
+        .map((a) => a.actividadMttoId as string),
+    [editedReporte.actividadesRealizadas]
+  );
+
+  // Extras pendientes (esExtra && !realizado) — se muestran junto a las
+  // actividades pendientes del protocolo, con badge "Extra" y botón "Quitar".
+  const extrasPendientes = useMemo(
+    () => (editedReporte.actividadesRealizadas ?? []).filter((a) => a.esExtra && !a.realizado),
+    [editedReporte.actividadesRealizadas]
+  );
 
   // Lookup: actividadProtocoloId → Descripción del protocolo. Usado por el
   // checkbox "Incluir descripción" en las filas de "Actividades Realizadas"
@@ -266,34 +298,26 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   };
   
   // Calcular progreso de actividades (mejorado para tener en cuenta actividades ya completadas)
+  // El denominador incluye extras agregadas al reporte (report-actividades-extra, D9):
+  // totalActividades = actividades del protocolo + extras agregadas.
   const { actividadesCompletadas, totalActividades, progresoActividades } = useMemo(() => {
     const totalActividadesProtocolo = protocolo?.data?.actividadesMtto?.length || 0;
-    
-    if (totalActividadesProtocolo === 0) {
+    const extras = (editedReporte?.actividadesRealizadas ?? []).filter((a) => a.esExtra);
+    const totalConExtras = totalActividadesProtocolo + extras.length;
+
+    if (totalConExtras === 0) {
       return { actividadesCompletadas: 0, totalActividades: 0, progresoActividades: 0 };
     }
-    
-    let completadas = 0;
-    
-    // Si hay un protocolo, contar actividades completadas
-    if (protocolo?.data?.actividadesMtto) {
-      protocolo.data.actividadesMtto.forEach((actividadProto: ActividadMtto) => {
-        // Verificar si esta actividad del protocolo está en actividadesRealizadas (ya se hizo)
-        const estaCompletada = editedReporte?.actividadesRealizadas?.some(actividadRealizada => 
-          actividadRealizada.actividadProtocoloId === actividadProto._id
-        );
-        
-        if (estaCompletada) {
-          completadas++;
-        }
-      });
-    }
-    
-    const progreso = totalActividadesProtocolo > 0 ? (completadas / totalActividadesProtocolo) * 100 : 0;
-    
+
+    // Completadas = todas las entradas de actividadesRealizadas marcadas como realizado
+    // (protocolo + extras), no solo las que matchean actividades del protocolo.
+    const completadas = (editedReporte?.actividadesRealizadas ?? []).filter((a) => a.realizado).length;
+
+    const progreso = totalConExtras > 0 ? (completadas / totalConExtras) * 100 : 0;
+
     return {
       actividadesCompletadas: completadas,
-      totalActividades: totalActividadesProtocolo,
+      totalActividades: totalConExtras,
       progresoActividades: progreso
     };
   }, [protocolo, editedReporte?.actividadesRealizadas]);
@@ -1188,9 +1212,23 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                   {protocolo?.data.nombre ? `${protocolo?.data.nombre}` : 'No hay protocolo asignado'}
                 </small>
               </div>
-              <Badge bg="info">
-                {actividadesCompletadas}/{totalActividades} completadas
-              </Badge>
+              <div className="d-flex align-items-center gap-2">
+                {/* Adicionar actividades extra al reporte (report-actividades-extra).
+                    Deshabilitado en reportes terminales/procesados — el backend rechaza
+                    igual, esto es UX. Visible en todos los tipoMtto (design open Q3). */}
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  disabled={isReportLocked}
+                  onClick={() => setShowAddExtraModal(true)}
+                >
+                  <FaPlus className="me-1" />
+                  Adicionar actividades
+                </Button>
+                <Badge bg="info">
+                  {actividadesCompletadas}/{totalActividades} completadas
+                </Badge>
+              </div>
             </Card.Header>
             <Card.Body>
               {loadingProtocol && (
@@ -1218,13 +1256,136 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                   </div>
 
                   {/* Actividades del Protocolo */}
-                  {actividadesProtocolo.length > 0 && (
+                  {(actividadesProtocolo.length > 0 || extrasPendientes.length > 0) && (
                     <div className="mb-4">
                       <h6 className="mb-3">
                         <FaTools className="me-2 text-primary" />
-                        Actividades Pendientes del Protocolo
+                        Actividades Pendientes
                       </h6>
                       <ListGroup>
+                        {/* Extras pendientes (report-actividades-extra) — se renderizan
+                            primero para que el técnico las vea en la parte superior
+                            de la lista. Botón "Quitar" solo aparece en extras; las de
+                            protocolo NO se pueden quitar por este flujo. */}
+                        {extrasPendientes.map((extra) => (
+                          <ListGroup.Item
+                            key={`extra-pending-${extra._id}`}
+                            className="border-start border-secondary border-3"
+                          >
+                            <div className="d-flex align-items-start">
+                              <Form.Check
+                                type="checkbox"
+                                checked={false}
+                                onChange={(e) => {
+                                  // Toggle realizado inline — el extra ya vive en
+                                  // actividadesRealizadas desde que se agregó; marcarlo
+                                  // realizado lo mueve visualmente al bloque Realizadas.
+                                  if (!e.target.checked) return;
+                                  setEditedReporte((prev) => ({
+                                    ...prev,
+                                    actividadesRealizadas: (prev.actividadesRealizadas || []).map((a) =>
+                                      a._id === extra._id
+                                        ? { ...a, realizado: true, fecha: new Date().toISOString() }
+                                        : a
+                                    ),
+                                  }));
+                                }}
+                                disabled={isReportLocked}
+                                className="me-3 mt-1"
+                              />
+                              <div className="flex-grow-1">
+                                <div className="fw-bold text-secondary d-flex align-items-center gap-2">
+                                  {extra.descripcion}
+                                  <Badge bg="secondary">Extra</Badge>
+                                </div>
+                                {extra.descripcionLarga && (
+                                  <small className="text-muted d-block mt-1">
+                                    {extra.descripcionLarga}
+                                  </small>
+                                )}
+                                <div className="mt-2">
+                                  {/* Paridad con las actividades del protocolo — permite
+                                      volcar la Descripcion larga del catálogo en el textarea
+                                      de observaciones. Idempotente (toggle ON/OFF sin
+                                      chocar con edits manuales del texto). */}
+                                  {extra.descripcionLarga && (
+                                    <Form.Check
+                                      type="checkbox"
+                                      id={`extra-pendiente-incluir-desc-${extra._id || ''}`}
+                                      label="Incluir descripción de la actividad"
+                                      className="mb-1"
+                                      checked={activityIncludesDescripcion(
+                                        extra.observaciones || '',
+                                        extra.descripcionLarga
+                                      )}
+                                      onChange={(e) => {
+                                        const desc = extra.descripcionLarga || '';
+                                        if (!desc) return;
+                                        setEditedReporte((prev) => ({
+                                          ...prev,
+                                          actividadesRealizadas: (prev.actividadesRealizadas || []).map((a) => {
+                                            if (a._id !== extra._id) return a;
+                                            const next = e.target.checked
+                                              ? addDescripcionToText(a.observaciones || '', desc)
+                                              : removeDescripcionFromText(a.observaciones || '', desc);
+                                            return { ...a, observaciones: next };
+                                          }),
+                                        }));
+                                      }}
+                                      disabled={isReportLocked}
+                                    />
+                                  )}
+                                  <Form.Control
+                                    as="textarea"
+                                    rows={2}
+                                    size="sm"
+                                    placeholder="Observaciones de esta actividad (opcional)..."
+                                    value={extra.observaciones || ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setEditedReporte((prev) => ({
+                                        ...prev,
+                                        actividadesRealizadas: (prev.actividadesRealizadas || []).map((a) =>
+                                          a._id === extra._id ? { ...a, observaciones: value } : a
+                                        ),
+                                      }));
+                                    }}
+                                    disabled={isReportLocked}
+                                  />
+                                </div>
+                                {!isReportLocked && (
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    className="mt-2"
+                                    disabled={removeExtraMutation.isLoading}
+                                    onClick={async () => {
+                                      if (!editedReporte._id || !extra._id) return;
+                                      try {
+                                        const response = await removeExtraMutation.mutateAsync({
+                                          reporteId: editedReporte._id,
+                                          actividadRealizadaId: extra._id,
+                                        });
+                                        setEditedReporte(response.data);
+                                        onRefreshData?.();
+                                      } catch (err: any) {
+                                        Swal.fire({
+                                          icon: 'error',
+                                          title: 'No se pudo quitar la actividad',
+                                          text: err?.response?.data?.message || 'Error inesperado',
+                                          confirmButtonColor: '#d33',
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <FaTimes className="me-1" />
+                                    Quitar
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </ListGroup.Item>
+                        ))}
                         {actividadesProtocolo.map((actividad) => (
                           <ListGroup.Item key={actividad._id} className="border-start border-primary border-3">
                             <div className="d-flex align-items-start">
@@ -1312,8 +1473,9 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                 <FaCheckCircle className="text-success" />
                               </div>
                               <div className="flex-grow-1">
-                                <div className="fw-bold text-success">
+                                <div className="fw-bold text-success d-flex align-items-center gap-2">
                                   {actividad.descripcion}
+                                  {actividad.esExtra && <Badge bg="secondary">Extra</Badge>}
                                 </div>
                                 <small className="text-muted">
                                   Realizada
@@ -1331,21 +1493,31 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                       <Form.Label className="fw-bold small">Observaciones:</Form.Label>
                                     )}
                                     <div className="d-flex align-items-center gap-2 mb-1">
-                                      <Form.Check
-                                        type="checkbox"
-                                        id={`realizada-incluir-desc-${index}`}
-                                        label="Incluir descripción de la actividad"
-                                        checked={activityIncludesDescripcion(actividad.observaciones || '', findProtocolDescripcion(actividad.actividadProtocoloId))}
-                                        onChange={(e) => {
-                                          const desc = findProtocolDescripcion(actividad.actividadProtocoloId);
-                                          if (!desc) return;
-                                          const next = e.target.checked
-                                            ? addDescripcionToText(actividad.observaciones || '', desc)
-                                            : removeDescripcionFromText(actividad.observaciones || '', desc);
-                                          handleActivityChange(index, 'observaciones', next);
-                                        }}
-                                        disabled={isReportLocked || !findProtocolDescripcion(actividad.actividadProtocoloId)}
-                                      />
+                                      {(() => {
+                                        // Source of the Descripcion long-form:
+                                        //   - extras carry their own snapshot (descripcionLarga)
+                                        //   - protocol activities look it up via the populated protocolo
+                                        // Same idempotent toggle logic for both.
+                                        const descSource = actividad.esExtra
+                                          ? (actividad.descripcionLarga || '')
+                                          : findProtocolDescripcion(actividad.actividadProtocoloId);
+                                        return (
+                                          <Form.Check
+                                            type="checkbox"
+                                            id={`realizada-incluir-desc-${index}`}
+                                            label="Incluir descripción de la actividad"
+                                            checked={activityIncludesDescripcion(actividad.observaciones || '', descSource)}
+                                            onChange={(e) => {
+                                              if (!descSource) return;
+                                              const next = e.target.checked
+                                                ? addDescripcionToText(actividad.observaciones || '', descSource)
+                                                : removeDescripcionFromText(actividad.observaciones || '', descSource);
+                                              handleActivityChange(index, 'observaciones', next);
+                                            }}
+                                            disabled={isReportLocked || !descSource}
+                                          />
+                                        );
+                                      })()}
                                     </div>
                                     <Form.Control
                                       as="textarea"
@@ -1389,12 +1561,15 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                     </div>
                   )}
 
-                  {/* Mensaje cuando todas las actividades están completadas */}
-                  {actividadesProtocolo.length === 0 && 
+                  {/* Mensaje cuando todas las actividades están completadas
+                      (protocolo + extras). Se oculta si hay extras pendientes
+                      (report-actividades-extra). */}
+                  {actividadesProtocolo.length === 0 &&
+                   extrasPendientes.length === 0 &&
                    (editedReporte.actividadesRealizadas?.length || 0) > 0 && (
                     <Alert variant="success">
                       <FaCheckCircle className="me-2" />
-                      ¡Todas las actividades del protocolo han sido completadas!
+                      ¡Todas las actividades han sido completadas!
                     </Alert>
                   )}
 
@@ -1883,6 +2058,23 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
           equipo={editedReporte.Equipo}
           reporteId={editedReporte._id}
           onSuccess={handleEquipoUpdateSuccess}
+        />
+      )}
+
+      {/* Modal para Adicionar Actividades Extra (report-actividades-extra).
+          Solo se monta cuando hay reporteId — el endpoint necesita el id
+          para el push atómico. */}
+      {editedReporte._id && (
+        <AddExtraActivitiesModal
+          show={showAddExtraModal}
+          onHide={() => setShowAddExtraModal(false)}
+          reporteId={editedReporte._id}
+          protocoloActividadIds={protocoloActividadIds}
+          extrasYaAgregadasIds={extrasYaAgregadasIds}
+          onSuccess={(reporteActualizado) => {
+            setEditedReporte(reporteActualizado);
+            onRefreshData?.();
+          }}
         />
       )}
 
