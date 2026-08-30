@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.18.1...v1.19.0) (2026-08-30)
+
+
+### Features
+
+* **ots:** add extra activities modal and report detail wiring ([209ec71](https://github.com/tintindavid/TimttoFrontend/commit/209ec712540410a4f5f9b4b04c459936b8e55adb))
+
 ## [1.18.1](https://github.com/tintindavid/TimttoFrontend/compare/v1.18.0...v1.18.1) (2026-08-25)
 
 
