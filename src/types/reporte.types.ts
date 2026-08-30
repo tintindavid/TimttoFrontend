@@ -111,7 +111,27 @@ export interface ActividadRealizada {
   realizado: boolean; // Cambio de 'realizada' a 'realizado' para coincidir con datos reales
   fecha: string | null; // Puede ser null según datos reales
   observaciones?: string;
-  actividadProtocoloId: string; // Requerido para coincidir con datos reales
+  /**
+   * Origen protocolo. Mutuamente excluyente con `actividadMttoId` — cada
+   * entrada tiene EXACTAMENTE uno de los dos orígenes poblado (ver
+   * report-actividades-extra spec: "Report sub-document integrity for
+   * activities"). Opcional porque las extras no lo tienen.
+   */
+  actividadProtocoloId?: string;
+  /**
+   * Origen "extra" (report-actividades-extra) — apunta al catálogo
+   * `ActividadMtto`. Solo poblado cuando `esExtra: true`.
+   */
+  actividadMttoId?: string | null;
+  /** Discriminador: `true` cuando la actividad fue agregada desde el catálogo (no viene del protocolo del ítem). */
+  esExtra?: boolean;
+  /**
+   * Snapshot de `ActividadMtto.Descripcion` (texto largo) al momento de
+   * agregar la extra — paridad con las actividades del protocolo, para que
+   * el checkbox "Incluir descripción de la actividad" tenga fuente propia
+   * sin duplicar el título.
+   */
+  descripcionLarga?: string;
   duracion?: number; // Duración en minutos, opcional
 }
 

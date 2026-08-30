@@ -304,6 +304,25 @@ export const reporteService = {
       { completed, fechaCompleto: completed ? new Date().toISOString() : null }
     );
     return response.data;
+  },
+
+  // Batch-append catalog activities to this report only, as "extras".
+  // Never mutates the item's ProtocoloMtto (report-actividades-extra).
+  addActividadesExtra: async (reporteId: string, actividadMttoIds: string[]) => {
+    const response = await api.post<ApiResponse<Reporte>>(
+      `/reportes/${reporteId}/actividades-extra`,
+      { actividadMttoIds }
+    );
+    return response.data;
+  },
+
+  // Remove one extra activity entry from a report. Backend refuses entries
+  // whose origin is the protocol (ACTIVIDAD_NOT_EXTRA).
+  removeActividadExtra: async (reporteId: string, actividadRealizadaId: string) => {
+    const response = await api.delete<ApiResponse<Reporte>>(
+      `/reportes/${reporteId}/actividades-extra/${actividadRealizadaId}`
+    );
+    return response.data;
   }
 };
 

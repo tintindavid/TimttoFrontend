@@ -362,6 +362,47 @@ export const useUpdateDiagnostico = () => {
   });
 };
 
+// Add extra activities (batch) from the ActividadMtto catalog to a report.
+// Never touches the item's ProtocoloMtto (report-actividades-extra).
+export const useAddExtraActividades = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reporteId,
+      actividadMttoIds,
+    }: {
+      reporteId: string;
+      actividadMttoIds: string[];
+    }) => reporteService.addActividadesExtra(reporteId, actividadMttoIds),
+    onSuccess: (response, variables) => {
+      queryClient.setQueryData(['reportes', variables.reporteId], response);
+      queryClient.invalidateQueries({ queryKey: ['reportes'] });
+      queryClient.invalidateQueries({ queryKey: ['ots'] }); // OT detail refresh
+    },
+  });
+};
+
+// Remove one extra activity from a report. Backend rejects protocol-originated entries.
+export const useRemoveActividadExtra = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reporteId,
+      actividadRealizadaId,
+    }: {
+      reporteId: string;
+      actividadRealizadaId: string;
+    }) => reporteService.removeActividadExtra(reporteId, actividadRealizadaId),
+    onSuccess: (response, variables) => {
+      queryClient.setQueryData(['reportes', variables.reporteId], response);
+      queryClient.invalidateQueries({ queryKey: ['reportes'] });
+      queryClient.invalidateQueries({ queryKey: ['ots'] });
+    },
+  });
+};
+
 // Get protocolos for equipment
 export const useProtocolosEquipo = (equipmentId: string, tipoMantenimiento: string) => {
   return useQuery({
