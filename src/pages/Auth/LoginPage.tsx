@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Container } from 'react-bootstrap';
 import { useAuth } from '@/context/AuthContext';
 import LoginForm from '@/components/forms/LoginForm/LoginForm';
+import logoExtended from '@/img/logo-extended.png';
 
 export const LoginPage: React.FC = () => {
   const { login, setTenantId } = useAuth();
@@ -31,7 +32,31 @@ export const LoginPage: React.FC = () => {
 
   return (
     <Container className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
-      <div style={{ width: 400 }}>
+      {/* brand-logos-wiring v2: wrap the form in a white card so the
+          logo's own white backdrop blends with the surface instead of
+          floating on the page's grey tone (--tt-bg). Standard login-card
+          look — focuses the eye on the form and keeps the brand mark
+          clean. */}
+      <div
+        style={{
+          width: 400,
+          background: '#fff',
+          padding: '32px',
+          borderRadius: '8px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        }}
+      >
+        {/* brand-logos-wiring (design D7): extended logo centered above
+            the form. 280px matches the navbar's rail (260px) at close
+            visual weight; `maxWidth: 100%` prevents overflow on narrow
+            phones. */}
+        <div className="text-center mb-4">
+          <img
+            src={logoExtended}
+            alt="Timtto"
+            style={{ width: '280px', maxWidth: '100%', height: 'auto' }}
+          />
+        </div>
         <h3 className="mb-3">Iniciar sesión</h3>
         <div className="mb-3">
           <label>Tenant ID</label>
