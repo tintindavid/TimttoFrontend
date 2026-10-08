@@ -1,0 +1,48 @@
+/* brand-logos-wiring (design D4, D6): the extended logo matches the
+   sidebar rail width so the brand mark lines up with the sidebar's right
+   edge on desktop. `max-height` + `object-fit: contain` protect the
+   navbar height if the PNG's aspect ratio ever shifts. */
+.navbar-logo-extended {
+  width: var(--sidebar-width, 260px);
+  height: auto;
+  max-height: 48px;
+  object-fit: contain;
+}
+
+/* Compact mark shown when the sidebar is off-canvas (<lg). */
+.navbar-logo-simplified {
+  height: 32px;
+  width: auto;
+}
+
+/* Two-tone navbar: the brand slot (containing the logo) has a white
+   background so the PNG's own white backdrop blends with the navbar
+   instead of looking "pasted on" over the blue gradient. The rest of
+   the navbar (right-side nav, hamburger on mobile) stays blue.
+   `align-self: stretch` makes the white block fill the navbar height
+   top-to-bottom with no gaps. */
+.tt-navbar .navbar-brand {
+  background: #fff;
+  margin: 0;
+  padding: 0 16px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Zero out the container-fluid's left padding at every breakpoint so
+   the white brand rail touches the viewport's left edge — on mobile
+   the simplified logo lands flush in the corner; on desktop the
+   extended rail aligns with the sidebar below as one vertical column. */
+.tt-navbar > .container-fluid {
+  padding-left: 0;
+}
+
+/* Desktop: the white rail is exactly as wide as the sidebar rail. */
+@media (min-width: 992px) {
+  .tt-navbar .navbar-brand {
+    width: var(--sidebar-width, 260px);
+    padding: 0;
+  }
+}

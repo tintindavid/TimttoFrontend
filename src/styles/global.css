@@ -18,6 +18,11 @@ body, html, #root {
   --tt-text: #212529;
   --tt-text-muted: #6C757D;
   --tt-border: #DEE2E6;
+  /* Shared layout token (brand-logos-wiring, design D4): the sidebar rail
+     width. The navbar's extended logo uses the same value so brand mark
+     and sidebar edge line up on desktop. Change this one line to resize
+     the sidebar across the app. */
+  --sidebar-width: 260px;
 }
 
 body {
