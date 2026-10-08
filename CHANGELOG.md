@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.20.0...v1.21.0) (2026-10-08)
+
+
+### Features
+
+* **equipment-qrs:** public equipment history view + admin QR tab ([#34](https://github.com/tintindavid/TimttoFrontend/issues/34)) ([5f6387d](https://github.com/tintindavid/TimttoFrontend/commit/5f6387d35a83ab088c5db1438684b952f9c2ef17))
+
 # [1.20.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.19.0...v1.20.0) (2026-10-08)
 
 
