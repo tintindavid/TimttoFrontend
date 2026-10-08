@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.19.0...v1.20.0) (2026-10-08)
+
+
+### Features
+
+* **ui:** wire brand logos with two-tone navbar and login card ([53add36](https://github.com/tintindavid/TimttoFrontend/commit/53add36d5d68f693b2dccb5093d4d82d7c224c9f))
+
 # [1.19.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.18.1...v1.19.0) (2026-08-30)
 
 
