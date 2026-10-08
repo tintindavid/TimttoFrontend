@@ -1,11 +1,14 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Container } from 'react-bootstrap';
+// requerir la imagen del logo de TimttoFrontend\src\img\logo-extended.png
+import logoExtended from '../../../img/logo-extended.png';
 
 /**
- * Minimal layout for the public ticket app (`/public/ticket/:qrToken`).
- * Intentionally has no sidebar, no panel topbar, and no auth guard — the
- * sessionToken issued by `validate-access` lives in sessionStorage only.
+ * Minimal layout shared by every public, no-panel-auth app: the ticket QR
+ * flow (`/public/ticket/:qrToken`) and the equipment-history QR flow
+ * (`/public/equipo/:qrToken`, `equipment-qr-public-history` D7).
+ * Intentionally has no sidebar, no panel topbar, and no auth guard.
  */
 const PublicLayout: React.FC = () => {
   return (
@@ -14,8 +17,13 @@ const PublicLayout: React.FC = () => {
       style={{ backgroundColor: '#f5f7fb' }}
     >
       <header className="bg-white border-bottom py-3">
-        <Container>
-          <h5 className="m-0 text-primary">Timtto · Tickets</h5>
+        <Container>  {/**aqui va la foto C:\Users\marti\OneDrive\Documents\TIMTTO\TimttoFrontend\src\img\logo-extended.png o la simplificada dependiendo de la pantalla */}
+          <img
+            src={logoExtended}
+            alt="Timtto Logo"
+            className="me-2"
+            style={{ height: '40px', width: 'auto' }}
+          />
         </Container>
       </header>
       <main className="flex-grow-1 py-4">

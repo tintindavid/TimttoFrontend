@@ -62,6 +62,7 @@ import ServiceQrsPage from '@/pages/Configuracion/ServiceQrsPage';
 import PublicLayout from '@/components/layout/PublicLayout/PublicLayout';
 import PublicTicketLoginPage from '@/pages/Public/PublicTicketLoginPage';
 import PublicTicketDashboard from '@/pages/Public/PublicTicketDashboard';
+import PublicEquipmentPage from '@/pages/Public/PublicEquipmentPage';
 import PortalLayout from '@/pages/Portal/PortalLayout';
 import PortalHome from '@/pages/Portal/PortalHome';
 import PortalSheetsHistory from '@/pages/Portal/PortalSheetsHistory';
@@ -92,6 +93,12 @@ const AppRoutes: React.FC = () => {
       <Route path="/public/ticket/:qrToken" element={<PublicLayout />}>
         <Route index element={<PublicTicketLoginPage />} />
         <Route path="dashboard" element={<PublicTicketDashboard />} />
+      </Route>
+
+      {/* Public equipment history (QR-gated, no auth/password). Read-only
+          maintenance history for a single EquipoItem — equipment-qr-public-history. */}
+      <Route path="/public/equipo/:qrToken" element={<PublicLayout />}>
+        <Route index element={<PublicEquipmentPage />} />
       </Route>
 
       {/* Public client portal (opaque-token-gated, read-only). Lives outside

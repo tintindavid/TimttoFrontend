@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Badge, Button, Card, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Spinner, Tab, Table, Tabs } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { FaPlus, FaQrcode, FaKey, FaBan, FaCheck, FaTrash } from 'react-icons/fa';
 import {
@@ -12,10 +12,15 @@ import { ServiceQr } from '@/types/serviceQr.types';
 import CreateServiceQrModal from '@/pages/Configuracion/components/CreateServiceQrModal';
 import RotatePasswordModal from '@/pages/Configuracion/components/RotatePasswordModal';
 import QrImageModal from '@/pages/Configuracion/components/QrImageModal';
+import { useHasPermission } from '@/hooks/usePermission';
+import { PERMISSIONS } from '@/constants/permissions';
+import EquipmentQrsTab from '@/components/customers/qr/EquipmentQrsTab';
 
 interface CustomerQrsSectionProps {
   customerId: string;
 }
+
+type QrSubTabKey = 'solicitar' | 'equipos';
 
 const renderName = (
   value: string | { nombre?: string; nombreSede?: string } | null | undefined,
@@ -38,6 +43,9 @@ const formatDate = (iso?: string | null): string => {
 };
 
 const CustomerQrsSection: React.FC<CustomerQrsSectionProps> = ({ customerId }) => {
+  const [subTab, setSubTab] = useState<QrSubTabKey>('solicitar');
+  const canManageEquipmentQrs = useHasPermission(PERMISSIONS.SERVICE_QRS_CREATE);
+
   const [showCreate, setShowCreate] = useState<boolean>(false);
   const [rotateTarget, setRotateTarget] = useState<ServiceQr | null>(null);
   const [imageTarget, setImageTarget] = useState<ServiceQr | null>(null);
@@ -84,113 +92,134 @@ const CustomerQrsSection: React.FC<CustomerQrsSectionProps> = ({ customerId }) =
 
   return (
     <div className="p-3">
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div>
-          <h6 className="m-0">QRs del cliente</h6>
-          <small className="text-muted">
-            Un QR por combinación (sede + servicio). Al crearlo se genera la URL pública y la imagen escaneable.
-          </small>
-        </div>
-        <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
-          <FaPlus className="me-2" />
-          Crear QR
-        </Button>
-      </div>
+      <Tabs
+        activeKey={subTab}
+        onSelect={(k) => k && setSubTab(k as QrSubTabKey)}
+        className="mb-3"
+      >
+        <Tab eventKey="solicitar" title="Solicitar servicio">
+          <div className="pt-3">
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div>
+                <h6 className="m-0">QRs del cliente</h6>
+                <small className="text-muted">
+                  Un QR por combinación (sede + servicio). Al crearlo se genera la URL pública y la imagen escaneable.
+                </small>
+              </div>
+              <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+                <FaPlus className="me-2" />
+                Crear QR
+              </Button>
+            </div>
 
-      {qrsQuery.isLoading ? (
-        <div className="text-center py-4">
-          <Spinner animation="border" />
-        </div>
-      ) : qrsQuery.isError ? (
-        <Alert variant="danger">
-          Error al cargar QRs: {qrsQuery.error?.message}
-        </Alert>
-      ) : qrs.length === 0 ? (
-        <Card>
-          <Card.Body className="text-center text-muted py-4">
-            Este cliente no tiene QRs configurados todavía.
-          </Card.Body>
-        </Card>
-      ) : (
-        <Table responsive bordered hover className="bg-white mb-0">
-          <thead className="table-light">
-            <tr>
-              <th>Sede</th>
-              <th>Servicio</th>
-              <th>Estado</th>
-              <th>Última rotación</th>
-              <th className="text-end">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {qrs.map((qr) => (
-              <tr key={qr._id}>
-                <td>{renderName(qr.sedeId) || '—'}</td>
-                <td>{renderName(qr.servicioId) || '—'}</td>
-                <td>
-                  <Badge bg={qr.active ? 'success' : 'secondary'}>
-                    {qr.active ? 'Activo' : 'Inactivo'}
-                  </Badge>
-                </td>
-                <td className="small text-muted">{formatDate(qr.passwordRotatedAt)}</td>
-                <td className="text-end">
-                  <Button
-                    size="sm"
-                    variant="outline-primary"
-                    className="me-1"
-                    onClick={() => setImageTarget(qr)}
-                    title="Ver QR"
-                  >
-                    <FaQrcode />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline-warning"
-                    className="me-1"
-                    onClick={() => setRotateTarget(qr)}
-                    title="Rotar contraseña"
-                  >
-                    <FaKey />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={qr.active ? 'outline-secondary' : 'outline-success'}
-                    className="me-1"
-                    onClick={() => handleToggleActive(qr)}
-                    title={qr.active ? 'Desactivar' : 'Activar'}
-                  >
-                    {qr.active ? <FaBan /> : <FaCheck />}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline-danger"
-                    onClick={() => handleDelete(qr)}
-                    title="Eliminar"
-                  >
-                    <FaTrash />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
+            {qrsQuery.isLoading ? (
+              <div className="text-center py-4">
+                <Spinner animation="border" />
+              </div>
+            ) : qrsQuery.isError ? (
+              <Alert variant="danger">
+                Error al cargar QRs: {qrsQuery.error?.message}
+              </Alert>
+            ) : qrs.length === 0 ? (
+              <Card>
+                <Card.Body className="text-center text-muted py-4">
+                  Este cliente no tiene QRs configurados todavía.
+                </Card.Body>
+              </Card>
+            ) : (
+              <Table responsive bordered hover className="bg-white mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Sede</th>
+                    <th>Servicio</th>
+                    <th>Estado</th>
+                    <th>Última rotación</th>
+                    <th className="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {qrs.map((qr) => (
+                    <tr key={qr._id}>
+                      <td>{renderName(qr.sedeId) || '—'}</td>
+                      <td>{renderName(qr.servicioId) || '—'}</td>
+                      <td>
+                        <Badge bg={qr.active ? 'success' : 'secondary'}>
+                          {qr.active ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </td>
+                      <td className="small text-muted">{formatDate(qr.passwordRotatedAt)}</td>
+                      <td className="text-end">
+                        <Button
+                          size="sm"
+                          variant="outline-primary"
+                          className="me-1"
+                          onClick={() => setImageTarget(qr)}
+                          title="Ver QR"
+                        >
+                          <FaQrcode />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-warning"
+                          className="me-1"
+                          onClick={() => setRotateTarget(qr)}
+                          title="Rotar contraseña"
+                        >
+                          <FaKey />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={qr.active ? 'outline-secondary' : 'outline-success'}
+                          className="me-1"
+                          onClick={() => handleToggleActive(qr)}
+                          title={qr.active ? 'Desactivar' : 'Activar'}
+                        >
+                          {qr.active ? <FaBan /> : <FaCheck />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          onClick={() => handleDelete(qr)}
+                          title="Eliminar"
+                        >
+                          <FaTrash />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
 
-      <CreateServiceQrModal
-        show={showCreate}
-        onHide={() => setShowCreate(false)}
-        defaultClienteId={customerId}
-      />
-      <RotatePasswordModal
-        show={!!rotateTarget}
-        onHide={() => setRotateTarget(null)}
-        qr={rotateTarget}
-      />
-      <QrImageModal
-        show={!!imageTarget}
-        onHide={() => setImageTarget(null)}
-        qr={imageTarget}
-      />
+            <CreateServiceQrModal
+              show={showCreate}
+              onHide={() => setShowCreate(false)}
+              defaultClienteId={customerId}
+            />
+            <RotatePasswordModal
+              show={!!rotateTarget}
+              onHide={() => setRotateTarget(null)}
+              qr={rotateTarget}
+            />
+            <QrImageModal
+              show={!!imageTarget}
+              onHide={() => setImageTarget(null)}
+              qr={imageTarget}
+            />
+          </div>
+        </Tab>
+
+        {/* QR Equipos — hidden without service-qrs:create (D9, spec Requirement
+            "Permission reuse service-qrs:*"). The "solicitar" sub-tab above
+            keeps its existing visibility (parent tab is already admin-gated). */}
+        {canManageEquipmentQrs && (
+          <Tab eventKey="equipos" title="QR Equipos">
+            <div className="pt-3">
+              <EquipmentQrsTab customerId={customerId} />
+            </div>
+          </Tab>
+        )}
+      </Tabs>
     </div>
   );
 };
