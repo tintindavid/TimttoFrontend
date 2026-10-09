@@ -21,6 +21,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
   const [data, setData] = useState<Partial<CreateActividadDto>>({ ...DEFAULT_DATA, ...initial });
   const [evidencia, setEvidencia] = useState<EvidenciaValue>({ mode: 'none' });
   const [err, setErr] = useState<string | null>(null);
+  const todayISO = new Date().toISOString().slice(0, 10);
 
   const update = (patch: Partial<CreateActividadDto>) => setData((d) => ({ ...d, ...patch }));
 
@@ -107,7 +108,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
           <Col>
             <Form.Group className="mb-3" controlId="act-fecha">
               <Form.Label>Fecha *</Form.Label>
-              <Form.Control type="date" value={data.fecha ?? ''} onChange={(e) => update({ fecha: e.target.value })} />
+              <Form.Control type="date" max={todayISO} value={data.fecha ?? ''} onChange={(e) => update({ fecha: e.target.value })} />
             </Form.Group>
           </Col>
         </Row>

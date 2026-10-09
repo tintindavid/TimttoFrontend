@@ -107,4 +107,11 @@ describe('CrearActividadExternaModal', () => {
       undefined,
     );
   });
+
+  it('bloquea seleccionar fecha futura (max=today en el input)', () => {
+    render(<CrearActividadExternaModal show onClose={() => {}} onNext={() => {}} />);
+    const input = screen.getByLabelText(/Fecha/i) as HTMLInputElement;
+    const today = new Date().toISOString().slice(0, 10);
+    expect(input.max).toBe(today);
+  });
 });
