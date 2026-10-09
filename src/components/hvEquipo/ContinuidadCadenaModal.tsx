@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import type { CadenaActividad, CreateActividadDto } from '@/types/actividadExterna.types';
 
@@ -17,6 +17,8 @@ const diffDays = (iso?: string | null): number | null => {
 
 const ContinuidadCadenaModal: React.FC<Props> = ({ show, cadenasCandidatas, datosPaso1, onBack, onConfirm }) => {
   const [selected, setSelected] = useState<string | null>(null);
+  useEffect(() => { setSelected(null); }, [show, cadenasCandidatas]);
+  const valid = selected === 'new' || cadenasCandidatas.some(c => c._id === selected);
   const selectedCadena = selected && selected !== 'new' ? cadenasCandidatas.find(c => c._id === selected) : undefined;
   const frecDistinta = !!selectedCadena && selectedCadena.frecuenciaMeses !== datosPaso1.frecuencia.meses;
 
@@ -76,7 +78,7 @@ const ContinuidadCadenaModal: React.FC<Props> = ({ show, cadenasCandidatas, dato
         <Button variant="secondary" onClick={onBack}>← Atrás</Button>
         <Button
           variant="primary"
-          disabled={!selected}
+          disabled={!valid}
           onClick={() => onConfirm(selected === 'new' || !selected ? undefined : selected)}
         >
           Confirmar y guardar

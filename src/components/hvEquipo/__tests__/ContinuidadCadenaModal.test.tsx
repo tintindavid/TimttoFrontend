@@ -41,4 +41,37 @@ describe('ContinuidadCadenaModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Atrás/i }));
     expect(onBack).toHaveBeenCalled();
   });
+
+  it('al elegir una cadena vigente y confirmar llama onConfirm con su id', () => {
+    const onConfirm = vi.fn();
+    render(<ContinuidadCadenaModal show cadenasCandidatas={[cadena()]} datosPaso1={datos()} onBack={() => {}} onConfirm={onConfirm} />);
+    fireEvent.click(screen.getAllByRole('radio')[0]);
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar/i }));
+    expect(onConfirm).toHaveBeenCalledWith('cad1');
+  });
+
+  it('Confirmar está deshabilitado sin selección', () => {
+    render(<ContinuidadCadenaModal show cadenasCandidatas={[cadena()]} datosPaso1={datos()} onBack={() => {}} onConfirm={() => {}} />);
+    expect(screen.getByRole('button', { name: /Confirmar/i })).toBeDisabled();
+  });
+
+  it('muestra la caja informativa al elegir una cadena vigente', () => {
+    render(<ContinuidadCadenaModal show cadenasCandidatas={[cadena()]} datosPaso1={datos()} onBack={() => {}} onConfirm={() => {}} />);
+    expect(screen.queryByText(/quedará cerrada/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('radio')[0]);
+    expect(screen.getByText(/quedará cerrada/i)).toBeInTheDocument();
+  });
+
+  it('no muestra el banner cuando la frecuencia coincide', () => {
+    render(<ContinuidadCadenaModal show cadenasCandidatas={[cadena({ frecuenciaMeses: 12 })]} datosPaso1={datos()} onBack={() => {}} onConfirm={() => {}} />);
+    fireEvent.click(screen.getAllByRole('radio')[0]);
+    expect(screen.queryByText(/no coincide/i)).not.toBeInTheDocument();
+  });
+
+  it('reinicia la selección y deshabilita Confirmar si la cadena ya no es candidata', () => {
+    const { rerender } = render(<ContinuidadCadenaModal show cadenasCandidatas={[cadena()]} datosPaso1={datos()} onBack={() => {}} onConfirm={() => {}} />);
+    fireEvent.click(screen.getAllByRole('radio')[0]);
+    rerender(<ContinuidadCadenaModal show cadenasCandidatas={[cadena({ _id: 'otra' })]} datosPaso1={datos()} onBack={() => {}} onConfirm={() => {}} />);
+    expect(screen.getByRole('button', { name: /Confirmar/i })).toBeDisabled();
+  });
 });
