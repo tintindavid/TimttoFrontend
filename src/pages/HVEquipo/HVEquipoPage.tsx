@@ -23,6 +23,7 @@ import {Repuesto} from '@/types/repuesto.types';
 
 import { CreateHVEquipoDto, UpdateHVEquipoDto } from '@/types/hvEquipo.types';
 import VerificationTrendsTab, { VerificationTolerance } from '@/components/hvEquipo/VerificationTrendsTab';
+import ActividadesExternasTab from '@/components/hvEquipo/ActividadesExternasTab';
 import GuiaRapidaTab, { GuiaRapidaSection } from '@/components/hvEquipo/GuiaRapidaTab';
 import Swal from 'sweetalert2';
 import './HVEquipoPage.css';
@@ -2467,6 +2468,24 @@ const HVEquipoPage: React.FC = () => {
                 });
                 refetchHV();
               }}
+            />
+          )}
+        </Tab>
+
+        {/* TAB 7: ACTIVIDADES EXTERNAS */}
+        <Tab
+          eventKey="actividades-externas"
+          title={
+            <>
+              <FaClipboardList className="me-1" />
+              Actividades externas
+            </>
+          }
+        >
+          {equipoId && hvEquipo && (
+            <ActividadesExternasTab
+              equipoId={equipoId}
+              clienteId={typeof hvEquipo.clienteId === 'object' ? hvEquipo.clienteId._id : hvEquipo.clienteId}
             />
           )}
         </Tab>
