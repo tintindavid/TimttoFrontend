@@ -54,6 +54,48 @@ describe('CrearActividadExternaModal', () => {
     expect(screen.getAllByText(/cuántos meses/i).length).toBeGreaterThan(0);
   });
 
+  it('no envía tipoCustom si se cambió de otro a calibracion', () => {
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
+    fillValid();
+    fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'otro' } });
+    fireEvent.change(screen.getByLabelText(/Especifica cuál/i), { target: { value: 'viejo' } });
+    fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'calibracion' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+    expect(onNext.mock.calls[0][0].tipoCustom).toBeUndefined();
+  });
+
+  it('bloquea submit con proveedor solo espacios', () => {
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
+    fillValid();
+    fireEvent.change(screen.getByLabelText(/Proveedor/i), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    expect(onNext).not.toHaveBeenCalled();
+  });
+
+  it('bloquea submit con evidencia archivo sin archivo', () => {
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
+    fillValid();
+    fireEvent.click(screen.getByLabelText(/Archivo adjunto/i));
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    expect(onNext).not.toHaveBeenCalled();
+    expect(screen.getByText(/Selecciona un archivo/i)).toBeInTheDocument();
+  });
+
+  it('bloquea submit con evidencia enlace sin enlace válido', () => {
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
+    fillValid();
+    fireEvent.click(screen.getByLabelText(/Enlace externo/i));
+    fireEvent.change(screen.getByLabelText(/Enlace de evidencia/i), { target: { value: 'ftp://x' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    expect(onNext).not.toHaveBeenCalled();
+    expect(screen.getByText(/Ingresa un enlace válido/i)).toBeInTheDocument();
+  });
+
   it('permite submit con actividad única sin meses', () => {
     const onNext = vi.fn();
     render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);

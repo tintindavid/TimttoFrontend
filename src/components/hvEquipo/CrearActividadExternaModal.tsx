@@ -25,19 +25,35 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
   const update = (patch: Partial<CreateActividadDto>) => setData((d) => ({ ...d, ...patch }));
 
   const submit = () => {
+    const trimmed: Partial<CreateActividadDto> = {
+      ...data,
+      consecutivoExterno: data.consecutivoExterno?.trim(),
+      proveedor: data.proveedor?.trim(),
+      observacion: data.observacion?.trim() || undefined,
+      tipoCustom: data.tipo === 'otro' ? data.tipoCustom?.trim() : undefined,
+      estadoFinalCustom: data.estadoFinal === 'otro' ? data.estadoFinalCustom?.trim() : undefined,
+    };
     const required: (keyof CreateActividadDto)[] = ['tipo', 'consecutivoExterno', 'fecha', 'proveedor', 'estadoFinal'];
     for (const k of required) {
-      if (!data[k]) {
+      if (!trimmed[k]) {
         setErr('Completa los campos obligatorios.');
         return;
       }
     }
-    if (data.tipo === 'otro' && !data.tipoCustom?.trim()) {
+    if (trimmed.tipo === 'otro' && !trimmed.tipoCustom) {
       setErr('Especifica el tipo de actividad cuando seleccionas "Otro".');
       return;
     }
-    if (data.estadoFinal === 'otro' && !data.estadoFinalCustom?.trim()) {
+    if (trimmed.estadoFinal === 'otro' && !trimmed.estadoFinalCustom) {
       setErr('Especifica el estado final cuando seleccionas "Otro".');
+      return;
+    }
+    if (evidencia.mode === 'file' && !evidencia.file) {
+      setErr('Selecciona un archivo o cambia a sin evidencia.');
+      return;
+    }
+    if (evidencia.mode === 'link' && !evidencia.link) {
+      setErr('Ingresa un enlace válido o cambia a sin evidencia.');
       return;
     }
     const frecuencia = data.frecuencia ?? { esUnica: false, meses: undefined };
@@ -47,7 +63,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
     }
     setErr(null);
     const dto: CreateActividadDto = {
-      ...(data as CreateActividadDto),
+      ...(trimmed as CreateActividadDto),
       frecuencia: frecuencia.esUnica ? { esUnica: true } : { esUnica: false, meses: frecuencia.meses },
       enlace: evidencia.mode === 'link' ? evidencia.link : undefined,
     };
