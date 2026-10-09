@@ -14,4 +14,20 @@ describe('FrecuenciaInput', () => {
     render(<FrecuenciaInput value={{ esUnica: true }} onChange={vi.fn()} />);
     expect(screen.queryByRole('spinbutton')).toBeNull();
   });
+
+  it.each([[''], ['0'], ['-3']])('meses="%s" muestra error y emite meses undefined', (raw) => {
+    const onChange = vi.fn();
+    render(<FrecuenciaInput value={{ esUnica: false, meses: 12 }} onChange={onChange} />);
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: raw } });
+    expect(onChange).toHaveBeenCalledWith({ esUnica: false, meses: undefined });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('meses="1.5" se trunca a 1', () => {
+    const onChange = vi.fn();
+    render(<FrecuenciaInput value={{ esUnica: false, meses: 12 }} onChange={onChange} />);
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '1.5' } });
+    expect(onChange).toHaveBeenCalledWith({ esUnica: false, meses: 1 });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

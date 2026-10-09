@@ -12,6 +12,24 @@ const ALLOWED_MIME = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ];
 
+// Some OSes report an empty MIME for DOCX/XLSX; fall back to the extension.
+const EXT_TO_MIME: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
+
+const getExtension = (name: string): string => {
+  const i = name.lastIndexOf('.');
+  return i >= 0 ? name.slice(i).toLowerCase() : '';
+};
+
+const HTTP_URL = /^https?:\/\//i;
+
 export interface EvidenciaValue {
   mode: 'file' | 'link' | 'none';
   file?: File;
@@ -25,23 +43,49 @@ interface Props {
 
 const EvidenciaInput: React.FC<Props> = ({ value, onChange }) => {
   const [err, setErr] = React.useState<string | null>(null);
+  const [linkDraft, setLinkDraft] = React.useState<string>(value.link ?? '');
 
-  const onFile = (f: File | null) => {
+  const reject = (input: HTMLInputElement, msg: string) => {
+    setErr(msg);
+    input.value = '';
+    onChange({ mode: 'file' });
+  };
+
+  const onFile = (input: HTMLInputElement) => {
     setErr(null);
+    const f = input.files?.[0];
     if (!f) return;
-    if (!ALLOWED_MIME.includes(f.type)) {
-      setErr('Tipo de archivo no permitido.');
+    const effectiveType = f.type || EXT_TO_MIME[getExtension(f.name)] || '';
+    if (!ALLOWED_MIME.includes(effectiveType)) {
+      reject(input, 'Tipo de archivo no permitido.');
       return;
     }
     if (f.size > MAX_SIZE) {
-      setErr('El archivo excede 10 MB.');
+      reject(input, 'El archivo excede 10 MB.');
       return;
     }
     onChange({ mode: 'file', file: f });
   };
 
+  const onLink = (text: string) => {
+    setLinkDraft(text);
+    if (text === '') {
+      setErr(null);
+      onChange({ mode: 'link' });
+      return;
+    }
+    if (!HTTP_URL.test(text)) {
+      setErr('El enlace debe iniciar con http:// o https://');
+      onChange({ mode: 'link' });
+      return;
+    }
+    setErr(null);
+    onChange({ mode: 'link', link: text });
+  };
+
   const setMode = (mode: EvidenciaValue['mode']) => {
     setErr(null);
+    if (mode === 'link') setLinkDraft('');
     onChange({ mode });
   };
 
@@ -61,7 +105,7 @@ const EvidenciaInput: React.FC<Props> = ({ value, onChange }) => {
           type="file"
           aria-label="Seleccionar archivo de evidencia"
           accept={ALLOWED_MIME.join(',')}
-          onChange={(e) => onFile((e.target as HTMLInputElement).files?.[0] ?? null)}
+          onChange={(e) => onFile(e.target as HTMLInputElement)}
         />
       )}
       <Form.Check
@@ -77,8 +121,9 @@ const EvidenciaInput: React.FC<Props> = ({ value, onChange }) => {
           type="url"
           aria-label="Enlace de evidencia"
           placeholder="https://..."
-          value={value.link ?? ''}
-          onChange={(e) => onChange({ mode: 'link', link: e.target.value })}
+          value={linkDraft}
+          isInvalid={err !== null}
+          onChange={(e) => onLink(e.target.value)}
         />
       )}
       <Form.Check
