@@ -1,0 +1,83 @@
+export type TipoActividad =
+  | 'calibracion' | 'verificacion' | 'ajuste' | 'calificacion'
+  | 'modernizacion' | 'reacondicionamiento' | 'actualizacion_sw_fw'
+  | 'inspeccion_tecnica' | 'auditoria_seguridad' | 'otro';
+
+export type EstadoCadena = 'vigente' | 'cerrada_manualmente' | 'abandonada';
+export type EstadoFinal = 'aprobada' | 'aprobada_con_observaciones' | 'rechazada' | 'pendiente' | 'otro';
+
+export interface Evidencia {
+  url: string;
+  nombreOriginal: string;
+  mimetype: string;
+  tamanoBytes: number;
+  uploadedAt: string;
+}
+
+export interface CadenaActividad {
+  _id: string;
+  tenantId: string;
+  clienteId: string;
+  equipoId: string;
+  tipo: TipoActividad;
+  tipoCustom?: string;
+  frecuenciaMeses?: number;
+  esUnica: boolean;
+  fechaProxima?: string | null;
+  estado: EstadoCadena;
+  actividadVigenteId?: string | null;
+  motivoCierre?: string;
+  cerradaAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActividadExterna {
+  _id: string;
+  tenantId: string;
+  clienteId: string;
+  equipoId: string;
+  cadenaId: string;
+  tipo: TipoActividad;
+  tipoCustom?: string;
+  consecutivoExterno: string;
+  fecha: string;
+  proveedor: string;
+  observacion?: string;
+  estadoFinal: EstadoFinal;
+  estadoFinalCustom?: string;
+  evidencia?: Evidencia;
+  enlace?: string;
+  esInicioCadena: boolean;
+  cerradaAt?: string | null;
+  cerradaPorActividadId?: string | null;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CadenaConActividades {
+  cadena: CadenaActividad;
+  actividades: ActividadExterna[];
+}
+
+export interface CreateActividadDto {
+  tipo: TipoActividad;
+  tipoCustom?: string;
+  consecutivoExterno: string;
+  fecha: string;
+  proveedor: string;
+  observacion?: string;
+  estadoFinal: EstadoFinal;
+  estadoFinalCustom?: string;
+  enlace?: string;
+  frecuencia: { meses?: number; esUnica: boolean };
+  cadenaIdSucesion?: string;
+}
+
+export interface UpdateActividadDto {
+  observacion?: string;
+  estadoFinal?: EstadoFinal;
+  estadoFinalCustom?: string;
+  enlace?: string;
+}
