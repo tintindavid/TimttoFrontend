@@ -6,11 +6,12 @@ import ActividadesExternasTab from '../ActividadesExternasTab';
 
 const mockMutate = vi.fn().mockResolvedValue({ data: {} });
 const mockRefetch = vi.fn();
+let mockLoading = false;
 
 vi.mock('@/hooks/useActividadesExternas', () => ({
   useActividadesExternasPorEquipo: () => ({ data: { data: [] }, isLoading: false, isError: false }),
   useCadenasVigentesPorTipo: () => ({ data: { data: [] }, refetch: mockRefetch }),
-  useCreateActividadExterna: () => ({ mutateAsync: mockMutate, isLoading: false }),
+  useCreateActividadExterna: () => ({ mutateAsync: mockMutate, isLoading: mockLoading }),
   useRemoveActividadExterna: () => ({ mutateAsync: vi.fn(), isLoading: false }),
   useCerrarCadena: () => ({ mutateAsync: vi.fn(), isLoading: false }),
 }));
@@ -36,6 +37,8 @@ describe('ActividadesExternasTab — matriz de continuidad', () => {
   beforeEach(() => {
     mockMutate.mockClear();
     mockRefetch.mockReset();
+    mockLoading = false;
+    mockMutate.mockResolvedValue({ data: {} });
   });
 
   it('0 cadenas vigentes → crea directo, no abre paso 2', async () => {
@@ -67,6 +70,26 @@ describe('ActividadesExternasTab — matriz de continuidad', () => {
     render(<ActividadesExternasTab equipoId="eq1" clienteId="cli1" />, { wrapper });
     fillPaso1();
     await waitFor(() => expect(screen.getByText(/continúa un cronograma/i)).toBeInTheDocument());
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it('si create falla, vuelve al paso 1 y el modal sigue montado para reintentar', async () => {
+    mockRefetch.mockResolvedValue({ data: { data: [] } });
+    mockMutate.mockRejectedValueOnce(new Error('boom'));
+    render(<ActividadesExternasTab equipoId="eq1" clienteId="cli1" />, { wrapper });
+    fillPaso1();
+    await waitFor(() => expect(mockMutate).toHaveBeenCalledTimes(1));
+    const btn = await screen.findByRole('button', { name: /Continuar/i });
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockMutate).toHaveBeenCalledTimes(2));
+  });
+
+  it('no dispara un segundo create si createMut.isLoading', async () => {
+    mockRefetch.mockResolvedValue({ data: { data: [] } });
+    mockLoading = true;
+    render(<ActividadesExternasTab equipoId="eq1" clienteId="cli1" />, { wrapper });
+    fillPaso1({ unica: true });
+    await new Promise((r) => setTimeout(r, 50));
     expect(mockMutate).not.toHaveBeenCalled();
   });
 });

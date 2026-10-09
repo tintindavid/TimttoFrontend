@@ -64,6 +64,7 @@ const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
         });
       } catch (err) {
         await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: errorText(err) });
+        setStep('paso1'); // allow retry from paso 1
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,6 +72,7 @@ const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
   );
 
   const handlePaso1Next = (dto: CreateActividadDto, file?: File) => {
+    if (createMut.isLoading || step === 'checking') return;
     setPaso1Data(dto);
     setPaso1File(file);
     if (dto.frecuencia.esUnica) {
