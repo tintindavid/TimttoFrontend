@@ -1231,7 +1231,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               </div>
             </Card.Header>
             <Card.Body>
-              {loadingProtocol && (
+              {protocoloId && loadingProtocol && (
                 <Alert variant="info">
                   <div className="d-flex align-items-center">
                     <div className="spinner-border spinner-border-sm me-2" role="status"></div>
@@ -1243,7 +1243,10 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               {!protocoloId && (
                 <Alert variant="warning">
                   <FaTools className="me-2" />
-                  Este equipo no tiene un protocolo de mantenimiento asignado
+                  <strong>Este equipo no tiene un protocolo de mantenimiento asignado.</strong>
+                  <div className="mt-1 small">
+                    Usa <em>“Adicionar actividades”</em> para registrar las actividades realizadas y poder procesar el reporte.
+                  </div>
                 </Alert>
               )}
 
