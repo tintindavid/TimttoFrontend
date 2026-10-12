@@ -1250,13 +1250,15 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                 </Alert>
               )}
 
-              {protocoloId && !loadingProtocol && protocolo?.data && (
+              {!loadingProtocol && (
                 <div>
-                  {/* Información del Protocolo */}
-                  <div className="mb-4 p-3 bg-light rounded">
-                    <h6 className="mb-1">{protocolo.data.nombre}</h6>
-                    <small className="text-muted">{protocolo.data.Descripcion}</small>
-                  </div>
+                  {/* Información del Protocolo (solo si existe) */}
+                  {protocoloId && protocolo?.data && (
+                    <div className="mb-4 p-3 bg-light rounded">
+                      <h6 className="mb-1">{protocolo.data.nombre}</h6>
+                      <small className="text-muted">{protocolo.data.Descripcion}</small>
+                    </div>
+                  )}
 
                   {/* Actividades del Protocolo */}
                   {(actividadesProtocolo.length > 0 || extrasPendientes.length > 0) && (
@@ -1577,7 +1579,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                   )}
 
                   {/* Mensaje cuando no hay actividades */}
-                  {!protocolo.data.actividadesMtto || protocolo.data.actividadesMtto.length === 0 && (
+                  {protocoloId && protocolo?.data && (!protocolo.data.actividadesMtto || protocolo.data.actividadesMtto.length === 0) && (
                     <Alert variant="warning">
                       <FaTools className="me-2" />
                       Este protocolo no tiene actividades definidas
