@@ -1250,7 +1250,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                 </Alert>
               )}
 
-              {!loadingProtocol && (
+              {(!protocoloId || !loadingProtocol) && (
                 <div>
                   {/* Información del Protocolo (solo si existe) */}
                   {protocoloId && protocolo?.data && (
