@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.21.0...v1.22.0) (2026-10-12)
+
+
+### Features
+
+* **equipo-actividades:** tab de actividades externas + report UX fixes ([#35](https://github.com/tintindavid/TimttoFrontend/issues/35)) ([62e9307](https://github.com/tintindavid/TimttoFrontend/commit/62e93075c552da30978908fc6dbb67de705cbebf))
+
 # [1.21.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.20.0...v1.21.0) (2026-10-08)
 
 
