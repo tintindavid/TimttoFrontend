@@ -183,7 +183,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   // Hooks para autenticación
   const { user, token } = useAuth();
   // Obtener protocolo del equipo
-  const protocoloId = editedReporte?.Equipo?.ItemId?.ProtocoloId || 'PROTO-001'; // Valor temporal para testing
+  const protocoloId = editedReporte?.Equipo?.ItemId?.ProtocoloId || '';
   const { data: protocolo, isLoading: loadingProtocol } = useProtocol(protocoloId);
 
   // Obtener repuestos del equipo y del reporte
@@ -1231,7 +1231,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               </div>
             </Card.Header>
             <Card.Body>
-              {loadingProtocol && (
+              {protocoloId && loadingProtocol && (
                 <Alert variant="info">
                   <div className="d-flex align-items-center">
                     <div className="spinner-border spinner-border-sm me-2" role="status"></div>
@@ -1243,17 +1243,22 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
               {!protocoloId && (
                 <Alert variant="warning">
                   <FaTools className="me-2" />
-                  Este equipo no tiene un protocolo de mantenimiento asignado
+                  <strong>Este equipo no tiene un protocolo de mantenimiento asignado.</strong>
+                  <div className="mt-1 small">
+                    Usa <em>“Adicionar actividades”</em> para registrar las actividades realizadas y poder procesar el reporte.
+                  </div>
                 </Alert>
               )}
 
-              {protocoloId && !loadingProtocol && protocolo?.data && (
+              {(!protocoloId || !loadingProtocol) && (
                 <div>
-                  {/* Información del Protocolo */}
-                  <div className="mb-4 p-3 bg-light rounded">
-                    <h6 className="mb-1">{protocolo.data.nombre}</h6>
-                    <small className="text-muted">{protocolo.data.Descripcion}</small>
-                  </div>
+                  {/* Información del Protocolo (solo si existe) */}
+                  {protocoloId && protocolo?.data && (
+                    <div className="mb-4 p-3 bg-light rounded">
+                      <h6 className="mb-1">{protocolo.data.nombre}</h6>
+                      <small className="text-muted">{protocolo.data.Descripcion}</small>
+                    </div>
+                  )}
 
                   {/* Actividades del Protocolo */}
                   {(actividadesProtocolo.length > 0 || extrasPendientes.length > 0) && (
@@ -1458,15 +1463,15 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                     </div>
                   )}
 
-                  {/* Actividades Realizadas */}
-                  {(editedReporte.actividadesRealizadas?.length || 0) > 0 && (
+                  {/* Actividades Realizadas (solo las marcadas como realizado) */}
+                  {((editedReporte.actividadesRealizadas || []).filter((a) => a.realizado).length) > 0 && (
                     <div className="mb-4">
                       <h6 className="mb-3">
                         <FaCheckCircle className="me-2 text-success" />
                         Actividades Realizadas
                       </h6>
                       <ListGroup>
-                        {editedReporte.actividadesRealizadas?.map((actividad, index) => (
+                        {editedReporte.actividadesRealizadas?.filter((a) => a.realizado).map((actividad, index) => (
                           <ListGroup.Item key={index} className="border-start border-success border-3">
                             <div className="d-flex align-items-start">
                               <div className="me-3 mt-1">
@@ -1537,9 +1542,21 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                     size="sm"
                                     className="mt-2"
                                     onClick={() => {
-                                      // Remover actividad del array
+                                      // Para extras: desmarcar (vuelve a Pendientes).
+                                      // Para protocolo: quitar del array (vuelve a aparecer
+                                      // en Pendientes a través de `actividadesProtocolo`).
                                       setEditedReporte(prev => {
                                         const currentActividades = prev.actividadesRealizadas || [];
+                                        if (actividad.esExtra) {
+                                          return {
+                                            ...prev,
+                                            actividadesRealizadas: currentActividades.map((act) =>
+                                              act._id === actividad._id
+                                                ? { ...act, realizado: false, fecha: null }
+                                                : act
+                                            )
+                                          };
+                                        }
                                         return {
                                           ...prev,
                                           actividadesRealizadas: currentActividades.filter(
@@ -1574,7 +1591,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                   )}
 
                   {/* Mensaje cuando no hay actividades */}
-                  {!protocolo.data.actividadesMtto || protocolo.data.actividadesMtto.length === 0 && (
+                  {protocoloId && protocolo?.data && (!protocolo.data.actividadesMtto || protocolo.data.actividadesMtto.length === 0) && (
                     <Alert variant="warning">
                       <FaTools className="me-2" />
                       Este protocolo no tiene actividades definidas
