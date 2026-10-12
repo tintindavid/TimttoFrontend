@@ -183,7 +183,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   // Hooks para autenticación
   const { user, token } = useAuth();
   // Obtener protocolo del equipo
-  const protocoloId = editedReporte?.Equipo?.ItemId?.ProtocoloId || 'PROTO-001'; // Valor temporal para testing
+  const protocoloId = editedReporte?.Equipo?.ItemId?.ProtocoloId || '';
   const { data: protocolo, isLoading: loadingProtocol } = useProtocol(protocoloId);
 
   // Obtener repuestos del equipo y del reporte
