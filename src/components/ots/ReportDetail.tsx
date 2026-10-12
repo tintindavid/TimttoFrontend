@@ -1542,9 +1542,21 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                     size="sm"
                                     className="mt-2"
                                     onClick={() => {
-                                      // Remover actividad del array
+                                      // Para extras: desmarcar (vuelve a Pendientes).
+                                      // Para protocolo: quitar del array (vuelve a aparecer
+                                      // en Pendientes a través de `actividadesProtocolo`).
                                       setEditedReporte(prev => {
                                         const currentActividades = prev.actividadesRealizadas || [];
+                                        if (actividad.esExtra) {
+                                          return {
+                                            ...prev,
+                                            actividadesRealizadas: currentActividades.map((act) =>
+                                              act._id === actividad._id
+                                                ? { ...act, realizado: false, fecha: null }
+                                                : act
+                                            )
+                                          };
+                                        }
                                         return {
                                           ...prev,
                                           actividadesRealizadas: currentActividades.filter(
