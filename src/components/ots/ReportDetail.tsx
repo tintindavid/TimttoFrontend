@@ -1463,15 +1463,15 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                     </div>
                   )}
 
-                  {/* Actividades Realizadas */}
-                  {(editedReporte.actividadesRealizadas?.length || 0) > 0 && (
+                  {/* Actividades Realizadas (solo las marcadas como realizado) */}
+                  {((editedReporte.actividadesRealizadas || []).filter((a) => a.realizado).length) > 0 && (
                     <div className="mb-4">
                       <h6 className="mb-3">
                         <FaCheckCircle className="me-2 text-success" />
                         Actividades Realizadas
                       </h6>
                       <ListGroup>
-                        {editedReporte.actividadesRealizadas?.map((actividad, index) => (
+                        {editedReporte.actividadesRealizadas?.filter((a) => a.realizado).map((actividad, index) => (
                           <ListGroup.Item key={index} className="border-start border-success border-3">
                             <div className="d-flex align-items-start">
                               <div className="me-3 mt-1">
