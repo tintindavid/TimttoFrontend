@@ -8,7 +8,7 @@ import CustomerServiciosSection from '@/components/customers/CustomerServiciosSe
 import CustomerEquiposSection from '@/components/customers/CustomerEquiposSection';
 import CustomerOTsSection from '@/components/customers/CustomerOTsSection';
 import CustomerQrsSection from '@/components/customers/CustomerQrsSection';
-import ClientTokensTab from '@/pages/Customers/ClientTokensTab';
+import ClientTokensTab from '@/pages/Terceros/ClientTokensTab';
 import { useAuth } from '@/context/AuthContext';
 import { useHasPermission } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@/constants/permissions';
@@ -35,7 +35,7 @@ const CustomerDetailPage: React.FC = () => {
 
   // Callback optimizado para navegación
   const handleGoBack = useCallback(() => {
-    navigate('/customers');
+    navigate(customer?.kind === 'provider' ? '/terceros?tab=provider' : '/terceros');
   }, [navigate]);
 
   // Early returns optimizados
@@ -43,7 +43,7 @@ const CustomerDetailPage: React.FC = () => {
     return (
       <div className="d-flex justify-content-center my-4">
         <Spinner animation="border" role="status">
-          <span className="visually-hidden">Cargando cliente...</span>
+          <span className="visually-hidden">Cargando tercero...</span>
         </Spinner>
       </div>
     );
@@ -53,9 +53,9 @@ const CustomerDetailPage: React.FC = () => {
     return (
       <Container>
         <Alert variant="danger">
-          Error al cargar cliente. 
+          Error al cargar tercero. 
           <Button variant="link" onClick={handleGoBack}>
-            Volver a clientes
+            Volver a terceros
           </Button>
         </Alert>
       </Container>
@@ -66,9 +66,9 @@ const CustomerDetailPage: React.FC = () => {
     return (
       <Container>
         <Alert variant="info">
-          Cliente no encontrado.
+          Tercero no encontrado.
           <Button variant="link" onClick={handleGoBack}>
-            Volver a clientes
+            Volver a terceros
           </Button>
         </Alert>
       </Container>
@@ -76,6 +76,8 @@ const CustomerDetailPage: React.FC = () => {
   }
 
   if (!customer) return null;
+
+  const isProvider = customer.kind === 'provider';
 
   return (
     <Container className="py-4">
@@ -113,7 +115,7 @@ const CustomerDetailPage: React.FC = () => {
                 <div className="mt-3">
                   <Button
                     variant="outline-primary"
-                    onClick={() => navigate(`/customers/${customer._id}/edit`)}
+                    onClick={() => navigate(`/terceros/${customer._id}/edit`)}
                   >
                     Editar Información
                   </Button>
@@ -121,35 +123,40 @@ const CustomerDetailPage: React.FC = () => {
               </div>
             </Tab>
 
-            {/* Sedes */}
-            <Tab eventKey="sedes" title="Sedes">
-              <CustomerSedesSection customerId={customer._id!} />
-            </Tab>
+            {/* Client-only tabs: providers only show general information */}
+            {!isProvider && (
+              <Tab eventKey="sedes" title="Sedes">
+                <CustomerSedesSection customerId={customer._id!} />
+              </Tab>
+            )}
 
-            {/* Servicios */}
-            <Tab eventKey="servicios" title="Servicios">
-              <CustomerServiciosSection customerId={customer._id!} />
-            </Tab>
+            {!isProvider && (
+              <Tab eventKey="servicios" title="Servicios">
+                <CustomerServiciosSection customerId={customer._id!} />
+              </Tab>
+            )}
 
-            {/* Equipos */}
-            <Tab eventKey="equipos" title="Equipos">
-              <CustomerEquiposSection customerId={customer._id!} />
-            </Tab>
+            {!isProvider && (
+              <Tab eventKey="equipos" title="Equipos">
+                <CustomerEquiposSection customerId={customer._id!} />
+              </Tab>
+            )}
 
-            {/* Órdenes de Trabajo */}
-            <Tab eventKey="ots" title="Órdenes de Trabajo">
-              <CustomerOTsSection customerId={customer._id!} />
-            </Tab>
+            {!isProvider && (
+              <Tab eventKey="ots" title="Órdenes de Trabajo">
+                <CustomerOTsSection customerId={customer._id!} />
+              </Tab>
+            )}
 
             {/* QRs — admin-only, mirrors visibility of /configuracion/qr-services */}
-            {isAdmin && (
+            {!isProvider && isAdmin && (
               <Tab eventKey="qrs" title="QRs">
                 <CustomerQrsSection customerId={customer._id!} />
               </Tab>
             )}
 
             {/* Accesos cliente — gated by PORTAL_CLIENTE_CREAR (2026-08-03). */}
-            {canManageClientPortal && (
+            {!isProvider && canManageClientPortal && (
               <Tab eventKey="client-tokens" title="Accesos cliente">
                 <ClientTokensTab customerId={customer._id!} />
               </Tab>
