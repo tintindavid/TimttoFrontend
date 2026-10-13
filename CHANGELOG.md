@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.22.0...v1.23.0) (2026-10-13)
+
+
+### Features
+
+* **hv-equipo:** generic specs, attachments and quick-guide files (frontend) ([#36](https://github.com/tintindavid/TimttoFrontend/issues/36)) ([374fd7b](https://github.com/tintindavid/TimttoFrontend/commit/374fd7b9f6de419f6c6ba0cf30fd28523d9f689b))
+
 # [1.22.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.21.0...v1.22.0) (2026-10-12)
 
 
