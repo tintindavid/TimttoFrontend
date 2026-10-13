@@ -1,4 +1,5 @@
 // Tipos para Hoja de Vida de Equipos
+import type { UsoEquipo } from '@/constants/usoEquipo';
 
 export interface HVEquipo {
   _id?: string;
@@ -60,7 +61,11 @@ export interface HVEquipo {
   
   // Accesorios
   Accesorios?: Accesorio[];
-  
+
+  // Otras especificaciones y documentos
+  OtrasEspecificaciones?: OtraEspecificacion[];
+  Documentos?: Documento[];
+
   // Información General
   TecnologiaPredominante?: string;
   EstadoHV: 'Guardada' | 'Aprobada';
@@ -74,7 +79,7 @@ export interface HVEquipo {
   // Información comercial
   ValorAdquisicion?: number;
   TipoAdquisicion?: 'Compra' | 'Donación' | 'Comodato' | 'Leasing' | 'Otro';
-  UsoEquipo?: 'Apoyo' | 'Soporte' | 'Produccion' | 'Investigacion' | 'Docencia';
+  UsoEquipo?: UsoEquipo;
   
   // Mantenimiento y calibración
   RequiereCalibracion?: boolean;
@@ -143,6 +148,37 @@ export interface Accesorio {
   observaciones?: string;
 }
 
+export interface OtraEspecificacion {
+  _id?: string;
+  nombre: string;
+  valor: string;
+  orden?: number;
+}
+
+export type DocumentoCategoria = 'general' | 'guia_rapida';
+
+export interface Documento {
+  _id?: string;
+  nombre: string;
+  link?: string;
+  archivoUrl?: string;
+  storagePath?: string;
+  mimetype?: string;
+  tamanoBytes?: number;
+  uploadedAt?: string;
+  /** Missing on documents saved before the field existed: treat as 'general'. */
+  categoria?: DocumentoCategoria;
+  orden?: number;
+}
+
+export interface DocumentoPayload {
+  nombre: string;
+  link?: string;
+  archivo?: File | null;
+  /** Only used on create; the server ignores it on update. */
+  categoria?: DocumentoCategoria;
+}
+
 export interface CreateHVEquipoDto {
   clienteId: string;
   EquipoId: string;
@@ -159,6 +195,8 @@ export interface CreateHVEquipoDto {
   };
   userIdCreacion?: string;
   Accesorios?: Accesorio[];
+  OtrasEspecificaciones?: OtraEspecificacion[];
+  Documentos?: Documento[];
   TecnologiaPredominante?: string;
   EstadoHV?: 'Guardada' | 'Aprobada';
   Descripcion?: string;
@@ -168,7 +206,7 @@ export interface CreateHVEquipoDto {
   FechaFuncionamiento?: string;
   ValorAdquisicion?: number;
   TipoAdquisicion?: 'Compra' | 'Donación' | 'Comodato' | 'Leasing' | 'Otro';
-  UsoEquipo?: 'Apoyo' | 'Soporte' | 'Produccion' | 'Investigacion' | 'Docencia';
+  UsoEquipo?: UsoEquipo;
   RequiereCalibracion?: boolean;
   PeriodicidadCalibracion?: string;
   PeriodicidadMantenimiento?: string;

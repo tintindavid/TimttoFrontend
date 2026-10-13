@@ -346,3 +346,28 @@
 .small {
   font-size: 0.875rem;
 }
+
+/* Documents table */
+.hv-documentos-table .doc-icon {
+  margin-right: 0.25rem;
+  color: #6c757d;
+}
+
+.hv-documentos-table .doc-icon-pdf { color: #dc3545; }
+.hv-documentos-table .doc-icon-word { color: #0d6efd; }
+.hv-documentos-table .doc-icon-excel { color: #198754; }
+.hv-documentos-table .doc-icon-image { color: #fd7e14; }
+
+.hv-documentos-table .doc-link-truncate {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.hv-documentos-table .doc-size-badge {
+  border: 1px solid #dee2e6;
+  font-weight: 500;
+}

@@ -1,8 +1,17 @@
 import { api } from './api';
 import { ApiResponse } from '@/types/api.types';
-import { HVEquipo, CreateHVEquipoDto, UpdateHVEquipoDto, HVEquipoFilters } from '@/types/hvEquipo.types';
+import { HVEquipo, CreateHVEquipoDto, UpdateHVEquipoDto, HVEquipoFilters, DocumentoPayload } from '@/types/hvEquipo.types';
 
 const BASE_URL = '/hv-equipo';
+
+const buildDocumentoFormData = (payload: Partial<DocumentoPayload>): FormData => {
+  const formData = new FormData();
+  if (payload.nombre !== undefined) formData.append('nombre', payload.nombre);
+  if (payload.link !== undefined) formData.append('link', payload.link);
+  if (payload.categoria) formData.append('categoria', payload.categoria);
+  if (payload.archivo) formData.append('archivo', payload.archivo);
+  return formData;
+};
 
 export const hvEquipoService = {
   /**
@@ -61,6 +70,38 @@ export const hvEquipoService = {
    */
   delete: async (id: string): Promise<ApiResponse<null>> => {
     const response = await api.delete<ApiResponse<null>>(`${BASE_URL}/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Subir/agregar un documento a la HV (multipart)
+   */
+  uploadDocumento: async (hvId: string, payload: DocumentoPayload): Promise<ApiResponse<HVEquipo>> => {
+    const response = await api.post<ApiResponse<HVEquipo>>(
+      `${BASE_URL}/${hvId}/documentos`,
+      buildDocumentoFormData(payload),
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Actualizar/reemplazar un documento de la HV (multipart)
+   */
+  updateDocumento: async (hvId: string, docId: string, payload: Partial<DocumentoPayload>): Promise<ApiResponse<HVEquipo>> => {
+    const response = await api.put<ApiResponse<HVEquipo>>(
+      `${BASE_URL}/${hvId}/documentos/${docId}`,
+      buildDocumentoFormData(payload),
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Eliminar un documento de la HV
+   */
+  deleteDocumento: async (hvId: string, docId: string): Promise<ApiResponse<HVEquipo>> => {
+    const response = await api.delete<ApiResponse<HVEquipo>>(`${BASE_URL}/${hvId}/documentos/${docId}`);
     return response.data;
   },
 

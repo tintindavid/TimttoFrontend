@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { hvEquipoService } from '@/services/hvEquipo.service';
-import { HVEquipo, CreateHVEquipoDto, UpdateHVEquipoDto, HVEquipoFilters } from '@/types/hvEquipo.types';
+import { HVEquipo, CreateHVEquipoDto, UpdateHVEquipoDto, HVEquipoFilters, DocumentoPayload } from '@/types/hvEquipo.types';
 import { ApiResponse } from '@/types/api.types';
 
 /**
@@ -86,6 +86,51 @@ export const useUpdateHVEquipo = () => {
       queryClient.invalidateQueries({ queryKey: ['hv-equipos'] });
       queryClient.invalidateQueries({ queryKey: ['hv-equipos', variables.id] });
     },
+  });
+};
+
+const useInvalidateHv = () => {
+  const queryClient = useQueryClient();
+  return (hvId: string) => {
+    queryClient.invalidateQueries({ queryKey: ['hv-equipos'] });
+    queryClient.invalidateQueries({ queryKey: ['hv-equipos', hvId] });
+    queryClient.invalidateQueries({ queryKey: ['hv-equipos', 'equipo'] });
+  };
+};
+
+/**
+ * Hook para agregar un documento a una HV
+ */
+export const useUploadHvDocumento = () => {
+  const invalidate = useInvalidateHv();
+  return useMutation({
+    mutationFn: ({ hvId, payload }: { hvId: string; payload: DocumentoPayload }) =>
+      hvEquipoService.uploadDocumento(hvId, payload),
+    onSuccess: (_, variables) => invalidate(variables.hvId),
+  });
+};
+
+/**
+ * Hook para actualizar/reemplazar un documento de una HV
+ */
+export const useUpdateHvDocumento = () => {
+  const invalidate = useInvalidateHv();
+  return useMutation({
+    mutationFn: ({ hvId, docId, payload }: { hvId: string; docId: string; payload: Partial<DocumentoPayload> }) =>
+      hvEquipoService.updateDocumento(hvId, docId, payload),
+    onSuccess: (_, variables) => invalidate(variables.hvId),
+  });
+};
+
+/**
+ * Hook para eliminar un documento de una HV
+ */
+export const useDeleteHvDocumento = () => {
+  const invalidate = useInvalidateHv();
+  return useMutation({
+    mutationFn: ({ hvId, docId }: { hvId: string; docId: string }) =>
+      hvEquipoService.deleteDocumento(hvId, docId),
+    onSuccess: (_, variables) => invalidate(variables.hvId),
   });
 };
 

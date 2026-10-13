@@ -73,6 +73,9 @@ vi.mock('@/hooks/useHVEquipo', () => ({
   useHVEquiposByMarcaModelo: () => ({ data: { data: [] }, isLoading: false }),
   useCreateHVEquipo: () => ({ mutateAsync: vi.fn(), isLoading: false }),
   useUpdateHVEquipo: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useUploadHvDocumento: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useUpdateHvDocumento: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useDeleteHvDocumento: () => ({ mutateAsync: vi.fn(), isLoading: false }),
 }));
 
 vi.mock('@/hooks/useEquipoItems', () => ({
