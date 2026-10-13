@@ -10,21 +10,48 @@ import {
   Pagination,
   Row,
   Spinner,
+  Tab,
+  Tabs,
 } from 'react-bootstrap';
 import { FaArrowDown, FaArrowUp, FaDownload, FaEdit, FaEye, FaPlus, FaSearch, FaTrash } from 'react-icons/fa';
 import { useCustomers, useDeleteCustomer } from '@/hooks/useCustomers';
 import { useDebounce } from '@/hooks/useDebounce';
 import DataTable from '@/components/common/DataTable';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { customerService } from '@/services/customer.service';
-import { Customer } from '@/types/customer.types';
+import { Customer, CustomerKind } from '@/types/customer.types';
 
 const PAGE_SIZE = 20;
 
 type SortDirection = 'asc' | 'desc';
 
-const CustomersPage: React.FC = () => {
+interface ThirdPartyListProps {
+  kind: CustomerKind;
+}
+
+const COPY: Record<CustomerKind, { plural: string; singular: string; create: string; empty: string; filtered: string; deleteConfirm: string }> = {
+  customer: {
+    plural: 'clientes',
+    singular: 'cliente',
+    create: 'Crear Cliente',
+    empty: 'Aún no hay clientes registrados.',
+    filtered: 'Ningún cliente coincide con los filtros.',
+    deleteConfirm: '¿Confirma eliminar este cliente?',
+  },
+  provider: {
+    plural: 'proveedores',
+    singular: 'proveedor',
+    create: 'Nuevo proveedor',
+    empty: 'Aún no hay proveedores registrados.',
+    filtered: 'Ningún proveedor coincide con los filtros.',
+    deleteConfirm: '¿Confirma eliminar este proveedor?',
+  },
+};
+
+const ThirdPartyList: React.FC<ThirdPartyListProps> = ({ kind }) => {
+  const copy = COPY[kind];
+  const isProvider = kind === 'provider';
   const navigate = useNavigate();
   const deleteMutation = useDeleteCustomer();
 
@@ -43,13 +70,14 @@ const CustomersPage: React.FC = () => {
     () => ({
       page,
       limit: PAGE_SIZE,
+      kind,
       razonSocial: debouncedRazonSocial || undefined,
       ciudad: debouncedCiudad || undefined,
       nit: debouncedNit || undefined,
       sortBy: 'Razonsocial',
       order: sortDirection,
     }),
-    [page, debouncedRazonSocial, debouncedCiudad, debouncedNit, sortDirection],
+    [kind, page, debouncedRazonSocial, debouncedCiudad, debouncedNit, sortDirection],
   );
 
   const { data, isLoading, isFetching, error } = useCustomers(queryParams);
@@ -69,7 +97,7 @@ const CustomersPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Confirma eliminar este cliente?')) {
+    if (window.confirm(copy.deleteConfirm)) {
       await deleteMutation.mutateAsync(id);
     }
   };
@@ -118,25 +146,26 @@ const CustomersPage: React.FC = () => {
   const hasActiveFilter = Boolean(debouncedRazonSocial || debouncedCiudad || debouncedNit);
 
   return (
-    <Container fluid>
+    <>
       <Row className="align-items-center mb-3">
-        <Col>
-          <h1>Clientes</h1>
-          <p className="text-muted mb-0">Gestión de clientes y terceros del tenant</p>
-        </Col>
         <Col className="text-end">
+          {!isProvider && (
+            <Button
+              variant="outline-secondary"
+              className="me-2"
+              onClick={handleExportCSV}
+              disabled={exporting}
+            >
+              {exporting
+                ? <><Spinner animation="border" size="sm" className="me-1" /> Exportando...</>
+                : <><FaDownload className="me-1" /> Exportar CSV</>}
+            </Button>
+          )}
           <Button
-            variant="outline-secondary"
-            className="me-2"
-            onClick={handleExportCSV}
-            disabled={exporting}
+            variant="primary"
+            onClick={() => navigate(isProvider ? '/terceros/new?kind=provider' : '/terceros/new')}
           >
-            {exporting
-              ? <><Spinner animation="border" size="sm" className="me-1" /> Exportando...</>
-              : <><FaDownload className="me-1" /> Exportar CSV</>}
-          </Button>
-          <Button variant="primary" onClick={() => navigate('/customers/new')}>
-            <FaPlus className="me-1" /> Crear Cliente
+            <FaPlus className="me-1" /> {copy.create}
           </Button>
         </Col>
       </Row>
@@ -181,7 +210,7 @@ const CustomersPage: React.FC = () => {
       </Row>
 
       {isLoading && <div className="d-flex justify-content-center my-4"><Spinner animation="border" variant="primary" /></div>}
-      {Boolean(error) && <Alert variant="danger">Error al cargar clientes.</Alert>}
+      {Boolean(error) && <Alert variant="danger">Error al cargar {copy.plural}.</Alert>}
 
       {data && (
         <>
@@ -197,10 +226,10 @@ const CustomersPage: React.FC = () => {
                 columns={columns}
                 actions={(row: Customer) => (
                   <div className="d-flex gap-1">
-                    <Button size="sm" variant="outline-primary" onClick={() => navigate(`/customers/${row._id}`)} title="Ver">
+                    <Button size="sm" variant="outline-primary" onClick={() => navigate(`/terceros/${row._id}`)} title="Ver">
                       <FaEye />
                     </Button>
-                    <Button size="sm" variant="outline-warning" onClick={() => navigate(`/customers/${row._id}/edit`)} title="Editar">
+                    <Button size="sm" variant="outline-warning" onClick={() => navigate(`/terceros/${row._id}/edit`)} title="Editar">
                       <FaEdit />
                     </Button>
                     <Button size="sm" variant="outline-danger" onClick={() => row._id && handleDelete(row._id)} title="Eliminar">
@@ -211,7 +240,7 @@ const CustomersPage: React.FC = () => {
               />
               {customers.length === 0 && !isLoading && (
                 <p className="text-center text-muted my-3 mb-0">
-                  {hasActiveFilter ? 'Ningún cliente coincide con los filtros.' : 'Aún no hay clientes registrados.'}
+                  {hasActiveFilter ? copy.filtered : copy.empty}
                 </p>
               )}
             </Card.Body>
@@ -219,7 +248,7 @@ const CustomersPage: React.FC = () => {
 
           <div className="d-flex justify-content-between align-items-center">
             <small className="text-muted">
-              Mostrando {customers.length} de {pagination?.total ?? customers.length} clientes
+              Mostrando {customers.length} de {pagination?.total ?? customers.length} {copy.plural}
             </small>
             {totalPages > 1 && (
               <Pagination className="mb-0">
@@ -242,8 +271,41 @@ const CustomersPage: React.FC = () => {
           </div>
         </>
       )}
+    </>
+  );
+};
+
+const TercerosPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: CustomerKind = searchParams.get('tab') === 'provider' ? 'provider' : 'customer';
+
+  const handleSelect = (key: string | null) => {
+    setSearchParams(key === 'provider' ? { tab: 'provider' } : {}, { replace: true });
+  };
+
+  return (
+    <Container fluid>
+      <div className="mb-3">
+        <h1>Terceros</h1>
+        <p className="text-muted mb-0">Gestión de clientes y proveedores del tenant</p>
+      </div>
+      <Tabs
+        id="terceros-tabs"
+        activeKey={activeTab}
+        onSelect={handleSelect}
+        className="mb-3"
+        mountOnEnter
+        unmountOnExit
+      >
+        <Tab eventKey="customer" title="Clientes">
+          <ThirdPartyList kind="customer" />
+        </Tab>
+        <Tab eventKey="provider" title="Proveedores">
+          <ThirdPartyList kind="provider" />
+        </Tab>
+      </Tabs>
     </Container>
   );
 };
 
-export default CustomersPage;
+export default TercerosPage;

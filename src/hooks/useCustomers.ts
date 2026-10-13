@@ -1,9 +1,13 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { customerService } from '@/services/customer.service';
-import { CreateCustomerDto, UpdateCustomerDto, Customer } from '@/types/customer.types';
+import { CreateCustomerDto, UpdateCustomerDto, Customer, CustomerListParams } from '@/types/customer.types';
 import { ApiResponse } from '@/types/api.types';
 
-export const useCustomers = (params?: any) => {
+/**
+ * Lists third parties. Without `kind` the backend returns clients only, so every
+ * existing consumer keeps its behaviour. Pass `{ kind: 'provider' }` for providers.
+ */
+export const useCustomers = (params?: CustomerListParams) => {
   return useQuery<ApiResponse<Customer[]>, Error>({ 
     queryKey: ['customers', params], 
     queryFn: () => customerService.getAll(params) 

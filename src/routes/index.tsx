@@ -34,9 +34,10 @@ import ForgotPasswordPage from '@/pages/Auth/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/Auth/ResetPasswordPage';
 // My-organization redirect helper
 import { useAuth } from '@/context/AuthContext';
-import CustomersPage from '@/pages/Customers/CustomersPage';
-import CustomerFormPage from '@/pages/Customers/CustomerFormPage';
-import CustomerDetailPage from '@/pages/Customers/CustomerDetailPage';
+import TercerosPage from '@/pages/Terceros/TercerosPage';
+import CustomerFormPage from '@/pages/Terceros/CustomerFormPage';
+import CustomerDetailPage from '@/pages/Terceros/CustomerDetailPage';
+import { LegacyCustomerRedirect } from '@/routes/LegacyCustomerRedirect';
 import ReportsPage from '@/pages/Reports/ReportsPage';
 import ViewReportPage from '@/pages/Reports/ViewReportPage';
 import ProtocolsPage from '@/pages/Protocols/ProtocolsPage';
@@ -192,10 +193,15 @@ const AppRoutes: React.FC = () => {
         <Route path="diario" element={<DiarioPage />} />
 
         {/* customers, reports, protocols, settings, hv-equipo */}
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="customers/new" element={<CustomerFormPage />} />
-        <Route path="customers/:id" element={<CustomerDetailPage />} />
-        <Route path="customers/:id/edit" element={<CustomerFormPage />} />
+        <Route path="terceros" element={<TercerosPage />} />
+        <Route path="terceros/new" element={<CustomerFormPage />} />
+        <Route path="terceros/:id" element={<CustomerDetailPage />} />
+        <Route path="terceros/:id/edit" element={<CustomerFormPage />} />
+        {/* Legacy /customers* links (emails, bookmarks) redirect to /terceros* */}
+        <Route path="customers" element={<LegacyCustomerRedirect />} />
+        <Route path="customers/new" element={<LegacyCustomerRedirect />} />
+        <Route path="customers/:id" element={<LegacyCustomerRedirect />} />
+        <Route path="customers/:id/edit" element={<LegacyCustomerRedirect />} />
 
         <Route path="reports" element={<ReportsPage />} />
         <Route path="reports/:reporteId/view" element={<ViewReportPage />} />

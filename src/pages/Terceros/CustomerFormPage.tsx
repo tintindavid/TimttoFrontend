@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, Card, Spinner, Form, Button, Row, Col, Image, Alert } from 'react-bootstrap';
 import { FaUpload, FaTimes } from 'react-icons/fa';
 import { useCustomer, useCreateCustomer, useUpdateCustomer } from '@/hooks/useCustomers';
+import { CustomerKind } from '@/types/customer.types';
 
 const CustomerFormPage: React.FC = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const { data: customerData } = useCustomer(id || '');
   const createMutation = useCreateCustomer();
@@ -28,8 +30,14 @@ const CustomerFormPage: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [fileError, setFileError] = useState<string>('');
 
-  console.log('logoFile:', logoFile);
-  console.log('formData:', formData);
+  // On edit the stored kind wins (kind is immutable); on create it comes from the active tab.
+  const kind: CustomerKind = isEdit
+    ? (customerData?.data?.kind ?? 'customer')
+    : (searchParams.get('kind') === 'provider' ? 'provider' : 'customer');
+  const isProvider = kind === 'provider';
+  const kindLabel = isProvider ? 'proveedor' : 'cliente';
+  const listPath = isProvider ? '/terceros?tab=provider' : '/terceros';
+
   // Inicializar datos cuando llegue la respuesta del backend
   useEffect(() => {
     if (isEdit && customerData?.data) {
@@ -90,12 +98,6 @@ const CustomerFormPage: React.FC = () => {
       return;
     }
 
-    console.log('🔄 Archivo seleccionado:', {
-      name: file.name,
-      type: file.type,
-      size: file.size
-    });
-
     setLogoFile(file);
 
     // Crear preview
@@ -131,32 +133,19 @@ const CustomerFormPage: React.FC = () => {
     if (formData.TelContacto) formDataToSend.append('TelContacto', formData.TelContacto);
     if (formData.UserContacto) formDataToSend.append('UserContacto', formData.UserContacto);
     
-    // Agregar archivo de logo si existe
-    if (logoFile) {
+    // Providers never carry a logo; kind is only sent on create (PUT ignores it)
+    if (!isEdit) formDataToSend.append('kind', kind);
+    if (logoFile && !isProvider) {
       formDataToSend.append('logo', logoFile, logoFile.name);
-      console.log('✅ Logo file agregado al FormData:', {
-        name: logoFile.name,
-        type: logoFile.type,
-        size: logoFile.size
-      });
-    } else {
-      console.log('⚠️ No hay archivo de logo para agregar');
     }
 
-    console.log('📦 FormData preparado para enviar. Campos:', {
-      Razonsocial: formData.Razonsocial,
-      Email: formData.Email,
-      logoFile: logoFile ? `${logoFile.name} (${logoFile.size} bytes)` : 'No file'
-    });
-
-    console.log('Enviando datos al servidor...', formDataToSend);
     try {
       if (isEdit && id) {
         await updateMutation.mutateAsync({ id, data: formDataToSend });
       } else {
         await createMutation.mutateAsync(formDataToSend);
       }
-      navigate('/customers');
+      navigate(listPath);
     } catch (error) {
       console.error('Error submitting form:', error);
     }
@@ -168,7 +157,7 @@ const CustomerFormPage: React.FC = () => {
     <Container>
       <Card className="tt-card">
         <Card.Body>
-          <Card.Title>{isEdit ? 'Editar Cliente' : 'Crear Cliente'}</Card.Title>
+          <Card.Title>{isEdit ? `Editar ${kindLabel}` : (isProvider ? 'Nuevo proveedor' : 'Crear cliente')}</Card.Title>
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
               <Form.Label>Razón social</Form.Label>
@@ -264,6 +253,7 @@ const CustomerFormPage: React.FC = () => {
               </Col>
             </Row>
 
+            {!isProvider && (
             <Form.Group className="mb-3">
               <Form.Label>Logo del Cliente</Form.Label>
               <div className="border rounded p-3 bg-light">
@@ -309,6 +299,7 @@ const CustomerFormPage: React.FC = () => {
                 )}
               </div>
             </Form.Group>
+            )}
 
             <div className="d-flex gap-2">
               <Button variant="secondary" onClick={() => navigate(-1)}>Cancelar</Button>

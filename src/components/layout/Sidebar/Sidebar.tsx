@@ -52,7 +52,7 @@ const baseMenu: MenuItem[] = [
   { id: 'cronogramas', label: 'Cronogramas', path: '/cronogramas', icon: <FaCalendarAlt /> },
   { id: 'informes', label: 'Informes', path: '/informes', icon: <FaFileAlt /> },
   { id: 'diario', label: 'Diario', path: '/diario', icon: <FaBook /> },
-  { id: 'customers', label: 'Clientes', path: '/customers', icon: <FaBuilding /> },
+  { id: 'customers', label: 'Terceros', path: '/terceros', icon: <FaBuilding /> },
   { id: 'users', label: 'Usuarios', path: '/users', icon: <FaUsers /> },
   { id: 'roles', label: 'Roles', path: '/roles', icon: <FaUserShield /> },
   { id: 'settings', label: 'Configuración', path: '/settings', icon: <FaCog /> },

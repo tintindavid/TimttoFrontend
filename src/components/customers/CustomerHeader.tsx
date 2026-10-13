@@ -56,9 +56,9 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ customer }) => {
               </Button>
               <Button
                 variant="primary"
-                onClick={() => navigate(`/customers/${customer._id}/edit`)}
+                onClick={() => navigate(`/terceros/${customer._id}/edit`)}
               >
-                Editar Cliente
+                {customer.kind === 'provider' ? 'Editar proveedor' : 'Editar Cliente'}
               </Button>
             </div>
           </Col>

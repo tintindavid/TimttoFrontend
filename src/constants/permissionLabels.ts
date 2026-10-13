@@ -24,7 +24,7 @@ export const RESOURCE_LABELS: Record<string, ResourceLabel> = {
   users: { plural: 'Usuarios', singular: 'usuario' },
   roles: { plural: 'Roles', singular: 'rol' },
   'my-tenant': { plural: 'Mi Organización', singular: 'organización' },
-  customers: { plural: 'Clientes', singular: 'cliente' },
+  customers: { plural: 'Terceros', singular: 'tercero' },
   sedes: { plural: 'Sedes', singular: 'sede' },
   addresses: { plural: 'Direcciones', singular: 'dirección' },
   servicios: { plural: 'Servicios', singular: 'servicio' },
