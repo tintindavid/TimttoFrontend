@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Container, Row, Col, Card, Spinner, Alert, Badge, Table,
   Tab, Tabs, Button, Nav, Form
@@ -25,10 +25,27 @@ import { CreateHVEquipoDto, UpdateHVEquipoDto } from '@/types/hvEquipo.types';
 import VerificationTrendsTab, { VerificationTolerance } from '@/components/hvEquipo/VerificationTrendsTab';
 import ActividadesExternasTab from '@/components/hvEquipo/ActividadesExternasTab';
 import GuiaRapidaTab, { GuiaRapidaSection } from '@/components/hvEquipo/GuiaRapidaTab';
+import DocumentosSection from '@/components/hvEquipo/DocumentosSection';
+import OtrasEspecificacionesSection from '@/components/hvEquipo/OtrasEspecificacionesSection';
 import Swal from 'sweetalert2';
 import './HVEquipoPage.css';
 import { useCurrentUserData } from '@/context/userContext';
 import { EstadoOperativoSourceLabels, EstadoOperativoSource } from '@/constants/estadoOperativo';
+import { USO_EQUIPO_OPTIONS, isMonths, formatMonths } from '@/constants/usoEquipo';
+
+/**
+ * True when a value should be rendered in view mode: not null/undefined,
+ * not an empty string, not the legacy 'N/A' placeholder and not an empty array.
+ */
+const hasValue = (value: unknown): boolean => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed !== '' && trimmed.toUpperCase() !== 'N/A';
+  }
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+};
 
 const HVEquipoPage: React.FC = () => {
   const { equipoId } = useParams<{ equipoId: string }>();
@@ -41,6 +58,10 @@ const HVEquipoPage: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<string>('hoja-vida');
   const [isEditingHV, setIsEditingHV] = useState(false);
+  const isEditingRef = useRef(false);
+  isEditingRef.current = isEditingHV;
+  // Bumped on Cancelar to reload the form from the persisted HV.
+  const [formResetKey, setFormResetKey] = useState(0);
   const [formData, setFormData] = useState<Partial<CreateHVEquipoDto>>({});
 
   // Queries
@@ -85,12 +106,16 @@ const HVEquipoPage: React.FC = () => {
 
   // Initialize formData when hvEquipo or equipo changes
   useEffect(() => {
+    // Document add/replace/delete refetches the HV while the user may be editing:
+    // do not wipe their unsaved changes.
+    if (isEditingRef.current && hvEquipo) return;
     if (hvEquipo) {
       // Si existe HV, cargar sus datos
       setFormData({
         clienteId: typeof hvEquipo.clienteId === 'object' ? hvEquipo.clienteId._id : hvEquipo.clienteId,
         EquipoId: typeof hvEquipo.EquipoId === 'object' ? hvEquipo.EquipoId._id : hvEquipo.EquipoId,
         Accesorios: hvEquipo.Accesorios || [],
+        OtrasEspecificaciones: hvEquipo.OtrasEspecificaciones || [],
         TecnologiaPredominante: hvEquipo.TecnologiaPredominante || '',
         EstadoHV: hvEquipo.EstadoHV || 'Guardada',
         Fabricante: hvEquipo.Fabricante || '',
@@ -101,8 +126,8 @@ const HVEquipoPage: React.FC = () => {
         TipoAdquisicion: hvEquipo.TipoAdquisicion,
         UsoEquipo: hvEquipo.UsoEquipo,
         RequiereCalibracion: hvEquipo.RequiereCalibracion || false,
-        PeriodicidadCalibracion: hvEquipo.PeriodicidadCalibracion || '',
-        PeriodicidadMantenimiento: hvEquipo.PeriodicidadMantenimiento || '',
+        PeriodicidadCalibracion: isMonths(hvEquipo.PeriodicidadCalibracion) ? hvEquipo.PeriodicidadCalibracion : '',
+        PeriodicidadMantenimiento: isMonths(hvEquipo.PeriodicidadMantenimiento) ? hvEquipo.PeriodicidadMantenimiento : '',
         RegistroINVIMA: hvEquipo.RegistroINVIMA || '',
         ClasificacinRiesgo: hvEquipo.ClasificacinRiesgo,
         TipoEquipo: hvEquipo.TipoEquipo || '',
@@ -140,6 +165,7 @@ const HVEquipoPage: React.FC = () => {
         EquipoId: equipoInfo._id || equipoId || '',
         EstadoHV: 'Guardada',
         Accesorios: [],
+        OtrasEspecificaciones: [],
         Recomendaciones: '',
         RequiereCalibracion: false,
         ManualDisponible: false,
@@ -148,7 +174,7 @@ const HVEquipoPage: React.FC = () => {
         Foto: '',
       });
     }
-  }, [hvEquipo, equipoInfo, equipoId]);
+  }, [hvEquipo, equipoInfo, equipoId, formResetKey]);
 
   // Filtered reportes
   const reportesPreventivos = useMemo(() => 
@@ -352,8 +378,8 @@ const HVEquipoPage: React.FC = () => {
           TipoAdquisicion: hvAprobada.TipoAdquisicion,
           UsoEquipo: hvAprobada.UsoEquipo,
           RequiereCalibracion: hvAprobada.RequiereCalibracion,
-          PeriodicidadCalibracion: hvAprobada.PeriodicidadCalibracion,
-          PeriodicidadMantenimiento: hvAprobada.PeriodicidadMantenimiento,
+          PeriodicidadCalibracion: isMonths(hvAprobada.PeriodicidadCalibracion) ? hvAprobada.PeriodicidadCalibracion : '',
+          PeriodicidadMantenimiento: isMonths(hvAprobada.PeriodicidadMantenimiento) ? hvAprobada.PeriodicidadMantenimiento : '',
           RegistroINVIMA: hvAprobada.RegistroINVIMA,
           ClasificacinRiesgo: hvAprobada.ClasificacinRiesgo,
           TipoEquipo: hvAprobada.TipoEquipo,
@@ -375,6 +401,7 @@ const HVEquipoPage: React.FC = () => {
           RequiereCapacitacion: hvAprobada.RequiereCapacitacion,
           Recomendaciones: hvAprobada.Recomendaciones,
           Accesorios: hvAprobada.Accesorios,
+          OtrasEspecificaciones: (hvAprobada.OtrasEspecificaciones || []).map(({ nombre, valor }: { nombre: string; valor: string }) => ({ nombre, valor })),
           // Bring the Guía Rápida and verification tolerances forward — same
           // marca/modelo will almost always share these, and the user can still
           // edit / remove sections afterwards.
@@ -455,6 +482,10 @@ const HVEquipoPage: React.FC = () => {
       // Agregar equipoSnapshot al formData
       const dataToSave = {
         ...formData,
+        // Drop blank rows (nombre and valor are both required by the backend)
+        OtrasEspecificaciones: (formData.OtrasEspecificaciones || [])
+          .map(item => ({ ...item, nombre: item.nombre.trim(), valor: item.valor.trim() }))
+          .filter(item => item.nombre && item.valor),
         equipoSnapshot
       };
 
@@ -553,6 +584,9 @@ const HVEquipoPage: React.FC = () => {
           id: hvEquipo._id,
           data: { 
             ...formData, 
+            OtrasEspecificaciones: (formData.OtrasEspecificaciones || [])
+              .map(item => ({ ...item, nombre: item.nombre.trim(), valor: item.valor.trim() }))
+              .filter(item => item.nombre && item.valor),
             EstadoHV: 'Aprobada',
             equipoSnapshot,
             // Campos de aprobación
@@ -590,6 +624,35 @@ const HVEquipoPage: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  // In view mode, hide a section when none of its fields has a value.
+  // Edit mode always renders every section.
+  const renderSectionIfHasContent = (fields: unknown[], children: React.ReactNode) =>
+    isEditingHV || fields.some(hasValue) ? children : null;
+
+  // Funciones para manejar otras especificaciones
+  const handleAddOtraEspec = () => {
+    setFormData(prev => ({
+      ...prev,
+      OtrasEspecificaciones: [...(prev.OtrasEspecificaciones || []), { nombre: '', valor: '' }]
+    }));
+  };
+
+  const handleRemoveOtraEspec = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      OtrasEspecificaciones: (prev.OtrasEspecificaciones || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleChangeOtraEspec = (index: number, field: 'nombre' | 'valor', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      OtrasEspecificaciones: (prev.OtrasEspecificaciones || []).map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
     }));
   };
 
@@ -810,7 +873,7 @@ const HVEquipoPage: React.FC = () => {
                     size="sm" 
                     onClick={() => {
                       setIsEditingHV(false);
-                      // Los datos se recargarán automáticamente desde el useEffect
+                      setFormResetKey((k) => k + 1);
                     }}
                   >
                     <FaTimes className="me-1" /> Cancelar
@@ -915,8 +978,18 @@ const HVEquipoPage: React.FC = () => {
                     </Col>
                   </Row>
 
+                  {/* Documentos */}
+                  <DocumentosSection
+                    hvId={hvEquipo?._id}
+                    documentos={hvEquipo?.Documentos || []}
+                    isEditing={isEditingHV}
+                  />
+
                   {/* Identificación de la Institución */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[clienteInfo?.Razonsocial, clienteInfoEquipo?.Razonsocial, clienteInfo?.Nit, clienteInfoEquipo?.Nit, clienteInfo?.Ciudad, clienteInfoEquipo?.Ciudad, clienteInfo?.Departamento, clienteInfoEquipo?.Departamento, clienteInfo?.Direccion, clienteInfoEquipo?.Direccion, clienteInfo?.TelContacto, clienteInfoEquipo?.TelContacto, clienteInfo?.Email, clienteInfoEquipo?.Email],
+(
+<div className="hv-section">
                     <h5 className="section-header">Identificación de la Institución</h5>
                     <Row>
                       <Col md={4}>
@@ -971,8 +1044,12 @@ const HVEquipoPage: React.FC = () => {
                       </Col>
                     </Row>
                   </div>
+))}
                 {/* Datos del Equipo */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[equipoInfo?.ItemId?.Nombre, equipoInfo?.Marca, equipoInfo?.Modelo, equipoInfo?.Serie, equipoInfo?.Inventario, equipoInfo?.Ubicacion, equipoInfo?.Servicio, equipoInfo?.Servicio?.nombre, hvEquipo?.Descripcion],
+(
+<div className="hv-section">
                     <h5 className="section-header">Datos del Equipo</h5>
 
                     <Row className="mb-3">
@@ -1025,7 +1102,8 @@ const HVEquipoPage: React.FC = () => {
                     </Row>
                     <Row>  {/* Campo de descripción que no viene de la hoja de vida y debe ser editable*/}
                       <Col md={12}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.Descripcion)) && (
+<div className="field-group">
                           <label>Descripción:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1039,16 +1117,22 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.Descripcion || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                   </div>
+))}
 
                   {/* Proveedor */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.NombreProveedor, hvEquipo?.TelefonoProveedor, hvEquipo?.EmailProveedor, hvEquipo?.CiudadProveedor, hvEquipo?.DireccionProveedor],
+(
+<div className="hv-section">
                     <h5 className="section-header">Información del Proveedor</h5>
                     <Row className="mb-2">
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.NombreProveedor)) && (
+<div className="field-group">
                           <label>Proveedor:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1062,9 +1146,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.NombreProveedor || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.TelefonoProveedor)) && (
+<div className="field-group">
                           <label>Teléfono:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1078,9 +1164,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.TelefonoProveedor || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.EmailProveedor)) && (
+<div className="field-group">
                           <label>Email:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1094,11 +1182,13 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.EmailProveedor || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                     <Row>
                       <Col md={6}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.CiudadProveedor)) && (
+<div className="field-group">
                           <label>Ciudad :</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1112,9 +1202,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.CiudadProveedor || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={6}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.DireccionProveedor)) && (
+<div className="field-group">
                           <label>Dirección:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1128,16 +1220,22 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.DireccionProveedor || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                   </div>
+))}
 
                   {/* Adquisición */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.TipoAdquisicion, hvEquipo?.ValorAdquisicion, hvEquipo?.UsoEquipo],
+(
+<div className="hv-section">
                     <h5 className="section-header">Información de Adquisición</h5>
                     <Row>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.TipoAdquisicion)) && (
+<div className="field-group">
                           <label>Tipo Adquisición:</label>
                           {isEditingHV ? (
                             <Form.Select
@@ -1158,9 +1256,11 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.ValorAdquisicion)) && (
+<div className="field-group">
                           <label>Valor Adquisición:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1178,9 +1278,11 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.UsoEquipo)) && (
+<div className="field-group">
                           <label>Uso del Equipo:</label>
                           {isEditingHV ? (
                             <Form.Select
@@ -1189,11 +1291,9 @@ const HVEquipoPage: React.FC = () => {
                               size="sm"
                             >
                               <option value="">Seleccionar...</option>
-                              <option value="Apoyo">Apoyo</option>
-                              <option value="Soporte">Soporte</option>
-                              <option value="Produccion">Producción</option>
-                              <option value="Investigacion">Investigación</option>
-                              <option value="Docencia">Docencia</option>
+                              {USO_EQUIPO_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
                             </Form.Select>
                           ) : (
                             <div className="field-value">
@@ -1201,15 +1301,21 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                   </div>
+))}
                                     {/* Fechas Importantes */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.FechaAdquisicin, hvEquipo?.FechaInstalacion, hvEquipo?.FechaFuncionamiento],
+(
+<div className="hv-section">
                     <h5 className="section-header">Fechas Importantes</h5>
                     <Row>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.FechaAdquisicin)) && (
+<div className="field-group">
                           <label>Fecha Adquisición:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1224,9 +1330,11 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.FechaInstalacion)) && (
+<div className="field-group">
                           <label>Fecha Instalación:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1241,9 +1349,11 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.FechaFuncionamiento)) && (
+<div className="field-group">
                           <label>Puesta en Funcionamiento:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1258,16 +1368,22 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                   </div>
+))}
 
                   {/* Características Eléctricas */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.Voltaje, hvEquipo?.Corriente, hvEquipo?.Frecuencia, hvEquipo?.Potencia, hvEquipo?.Peso, hvEquipo?.TemperaturaOperacion, hvEquipo?.HumedadOperacion, hvEquipo?.FuenteAlimentacion, hvEquipo?.AutonomiaBatería],
+(
+<div className="hv-section">
                     <h5 className="section-header">Registro Técnico y Características Eléctricas</h5>
                     <Row className="mb-3">
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.Voltaje)) && (
+<div className="field-group">
                           <label>Voltaje (V):</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1281,9 +1397,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.Voltaje || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.Corriente)) && (
+<div className="field-group">
                           <label>Corriente (A):</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1297,9 +1415,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.Corriente || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.Frecuencia)) && (
+<div className="field-group">
                           <label>Frecuencia (Hz):</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1313,9 +1433,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.Frecuencia || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.Potencia)) && (
+<div className="field-group">
                           <label>Potencia (W):</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1329,11 +1451,13 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.Potencia || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                     <Row>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.Peso)) && (
+<div className="field-group">
                           <label>Peso (kg):</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1347,9 +1471,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.Peso || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.TemperaturaOperacion)) && (
+<div className="field-group">
                           <label>Temperatura Operación:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1363,9 +1489,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.TemperaturaOperacion || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.HumedadOperacion)) && (
+<div className="field-group">
                           <label>Humedad Operación:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1379,9 +1507,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.HumedadOperacion || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.FuenteAlimentacion)) && (
+<div className="field-group">
                           <label>Fuente Alimentación:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1395,12 +1525,14 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.FuenteAlimentacion || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                     {(isEditingHV || hvEquipo?.AutonomiaBatería) && (
                       <Row className="mt-2">
                         <Col md={4}>
-                          <div className="field-group">
+                          {(isEditingHV || hasValue(hvEquipo?.AutonomiaBatería)) && (
+<div className="field-group">
                             <label>Autonomía Batería (horas):</label>
                             {isEditingHV ? (
                               <Form.Control
@@ -1414,17 +1546,23 @@ const HVEquipoPage: React.FC = () => {
                               <div className="field-value">{hvEquipo?.AutonomiaBatería}</div>
                             )}
                           </div>
+)}
                         </Col>
                       </Row>
                     )}
                   </div>
+))}
 
                   {/* Clasificación y Registro */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.RegistroINVIMA, hvEquipo?.ClasificacinRiesgo, hvEquipo?.TecnologiaPredominante, hvEquipo?.TipoEquipo],
+(
+<div className="hv-section">
                     <h5 className="section-header">Registro Sanitario y Clasificación</h5>
                     <Row>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.RegistroINVIMA)) && (
+<div className="field-group">
                           <label>Registro INVIMA:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1438,9 +1576,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.RegistroINVIMA || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.ClasificacinRiesgo)) && (
+<div className="field-group">
                           <label>Clasificación por Riesgo:</label>
                           {isEditingHV ? (
                             <Form.Select
@@ -1468,9 +1608,11 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.TecnologiaPredominante)) && (
+<div className="field-group">
                           <label>Tecnología Predominante:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1484,9 +1626,11 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.TecnologiaPredominante || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={12}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.TipoEquipo)) && (
+<div className="field-group">
                           <label>Tipo de Equipo:</label>
                           {isEditingHV ? (
                             <Form.Control
@@ -1500,16 +1644,22 @@ const HVEquipoPage: React.FC = () => {
                             <div className="field-value">{hvEquipo?.TipoEquipo || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                   </div>
+))}
 
                   {/* Metrología y Mantenimiento */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.RequiereCalibracion, hvEquipo?.PeriodicidadCalibracion, hvEquipo?.PeriodicidadMantenimiento, equipoInfo?.mesesMtto],
+(
+<div className="hv-section">
                     <h5 className="section-header">Metrología y Mantenimiento</h5>
                     <Row>
                       <Col md={3}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.RequiereCalibracion)) && (
+<div className="field-group">
                           <label>Requiere Calibración:</label>
                           {isEditingHV ? (
                             <Form.Check
@@ -1528,38 +1678,51 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
-                          <label>Periodicidad Calibración:</label>
+                        {(isEditingHV || hasValue(hvEquipo?.PeriodicidadCalibracion)) && (
+<div className="field-group">
+                          <label>Periodicidad Calibración (meses):</label>
                           {isEditingHV ? (
                             <Form.Control
-                              type="text"
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={999}
+                              step={1}
                               value={formData.PeriodicidadCalibracion || ''}
-                              onChange={(e) => handleFieldChange('PeriodicidadCalibracion', e.target.value)}
+                              onChange={(e) => handleFieldChange('PeriodicidadCalibracion', e.target.value.replace(/\D/g, '').slice(0, 3))}
                               size="sm"
-                              placeholder="Ej: Anual"
+                              placeholder="Ej: 12"
                             />
                           ) : (
-                            <div className="field-value">{hvEquipo?.PeriodicidadCalibracion || 'N/A'}</div>
+                            <div className="field-value">{formatMonths(hvEquipo?.PeriodicidadCalibracion) || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
-                        <div className="field-group">
-                          <label>Mantenimiento Preventivo:</label>
+                        {(isEditingHV || hasValue(hvEquipo?.PeriodicidadMantenimiento)) && (
+<div className="field-group">
+                          <label>Mantenimiento Preventivo (meses):</label>
                           {isEditingHV ? (
                             <Form.Control
-                              type="text"
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              max={999}
+                              step={1}
                               value={formData.PeriodicidadMantenimiento || ''}
-                              onChange={(e) => handleFieldChange('PeriodicidadMantenimiento', e.target.value)}
+                              onChange={(e) => handleFieldChange('PeriodicidadMantenimiento', e.target.value.replace(/\D/g, '').slice(0, 3))}
                               size="sm"
-                              placeholder="Ej: Semestral"
+                              placeholder="Ej: 6"
                             />
                           ) : (
-                            <div className="field-value">{hvEquipo?.PeriodicidadMantenimiento || 'N/A'}</div>
+                            <div className="field-value">{formatMonths(hvEquipo?.PeriodicidadMantenimiento) || 'N/A'}</div>
                           )}
                         </div>
+)}
                       </Col>
                       <Col md={3}>
                         <div className="field-group">
@@ -1573,9 +1736,23 @@ const HVEquipoPage: React.FC = () => {
                       </Col>
                     </Row>
                   </div>
+))}
+
+                  {/* Otras Especificaciones */}
+                  <OtrasEspecificacionesSection
+                    isEditing={isEditingHV}
+                    items={formData.OtrasEspecificaciones || []}
+                    viewItems={hvEquipo?.OtrasEspecificaciones || []}
+                    onAdd={handleAddOtraEspec}
+                    onRemove={handleRemoveOtraEspec}
+                    onChange={handleChangeOtraEspec}
+                  />
 
                   {/* Accesorios */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.Accesorios],
+(
+<div className="hv-section">
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <h5 className="section-header mb-0">Accesorios</h5>
                       {isEditingHV && (
@@ -1724,55 +1901,18 @@ const HVEquipoPage: React.FC = () => {
                       </>
                     )}
                   </div>
+))}
 
                   {/* Documentación */}
-                  <div className="hv-section">
-                    <h5 className="section-header">Documentación Disponible</h5>
+                  {renderSectionIfHasContent(
+[hvEquipo?.RequiereCapacitacion],
+(
+<div className="hv-section">
+                    <h5 className="section-header">Capacitación</h5>
                     <Row>
                       <Col md={4}>
-                        <div className="field-group">
-                          <label>Manual Disponible:</label>
-                          {isEditingHV ? (
-                            <Form.Check
-                              type="switch"
-                              checked={formData.ManualDisponible || false}
-                              onChange={(e) => handleFieldChange('ManualDisponible', e.target.checked)}
-                              label={formData.ManualDisponible ? 'SÍ' : 'NO'}
-                            />
-                          ) : (
-                            <div className="field-value">
-                              {hvEquipo?.ManualDisponible ? (
-                                <Badge bg="success"><FaCheck /> SÍ</Badge>
-                              ) : (
-                                <Badge bg="danger"><FaTimes /> NO</Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </Col>
-                      <Col md={4}>
-                        <div className="field-group">
-                          <label>Planos Disponibles:</label>
-                          {isEditingHV ? (
-                            <Form.Check
-                              type="switch"
-                              checked={formData.PlanoDisponible || false}
-                              onChange={(e) => handleFieldChange('PlanoDisponible', e.target.checked)}
-                              label={formData.PlanoDisponible ? 'SÍ' : 'NO'}
-                            />
-                          ) : (
-                            <div className="field-value">
-                              {hvEquipo?.PlanoDisponible ? (
-                                <Badge bg="success"><FaCheck /> SÍ</Badge>
-                              ) : (
-                                <Badge bg="danger"><FaTimes /> NO</Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </Col>
-                      <Col md={4}>
-                        <div className="field-group">
+                        {(isEditingHV || hasValue(hvEquipo?.RequiereCapacitacion)) && (
+<div className="field-group">
                           <label>Requiere Capacitación:</label>
                           {isEditingHV ? (
                             <Form.Check
@@ -1791,12 +1931,17 @@ const HVEquipoPage: React.FC = () => {
                             </div>
                           )}
                         </div>
+)}
                       </Col>
                     </Row>
                   </div>
+))}
 
                   {/* Recomendaciones */}
-                  <div className="hv-section">
+                  {renderSectionIfHasContent(
+[hvEquipo?.Recomendaciones],
+(
+<div className="hv-section">
                     <h5 className="section-header">Recomendaciones de Uso y Mantenimiento</h5>
                     {isEditingHV ? (
                       // Modo edición con textarea
@@ -1885,6 +2030,7 @@ const HVEquipoPage: React.FC = () => {
                       </>
                     )}
                   </div>
+))}
 
                   {/* Info de Auditoría - Solo si existe HV guardada */}
                   {hvEquipo && (
@@ -2420,6 +2566,15 @@ const HVEquipoPage: React.FC = () => {
             </span>
           }
         >
+          <DocumentosSection
+            hvId={hvEquipo?._id}
+            documentos={hvEquipo?.Documentos || []}
+            isEditing={isEditingHV}
+            categoria="guia_rapida"
+            title="Guía adjunta"
+            addLabel="Adjuntar Guía"
+            emptyText='No hay guías adjuntas. Haz clic en "Adjuntar Guía" para cargar un archivo o link.'
+          />
           {equipoId && (
             <GuiaRapidaTab
               // In edit mode we bind to formData so the guide saves atomically
