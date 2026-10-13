@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.23.0...v1.24.0) (2026-10-13)
+
+
+### Features
+
+* **terceros:** replace Clientes with Terceros (clients and providers) (frontend) ([#37](https://github.com/tintindavid/TimttoFrontend/issues/37)) ([84ad6e2](https://github.com/tintindavid/TimttoFrontend/commit/84ad6e27c8d972fa08a501318af2c6109e989331))
+
 # [1.23.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.22.0...v1.23.0) (2026-10-13)
 
 
