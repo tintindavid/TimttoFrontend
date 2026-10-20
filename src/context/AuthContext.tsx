@@ -46,9 +46,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // On mount, if there's a token and no user loaded, fetch current user.
   useEffect(() => {
     const init = async () => {
-      console.log('AuthContext init - token:', token);
-      console.log('AuthContext init - user:', user);
-
       if (token && !user) {
         try {
           console.log('AuthContext - Fetching user with authService.me()...');

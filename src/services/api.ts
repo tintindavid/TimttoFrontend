@@ -41,15 +41,28 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export const CHANGE_PASSWORD_PATH = '/change-password';
+
+/**
+ * True when a 428 MUST_CHANGE_PASSWORD response must send the user to the change-password page.
+ * It must NOT redirect when the user is already there: any request that still answers 428 on that
+ * page (the backend blocks every route except change-password, logout and refresh-token) would
+ * otherwise reload the page, fire the same request again and loop until the rate limiter answers 429.
+ */
+export const shouldRedirectToChangePassword = (
+  error: Pick<AxiosError<ApiErrorResponse>, 'response'>,
+  currentPathname: string
+): boolean =>
+  error.response?.status === 428 &&
+  error.response?.data?.error?.code === 'MUST_CHANGE_PASSWORD' &&
+  currentPathname !== CHANGE_PASSWORD_PATH;
+
 // Response interceptor: handle 428 MUST_CHANGE_PASSWORD globally
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError<ApiErrorResponse>) => {
-    if (
-      error.response?.status === 428 &&
-      error.response?.data?.error?.code === 'MUST_CHANGE_PASSWORD'
-    ) {
-      window.location.href = '/change-password';
+    if (shouldRedirectToChangePassword(error, window.location.pathname)) {
+      window.location.href = CHANGE_PASSWORD_PATH;
     }
     return Promise.reject(error);
   }

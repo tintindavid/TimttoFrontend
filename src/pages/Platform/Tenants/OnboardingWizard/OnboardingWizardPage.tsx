@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Container, Card, Breadcrumb, ProgressBar } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCreateTenantWithAdmin } from '@/hooks/usePlatformTenants';
-import type { WizardFormData, CreateTenantWithAdminResponse } from '@/types';
+import type { WizardFormData, CreateTenantWithAdminResponse, TenantType } from '@/types';
+import StepTenantType from './StepTenantType';
 import Step1TenantData from './Step1TenantData';
 import Step2AdminData from './Step2AdminData';
 import Step3Logo from './Step3Logo';
@@ -13,18 +14,20 @@ import CredentialsShownOnce from '../CredentialsShownOnce';
 // Step metadata
 // ---------------------------------------------------------------------------
 const STEPS = [
+  { label: 'Tipo' },
   { label: 'Datos del tenant' },
   { label: 'Administrador' },
   { label: 'Logo' },
   { label: 'Confirmar' },
 ] as const;
 
-type StepIndex = 1 | 2 | 3 | 4;
+type StepIndex = 1 | 2 | 3 | 4 | 5;
 
 // ---------------------------------------------------------------------------
 // Default form data — merged across steps
 // ---------------------------------------------------------------------------
 const initialFormData: WizardFormData = {
+  type: 'provider',
   tenant: {
     tenantId: '',
     name: '',
@@ -51,23 +54,30 @@ const OnboardingWizardPage: React.FC = () => {
   // ---------------------------------------------------------------------------
   // Step handlers
   // ---------------------------------------------------------------------------
+  const handleTypeNext = (type: TenantType) => {
+    setFormData((prev) => ({ ...prev, type }));
+    setStep(2);
+  };
+
   const handleStep1Next = (tenantData: WizardFormData['tenant']) => {
     setFormData((prev) => ({ ...prev, tenant: tenantData }));
-    setStep(2);
+    setStep(3);
   };
 
   const handleStep2Next = (adminData: WizardFormData['admin']) => {
     setFormData((prev) => ({ ...prev, admin: adminData }));
-    setStep(3);
+    setStep(4);
   };
 
   const handleStep3Next = (logoFile?: File) => {
     setFormData((prev) => ({ ...prev, logoFile }));
-    setStep(4);
+    setStep(5);
   };
 
   const handleSubmit = () => {
-    createMut.mutate(formData, {
+    // Provider is the backend default: only non-default types travel in the payload.
+    const { type, ...rest } = formData;
+    createMut.mutate(type === 'provider' ? rest : { ...rest, type }, {
       onSuccess: (data) => {
         setCredentials(data);
       },
@@ -125,29 +135,34 @@ const OnboardingWizardPage: React.FC = () => {
       <Card className="shadow-sm">
         <Card.Body className="p-4">
           {step === 1 && (
+            <StepTenantType defaultValue={formData.type} onNext={handleTypeNext} />
+          )}
+          {step === 2 && (
             <Step1TenantData
               defaultValues={formData.tenant}
               onNext={handleStep1Next}
-            />
-          )}
-          {step === 2 && (
-            <Step2AdminData
-              defaultValues={formData.admin}
-              onNext={handleStep2Next}
               onBack={() => setStep(1)}
+              requireOrgData={formData.type === 'client'}
             />
           )}
           {step === 3 && (
-            <Step3Logo
-              defaultFile={formData.logoFile}
-              onNext={handleStep3Next}
+            <Step2AdminData
+              defaultValues={formData.admin}
+              onNext={handleStep2Next}
               onBack={() => setStep(2)}
             />
           )}
           {step === 4 && (
+            <Step3Logo
+              defaultFile={formData.logoFile}
+              onNext={handleStep3Next}
+              onBack={() => setStep(3)}
+            />
+          )}
+          {step === 5 && (
             <Step4Confirmation
               formData={formData}
-              onBack={() => setStep(3)}
+              onBack={() => setStep(4)}
               onSubmit={handleSubmit}
               isSubmitting={createMut.isLoading}
             />

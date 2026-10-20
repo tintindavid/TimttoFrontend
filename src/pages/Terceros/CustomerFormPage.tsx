@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { Container, Card, Spinner, Form, Button, Row, Col, Image, Alert } from 'react-bootstrap';
 import { FaUpload, FaTimes } from 'react-icons/fa';
 import { useCustomer, useCreateCustomer, useUpdateCustomer } from '@/hooks/useCustomers';
 import { CustomerKind } from '@/types/customer.types';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 
 const CustomerFormPage: React.FC = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { can } = useTenantCapabilities();
+  const executesServices = can('executesServices');
 
   const { data: customerData } = useCustomer(id || '');
   const createMutation = useCreateCustomer();
@@ -36,7 +39,16 @@ const CustomerFormPage: React.FC = () => {
     : (searchParams.get('kind') === 'provider' ? 'provider' : 'customer');
   const isProvider = kind === 'provider';
   const kindLabel = isProvider ? 'proveedor' : 'cliente';
-  const listPath = isProvider ? '/terceros?tab=provider' : '/terceros';
+  // A tenant that does not execute services only has its organization client (no list of clients).
+  const listPath = isProvider
+    ? '/terceros?tab=provider'
+    : executesServices
+    ? '/terceros'
+    : id
+    ? `/terceros/${id}`
+    : '/terceros?tab=provider';
+  // The organization client of such a tenant carries no logo (PDF headers use the tenant logo).
+  const showLogo = !isProvider && executesServices;
 
   // Inicializar datos cuando llegue la respuesta del backend
   useEffect(() => {
@@ -135,7 +147,7 @@ const CustomerFormPage: React.FC = () => {
     
     // Providers never carry a logo; kind is only sent on create (PUT ignores it)
     if (!isEdit) formDataToSend.append('kind', kind);
-    if (logoFile && !isProvider) {
+    if (logoFile && showLogo) {
       formDataToSend.append('logo', logoFile, logoFile.name);
     }
 
@@ -152,6 +164,10 @@ const CustomerFormPage: React.FC = () => {
   };
 
   if (isEdit && !customerData) return <div className="d-flex justify-content-center my-4"><Spinner animation="border" /></div>;
+
+  if (!isEdit && !isProvider && !executesServices) {
+    return <Navigate to="/terceros?tab=provider" replace />;
+  }
 
   return (
     <Container>
@@ -253,7 +269,7 @@ const CustomerFormPage: React.FC = () => {
               </Col>
             </Row>
 
-            {!isProvider && (
+            {showLogo && (
             <Form.Group className="mb-3">
               <Form.Label>Logo del Cliente</Form.Label>
               <div className="border rounded p-3 bg-light">

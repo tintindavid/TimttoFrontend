@@ -37,6 +37,7 @@ import AssignTicketModal from './components/AssignTicketModal';
 import CancelTicketModal from './components/CancelTicketModal';
 import AddNoteModal from './components/AddNoteModal';
 import CreateOTFromTicketsModal from './components/CreateOTFromTicketsModal';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 
 const PAGE_LIMIT = 20;
 
@@ -46,6 +47,8 @@ const resolveClienteId = (t: Ticket): string => {
 };
 
 const TicketsPage: React.FC = () => {
+  const { can } = useTenantCapabilities();
+  const executesServices = can('executesServices');
   const [statusTab, setStatusTab] = useState<TicketStatus>('pendiente');
   const [page, setPage] = useState<number>(1);
   const [clienteFilter, setClienteFilter] = useState<string>('');
@@ -152,7 +155,7 @@ const TicketsPage: React.FC = () => {
           )}
         </div>
         <div className="d-flex gap-2">
-          {canCreateOT && (
+          {canCreateOT && executesServices && (
             <Button
               variant="warning"
               onClick={() => setShowCreateOT(true)}
@@ -257,7 +260,7 @@ const TicketsPage: React.FC = () => {
         </Card.Body>
       </Card>
 
-      {selectedTickets.length > 0 && !canCreateOT && (
+      {selectedTickets.length > 0 && !canCreateOT && executesServices && (
         <Alert variant="warning" className="py-2">
           {!sameClienteSelected
             ? 'Seleccione tickets de un único cliente para crear OT.'

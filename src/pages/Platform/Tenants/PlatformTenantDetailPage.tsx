@@ -20,6 +20,7 @@ import {
   useSoftDeleteTenant,
   useUpdateTenantMetadata,
 } from '@/hooks/usePlatformTenants';
+import TenantCapabilitiesPanel from './TenantCapabilitiesPanel';
 import type { TenantStatus, UpdateTenantMetadataInput } from '@/types';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -321,6 +322,8 @@ const PlatformTenantDetailPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      <TenantCapabilitiesPanel tenant={tenant} />
 
       {/* ------------------------------------------------------------------ */}
       {/* Edit modal                                                          */}

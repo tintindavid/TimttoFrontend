@@ -1,7 +1,7 @@
 import React from 'react';
 import { Row, Col, Card, Button, Alert, Spinner, ListGroup } from 'react-bootstrap';
 import { FaBuilding, FaUser, FaImage } from 'react-icons/fa';
-import type { WizardFormData } from '@/types';
+import { TENANT_TYPE_PRESETS, type WizardFormData } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -35,16 +35,20 @@ const Step4Confirmation: React.FC<Step4Props> = ({
   onSubmit,
   isSubmitting,
 }) => {
-  const { tenant, admin, logoFile } = formData;
+  const { tenant, admin, logoFile, type } = formData;
 
   return (
     <div>
-      <h5 className="mb-4">Paso 4 — Confirmar y crear</h5>
+      <h5 className="mb-4">Paso 5 — Confirmar y crear</h5>
 
       <Alert variant="info" className="mb-4">
         Revisa la información antes de crear el tenant. Una vez creado, el ID del tenant no
         puede cambiar.
       </Alert>
+
+      <p className="mb-3">
+        Tipo de organización: <strong>{TENANT_TYPE_PRESETS[type].label}</strong>
+      </p>
 
       <Row className="g-3 mb-4">
         {/* Tenant summary */}

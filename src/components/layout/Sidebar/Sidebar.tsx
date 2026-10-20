@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield, FaTicketAlt, FaQrcode, FaLayerGroup, FaCity } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
 import { useAuth } from '@/context/AuthContext';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import './Sidebar.css';
 
 type MenuItem = {
@@ -11,12 +12,21 @@ type MenuItem = {
   path?: string;
   icon?: React.ReactNode;
   subItems?: MenuItem[];
+  /** Hidden when the tenant lacks this capability. */
+  requires?: 'executesServices';
 };
 
 const hasInventarioPlan = () => {
   const plan = (localStorage.getItem('tenantPlan') || '').toLowerCase();
   return plan.includes('inventario');
 };
+
+const buildThirdPartyItems = (base: MenuItem, organizationCustomerId: string | null): MenuItem[] => [
+  ...(organizationCustomerId
+    ? [{ ...base, id: 'org-info', label: 'Mi información', path: `/terceros/${organizationCustomerId}` }]
+    : []),
+  { ...base, id: 'providers', label: 'Proveedores', path: '/terceros?tab=provider' },
+];
 
 const baseMenu: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', path: '/', icon: <FaList /> },
@@ -34,6 +44,7 @@ const baseMenu: MenuItem[] = [
   {
     id: 'ots',
     label: 'Órdenes de Trabajo',
+    requires: 'executesServices',
     icon: <FaClipboardList />,
     subItems: [
       { id: 'ots-list', label: 'Listado OTs', path: '/maintenance-orders' },
@@ -50,8 +61,8 @@ const baseMenu: MenuItem[] = [
     ],
   },
   { id: 'cronogramas', label: 'Cronogramas', path: '/cronogramas', icon: <FaCalendarAlt /> },
-  { id: 'informes', label: 'Informes', path: '/informes', icon: <FaFileAlt /> },
-  { id: 'diario', label: 'Diario', path: '/diario', icon: <FaBook /> },
+  { id: 'informes', label: 'Informes', path: '/informes', icon: <FaFileAlt />, requires: 'executesServices' },
+  { id: 'diario', label: 'Diario', path: '/diario', icon: <FaBook />, requires: 'executesServices' },
   { id: 'customers', label: 'Terceros', path: '/terceros', icon: <FaBuilding /> },
   { id: 'users', label: 'Usuarios', path: '/users', icon: <FaUsers /> },
   { id: 'roles', label: 'Roles', path: '/roles', icon: <FaUserShield /> },
@@ -81,8 +92,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }
   const [openId, setOpenId] = useState<string | null>(null);
   const location = useLocation();
   const { user } = useAuth();
+  const { can, organizationCustomerId } = useTenantCapabilities();
   const inventoryEnabled = hasInventarioPlan();
-  const baseAdjusted = baseMenu.map((item) => {
+  const executesServices = can('executesServices');
+  const baseAdjusted = baseMenu
+    .filter((item) => !item.requires || can(item.requires))
+    .flatMap((item) => {
+      if (item.id !== 'customers' || executesServices) return [item];
+      // Tenants that do not execute services: their single organization client and the provider list.
+      return buildThirdPartyItems(item, organizationCustomerId);
+    })
+    .map((item) => {
     if (item.id !== 'repuestos' || !item.subItems) return item;
     return {
       ...item,
@@ -133,7 +153,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }
 
         <Nav className="flex-column">
           {menu.map((m) => {
-            const active = m.path ? location.pathname.startsWith(m.path) : false;
+            const pathOnly = m.path?.split('?')[0];
+            const active = !pathOnly
+              ? false
+              : m.id === 'providers'
+              ? location.pathname === pathOnly
+              : location.pathname.startsWith(pathOnly);
             return (
               <div key={m.id} onMouseEnter={() => handleMouseEnter(m.id)} onMouseLeave={handleMouseLeave}>
                 <Nav.Item className={`menu-item ${active ? 'active' : ''}`}>

@@ -8,6 +8,8 @@ import type {
   SuspendTenantInput,
   UpdateTenantMetadataInput,
   PlatformTenant,
+  UpdateTenantCapabilitiesInput,
+  TenantCapabilities,
 } from '@/types';
 
 /**
@@ -38,18 +40,19 @@ export class PlatformTenantService {
   static async createWithAdmin(
     input: CreateTenantWithAdminInput
   ): Promise<CreateTenantWithAdminResponse> {
-    const { logoFile, tenant, admin } = input;
+    const { logoFile, tenant, admin, type } = input;
 
     if (logoFile) {
       const formData = new FormData();
       formData.append('tenant', JSON.stringify(tenant));
       formData.append('admin', JSON.stringify(admin));
+      if (type) formData.append('type', type);
       formData.append('logo', logoFile);
       const response = await api.post('/platform/tenants', formData);
       return response.data.data;
     }
 
-    const response = await api.post('/platform/tenants', { tenant, admin });
+    const response = await api.post('/platform/tenants', type ? { tenant, admin, type } : { tenant, admin });
     return response.data.data;
   }
 
@@ -73,6 +76,18 @@ export class PlatformTenantService {
     }
 
     const response = await api.put(`/platform/tenants/${id}`, input);
+    return response.data.data;
+  }
+
+  /**
+   * Changes the capability flags (or applies a preset). Rejects with 409
+   * ORGANIZATION_CUSTOMER_REQUIRED when the tenant has several clients and none was chosen.
+   */
+  static async updateCapabilities(
+    id: string,
+    input: UpdateTenantCapabilitiesInput
+  ): Promise<TenantCapabilities> {
+    const response = await api.patch(`/platform/tenants/${id}/capabilities`, input);
     return response.data.data;
   }
 

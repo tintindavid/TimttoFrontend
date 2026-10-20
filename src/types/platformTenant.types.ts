@@ -1,4 +1,5 @@
 import type { PaginationInfo } from './api.types';
+import type { TenantType } from './tenantCapabilities.types';
 
 // Status values for a platform-managed tenant
 export type TenantStatus = 'active' | 'suspended' | 'closed';
@@ -20,6 +21,9 @@ export interface PlatformTenant {
   logoUrl?: string;
   ownerId?: string;
   plan?: string;
+  /** Absent on tenants created before E5: treated as provider. */
+  capabilities?: { executesServices: boolean; registersExternal: boolean };
+  organizationCustomerId?: string | null;
   status: TenantStatus;
   isDeleted: boolean;
   deletedAt?: string | null;
@@ -62,6 +66,8 @@ export interface CreateTenantWithAdminInput {
     lastName: string;
   };
   logoFile?: File;
+  /** Preset sent next to tenant/admin. Omitted (backend default provider) for provider tenants. */
+  type?: TenantType;
 }
 
 // Slim admin shape returned inside the create response
@@ -120,6 +126,7 @@ export interface PlatformTenantsPaginatedResponse {
 
 // Accumulated form data across the 4 wizard steps
 export interface WizardFormData {
+  type: TenantType;
   tenant: CreateTenantWithAdminInput['tenant'];
   admin: CreateTenantWithAdminInput['admin'];
   logoFile?: File;

@@ -8,7 +8,7 @@ import type { WizardFormData } from '@/types';
 // ---------------------------------------------------------------------------
 // Validation schema
 // ---------------------------------------------------------------------------
-const schema = yup.object({
+const buildSchema = (requireOrgData: boolean) => yup.object({
   tenantId: yup
     .string()
     .required('El ID del tenant es requerido')
@@ -26,15 +26,25 @@ const schema = yup.object({
   name: yup.string().required('El nombre es requerido').min(2).max(200),
   slogan: yup.string().optional(),
   direccion: yup.string().optional(),
-  email: yup
-    .string()
-    .email('Email inválido')
-    .transform((val: string) => (val === '' ? undefined : val))
-    .optional(),
-  telefono: yup.string().optional(),
-  nit: yup.string().optional(),
-  ciudad: yup.string().optional(),
-  departamento: yup.string().optional(),
+  email: requireOrgData
+    ? yup.string().required('El email es requerido para organizaciones cliente').email('Email inválido')
+    : yup
+        .string()
+        .email('Email inválido')
+        .transform((val: string) => (val === '' ? undefined : val))
+        .optional(),
+  telefono: requireOrgData
+    ? yup.string().trim().required('El teléfono es requerido para organizaciones cliente')
+    : yup.string().optional(),
+  nit: requireOrgData
+    ? yup.string().trim().required('El NIT es requerido para organizaciones cliente')
+    : yup.string().optional(),
+  ciudad: requireOrgData
+    ? yup.string().trim().required('La ciudad es requerida para organizaciones cliente')
+    : yup.string().optional(),
+  departamento: requireOrgData
+    ? yup.string().trim().required('El departamento es requerido para organizaciones cliente')
+    : yup.string().optional(),
   pais: yup.string().optional(),
   website: yup
     .string()
@@ -43,7 +53,7 @@ const schema = yup.object({
     .optional(),
 });
 
-type Step1FormData = yup.InferType<typeof schema>;
+type Step1FormData = yup.InferType<ReturnType<typeof buildSchema>>;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -51,18 +61,26 @@ type Step1FormData = yup.InferType<typeof schema>;
 interface Step1Props {
   defaultValues?: Partial<WizardFormData['tenant']>;
   onNext: (data: WizardFormData['tenant']) => void;
+  onBack?: () => void;
+  /** Client organizations need NIT, city, department, email and phone to build their organization client. */
+  requireOrgData?: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-const Step1TenantData: React.FC<Step1Props> = ({ defaultValues, onNext }) => {
+const Step1TenantData: React.FC<Step1Props> = ({
+  defaultValues,
+  onNext,
+  onBack,
+  requireOrgData = false,
+}) => {
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<Step1FormData>({
-    resolver: yupResolver(schema),
+    resolver: yupResolver(buildSchema(requireOrgData)),
     defaultValues: defaultValues ?? {},
   });
 
@@ -84,7 +102,7 @@ const Step1TenantData: React.FC<Step1Props> = ({ defaultValues, onNext }) => {
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <h5 className="mb-4">Paso 1 — Datos del tenant</h5>
+      <h5 className="mb-4">Paso 2 — Datos del tenant</h5>
 
       <Row className="g-3">
         {/* Required fields */}
@@ -127,7 +145,7 @@ const Step1TenantData: React.FC<Step1Props> = ({ defaultValues, onNext }) => {
         {/* Optional fields */}
         <Col xs={12} md={6}>
           <Form.Group>
-            <Form.Label>Email de contacto</Form.Label>
+            <Form.Label>Email de contacto {requireOrgData && <span aria-hidden="true"> *</span>}</Form.Label>
             <Form.Control
               type="email"
               {...register('email')}
@@ -141,15 +159,21 @@ const Step1TenantData: React.FC<Step1Props> = ({ defaultValues, onNext }) => {
 
         <Col xs={12} md={6}>
           <Form.Group>
-            <Form.Label>Teléfono</Form.Label>
-            <Form.Control {...register('telefono')} />
+            <Form.Label>Teléfono {requireOrgData && <span aria-hidden="true"> *</span>}</Form.Label>
+            <Form.Control {...register('telefono')} isInvalid={!!errors.telefono} />
+            <Form.Control.Feedback type="invalid">
+              {errors.telefono?.message}
+            </Form.Control.Feedback>
           </Form.Group>
         </Col>
 
         <Col xs={12} md={6}>
           <Form.Group>
-            <Form.Label>NIT</Form.Label>
-            <Form.Control {...register('nit')} placeholder="900.123.456-7" />
+            <Form.Label>NIT {requireOrgData && <span aria-hidden="true"> *</span>}</Form.Label>
+            <Form.Control {...register('nit')} isInvalid={!!errors.nit} placeholder="900.123.456-7" />
+            <Form.Control.Feedback type="invalid">
+              {errors.nit?.message}
+            </Form.Control.Feedback>
           </Form.Group>
         </Col>
 
@@ -162,15 +186,21 @@ const Step1TenantData: React.FC<Step1Props> = ({ defaultValues, onNext }) => {
 
         <Col xs={12} md={4}>
           <Form.Group>
-            <Form.Label>Ciudad</Form.Label>
-            <Form.Control {...register('ciudad')} />
+            <Form.Label>Ciudad {requireOrgData && <span aria-hidden="true"> *</span>}</Form.Label>
+            <Form.Control {...register('ciudad')} isInvalid={!!errors.ciudad} />
+            <Form.Control.Feedback type="invalid">
+              {errors.ciudad?.message}
+            </Form.Control.Feedback>
           </Form.Group>
         </Col>
 
         <Col xs={12} md={4}>
           <Form.Group>
-            <Form.Label>Departamento</Form.Label>
-            <Form.Control {...register('departamento')} />
+            <Form.Label>Departamento {requireOrgData && <span aria-hidden="true"> *</span>}</Form.Label>
+            <Form.Control {...register('departamento')} isInvalid={!!errors.departamento} />
+            <Form.Control.Feedback type="invalid">
+              {errors.departamento?.message}
+            </Form.Control.Feedback>
           </Form.Group>
         </Col>
 
@@ -204,7 +234,14 @@ const Step1TenantData: React.FC<Step1Props> = ({ defaultValues, onNext }) => {
         </Col>
       </Row>
 
-      <div className="d-flex justify-content-end mt-4">
+      <div className="d-flex justify-content-between mt-4">
+        {onBack ? (
+          <Button variant="secondary" onClick={onBack}>
+            ← Anterior
+          </Button>
+        ) : (
+          <span />
+        )}
         <Button type="submit" variant="primary">
           Siguiente →
         </Button>
