@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.24.0...v1.25.0) (2026-10-20)
+
+
+### Features
+
+* **tenant:** gate the UI by tenant capabilities (frontend) ([#38](https://github.com/tintindavid/TimttoFrontend/issues/38)) ([bca0a14](https://github.com/tintindavid/TimttoFrontend/commit/bca0a14e910007e565a482b2e771018b2594f740))
+
 # [1.24.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.23.0...v1.24.0) (2026-10-13)
 
 
