@@ -26,11 +26,15 @@ export const CronogramaAcciones: React.FC<CronogramaAccionesProps> = ({
   mostrarCrearOT = true
 }) => {
   const { can } = useTenantCapabilities();
+  // Selecting equipment only feeds "Crear OT": a tenant that can not create work orders has nothing to do with it.
+  const puedeCrearOT = mostrarCrearOT && can('executesServices');
   return (
     <div className="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded">
+      {puedeCrearOT ? (
       <div className="d-flex align-items-center gap-3">
         <Form.Check
           type="checkbox"
+          id="cronograma-seleccionar-todos"
           label={
             <span className="fw-bold">
               Seleccionar todos los visibles
@@ -51,6 +55,7 @@ export const CronogramaAcciones: React.FC<CronogramaAccionesProps> = ({
           </Button>
         )}
       </div>
+      ) : <div />}
 
       <ButtonGroup>
         <OverlayTrigger
@@ -71,7 +76,7 @@ export const CronogramaAcciones: React.FC<CronogramaAccionesProps> = ({
           </Button>
         </OverlayTrigger>
 
-        {mostrarCrearOT && can('executesServices') && (
+        {puedeCrearOT && (
           <Button
             variant="success"
             onClick={onCrearOT}

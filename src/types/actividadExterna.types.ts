@@ -46,6 +46,8 @@ export interface ActividadExterna {
   /** Linked provider third party (Customer kind=provider); null for free-text providers. */
   proveedorId?: string | null;
   observacion?: string;
+  /** Operative state of the equipment reported with the activity (absent in activities loaded before the field). */
+  estadoOperativo?: string;
   estadoFinal: EstadoFinal;
   estadoFinalCustom?: string;
   evidencia?: Evidencia;
@@ -72,6 +74,8 @@ export interface CreateActividadDto {
   proveedor?: string;
   proveedorId?: string;
   observacion?: string;
+  /** Operative state of the equipment after the activity; becomes its current state when it is the latest service. */
+  estadoOperativo?: string;
   estadoFinal: EstadoFinal;
   estadoFinalCustom?: string;
   enlace?: string;

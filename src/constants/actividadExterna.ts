@@ -34,6 +34,7 @@ export const ERROR_CODE_MESSAGES: Record<string, string> = {
   FILE_CONTENT_MISMATCH: 'El contenido del archivo no coincide con su extensión.',
   VALIDATION_ERROR: 'Datos inválidos. Revisa el formulario.',
   SUCCESSOR_CANNOT_BE_UNIQUE: 'Una actividad sucesora no puede ser única.',
+  SUCCESSOR_DATE_BEFORE_CURRENT: 'La fecha no puede ser anterior a la última actividad de la cadena.',
   INCONSISTENT_STATE: 'La cadena está en un estado inconsistente. Contacta a soporte.',
   FRECUENCIA_REQUIRED: 'Debes indicar la frecuencia en meses o marcar la actividad como única.',
   NO_EVIDENCE: 'La actividad no tiene evidencia adjunta.',

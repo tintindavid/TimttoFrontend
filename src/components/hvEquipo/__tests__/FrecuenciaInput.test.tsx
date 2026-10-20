@@ -2,6 +2,19 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import FrecuenciaInput from '../FrecuenciaInput';
 
+describe('FrecuenciaInput - sinUnica (continuing a chain)', () => {
+  it('hides the single-shot option and keeps the repeat input', () => {
+    render(<FrecuenciaInput value={{ esUnica: false, meses: 6 }} onChange={vi.fn()} sinUnica />);
+    expect(screen.queryByLabelText(/única/i)).toBeNull();
+    expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('6');
+  });
+
+  it('shows it by default (equipment record)', () => {
+    render(<FrecuenciaInput value={{ esUnica: false, meses: 6 }} onChange={vi.fn()} />);
+    expect(screen.getByLabelText(/única/i)).toBeInTheDocument();
+  });
+});
+
 describe('FrecuenciaInput', () => {
   it('al elegir "única" setea esUnica=true', () => {
     const onChange = vi.fn();

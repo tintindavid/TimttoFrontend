@@ -3,6 +3,9 @@ import { Button, Modal } from 'react-bootstrap';
 import { FaFilePdf } from 'react-icons/fa';
 import { EquipmentQr } from '@/types/equipmentQr.types';
 
+/** Same text the PDF prints (`STICKER_BRAND_TEXT` in the backend constants). */
+export const STICKER_BRAND_TEXT = 'www.timtto.com';
+
 /** A QR + the inventario of its equipo (the dynamic third sticker line). */
 export interface EquipmentQrPreviewItem {
   qr: EquipmentQr;
@@ -13,15 +16,17 @@ interface EquipmentQrPreviewModalProps {
   show: boolean;
   onHide: () => void;
   items: EquipmentQrPreviewItem[];
+  /** Name of the client the equipment belongs to (first line of the sticker). */
+  clienteNombre?: string | null;
   /** When provided, shows a confirm button that triggers the PDF export. */
   onConfirmExport?: () => void;
   isExporting?: boolean;
 }
 
 /**
- * Preview of the sticker layout before printing — QR square on the left,
- * three stacked lines on the right: "Mantenimiento", "Información", and the
- * equipo's `Inventario` as the dynamic third line. Mirrors the PDF layout
+ * Preview of the sticker layout before printing — QR square on the left; on
+ * the right the client's name, the equipo's `Inventario` and, level with the
+ * bottom of the QR, the small brand address. Mirrors the PDF layout
  * produced by `equipmentQrPdf.service.js`. Used both as the per-row "Ver QR"
  * modal and as the confirm step before a bulk export.
  */
@@ -29,6 +34,7 @@ const EquipmentQrPreviewModal: React.FC<EquipmentQrPreviewModalProps> = ({
   show,
   onHide,
   items,
+  clienteNombre,
   onConfirmExport,
   isExporting,
 }) => {
@@ -65,10 +71,17 @@ const EquipmentQrPreviewModal: React.FC<EquipmentQrPreviewModalProps> = ({
                     </div>
                   )}
                 </div>
-                <div className="flex-grow-1">
-                  <div className="fw-semibold">Mantenimiento</div>
-                  <div className="fw-semibold">Información</div>
-                  <div className="fw-semibold">{inventario || '—'}</div>
+                <div
+                  className="flex-grow-1 d-flex flex-column justify-content-between"
+                  style={{ minHeight: 136, minWidth: 0 }}
+                >
+                  <div>
+                    <div className="fw-bold text-break" data-testid="sticker-cliente">{clienteNombre || '—'}</div>
+                    <div className="fw-semibold text-secondary mt-1" data-testid="sticker-inventario">{inventario || '—'}</div>
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '0.7rem' }} data-testid="sticker-marca">
+                    {STICKER_BRAND_TEXT}
+                  </div>
                 </div>
               </div>
             ))}

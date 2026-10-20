@@ -24,9 +24,17 @@ import {Repuesto} from '@/types/repuesto.types';
 import { CreateHVEquipoDto, UpdateHVEquipoDto } from '@/types/hvEquipo.types';
 import VerificationTrendsTab, { VerificationTolerance } from '@/components/hvEquipo/VerificationTrendsTab';
 import ActividadesExternasTab from '@/components/hvEquipo/ActividadesExternasTab';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import GuiaRapidaTab, { GuiaRapidaSection } from '@/components/hvEquipo/GuiaRapidaTab';
 import DocumentosSection from '@/components/hvEquipo/DocumentosSection';
 import OtrasEspecificacionesSection from '@/components/hvEquipo/OtrasEspecificacionesSection';
+import {
+  AdicionarServicioExterno,
+  EliminarServicioExterno,
+  InsigniaExterno,
+  VerServicio,
+  esReporteExterno,
+} from '@/components/hvEquipo/ServicioExternoControles';
 import Swal from 'sweetalert2';
 import './HVEquipoPage.css';
 import { useCurrentUserData } from '@/context/userContext';
@@ -48,6 +56,10 @@ const hasValue = (value: unknown): boolean => {
 };
 
 const HVEquipoPage: React.FC = () => {
+  // Premium module "Servicios de terceros": the external activities tab only exists for tenants that have it.
+  // While the capabilities load they default to enabled: the tab waits, or it would fire requests that answer 403.
+  const { can: puedeUsarModulo, isLoading: cargandoModulos } = useTenantCapabilities();
+  const verActividadesExternas = !cargandoModulos && puedeUsarModulo('registersExternal');
   const { equipoId } = useParams<{ equipoId: string }>();
   const navigate = useNavigate();
   const user = useCurrentUserData()
@@ -57,6 +69,8 @@ const HVEquipoPage: React.FC = () => {
   
   
   const [activeTab, setActiveTab] = useState<string>('hoja-vida');
+  // The VP tab loads its history once; bumping this key reloads it after a third-party service is added or removed.
+  const [vpRefreshKey, setVpRefreshKey] = useState(0);
   const [isEditingHV, setIsEditingHV] = useState(false);
   const isEditingRef = useRef(false);
   isEditingRef.current = isEditingHV;
@@ -2089,10 +2103,22 @@ const HVEquipoPage: React.FC = () => {
         >
           <Card>
             <Card.Header>
-              <h5 className="mb-0">
-                <FaClipboardList className="me-2" />
-                Historial de Mantenimientos Preventivos
-              </h5>
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  <FaClipboardList className="me-2" />
+                  Historial de Mantenimientos Preventivos
+                </h5>
+                {equipoId && (
+                  <AdicionarServicioExterno
+                    tipoMtto="Preventivo"
+                    equipoId={equipoId}
+                    estadoActual={equipo?.EstadoOperativo}
+                    mesesMtto={equipo?.mesesMtto}
+                    mesesRealizados={equipo?.mesesMttoRealizados}
+                    onChanged={() => setVpRefreshKey((k) => k + 1)}
+                  />
+                )}
+              </div>
             </Card.Header>
             <Card.Body>
               {reportesPreventivos.length === 0 ? (
@@ -2117,7 +2143,7 @@ const HVEquipoPage: React.FC = () => {
                     {reportesPreventivos.map((reporte) => (
                       <tr key={reporte._id}>
 
-                        <td>{reporte.fechaProcesado ? new Date(reporte.fechaProcesado).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' }) : 'N/A'}</td>
+                        <td>{reporte.fechaProcesado ? new Date(reporte.fechaProcesado).toLocaleDateString('es-ES', { timeZone: esReporteExterno(reporte) ? 'UTC' : 'America/Bogota' }) : 'N/A'}</td>
                         <td>
                           <Badge bg="primary">{reporte.consecutivo || 'N/A'}</Badge>
                         </td>
@@ -2131,7 +2157,9 @@ const HVEquipoPage: React.FC = () => {
                           </Badge>
                         </td>
                         <td>
-                          {reporte.ResponsableMtto?.firstName} {reporte.ResponsableMtto?.lastName}
+                          {esReporteExterno(reporte)
+                            ? <InsigniaExterno reporte={reporte} />
+                            : <>{reporte.ResponsableMtto?.firstName} {reporte.ResponsableMtto?.lastName}</>}
                         </td>
                         <td>
                           {reporte.actividadesRealizadas?.filter(a => a.realizado).length || 0} 
@@ -2152,13 +2180,10 @@ const HVEquipoPage: React.FC = () => {
                         </td>
                         {/** Boton para ver abrir nueva pestañana con detalles del reporte /reports/{id}/view */}
                         <td className="text-center">
-                          <Button
-                            variant="info"
-                            size="sm"
-                            onClick={() => window.open(`/reports/${reporte._id}/view`, '_blank')}
-                          >
-                            Ver
-                          </Button>
+                          <VerServicio reporte={reporte} />
+                          {equipoId && (
+                            <EliminarServicioExterno equipoId={equipoId} reporte={reporte} onChanged={() => setVpRefreshKey((k) => k + 1)} />
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -2337,10 +2362,19 @@ const HVEquipoPage: React.FC = () => {
         >
           <Card>
             <Card.Header>
-              <h5 className="mb-0">
-                <FaTools className="me-2" />
-                Mantenimientos Correctivos y Otros Servicios
-              </h5>
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  <FaTools className="me-2" />
+                  Mantenimientos Correctivos y Otros Servicios
+                </h5>
+                {equipoId && (
+                  <AdicionarServicioExterno
+                    tipoMtto="Correctivo"
+                    equipoId={equipoId}
+                    estadoActual={equipo?.EstadoOperativo}
+                  />
+                )}
+              </div>
             </Card.Header>
             <Card.Body>
               {reportesCorrectivos.length === 0 ? (
@@ -2365,9 +2399,11 @@ const HVEquipoPage: React.FC = () => {
                   <tbody>
                     {reportesCorrectivos.map((reporte) => (
                       <tr key={reporte._id}>
-                        <td>{reporte.fechaProcesado ? new Date(reporte.fechaProcesado).toLocaleDateString('es-ES', { timeZone: 'America/Bogota' }) : 'N/A'}</td>
+                        <td>{reporte.fechaProcesado ? new Date(reporte.fechaProcesado).toLocaleDateString('es-ES', { timeZone: esReporteExterno(reporte) ? 'UTC' : 'America/Bogota' }) : 'N/A'}</td>
                         <td>
-                         <strong>{reporte.ResponsableMtto?.firstName || 'N/A'} {reporte.ResponsableMtto?.lastName || 'N/A'}</strong>
+                         {esReporteExterno(reporte)
+                           ? <InsigniaExterno reporte={reporte} />
+                           : <strong>{reporte.ResponsableMtto?.firstName || 'N/A'} {reporte.ResponsableMtto?.lastName || 'N/A'}</strong>}
                         </td>
                         <td>
                           <Badge bg="primary">{reporte.consecutivo || 'N/A'}</Badge>
@@ -2400,13 +2436,10 @@ const HVEquipoPage: React.FC = () => {
                           </Badge>
                         </td>
                         <td>
-                          <Button
-                            variant="info"
-                            size="sm"
-                            onClick={() => window.open(`/reports/${reporte._id}/view`, '_blank')}
-                          >
-                            Ver
-                          </Button>
+                          <VerServicio reporte={reporte} />
+                          {equipoId && (
+                            <EliminarServicioExterno equipoId={equipoId} reporte={reporte} />
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -2612,6 +2645,7 @@ const HVEquipoPage: React.FC = () => {
         >
           {equipoId && (
             <VerificationTrendsTab
+              key={vpRefreshKey}
               equipoId={equipoId}
               tolerances={((hvEquipo as any)?.verificationTolerances as VerificationTolerance[]) || []}
               canEditTolerances={Boolean(hvEquipo)}
@@ -2627,23 +2661,26 @@ const HVEquipoPage: React.FC = () => {
           )}
         </Tab>
 
-        {/* TAB 7: ACTIVIDADES EXTERNAS */}
-        <Tab
-          eventKey="actividades-externas"
-          title={
-            <>
-              <FaClipboardList className="me-1" />
-              Actividades externas
-            </>
-          }
-        >
-          {equipoId && hvEquipo && (
-            <ActividadesExternasTab
-              equipoId={equipoId}
-              clienteId={typeof hvEquipo.clienteId === 'object' ? hvEquipo.clienteId._id : hvEquipo.clienteId}
-            />
-          )}
-        </Tab>
+        {/* TAB 7: ACTIVIDADES EXTERNAS (premium module "Servicios de terceros") */}
+        {verActividadesExternas && (
+          <Tab
+            eventKey="actividades-externas"
+            title={
+              <>
+                <FaClipboardList className="me-1" />
+                Actividades externas
+              </>
+            }
+          >
+            {equipoId && hvEquipo && (
+              <ActividadesExternasTab
+                equipoId={equipoId}
+                clienteId={typeof hvEquipo.clienteId === 'object' ? hvEquipo.clienteId._id : hvEquipo.clienteId}
+                estadoActual={equipo?.EstadoOperativo}
+              />
+            )}
+          </Tab>
+        )}
       </Tabs>
     </Container>
   );

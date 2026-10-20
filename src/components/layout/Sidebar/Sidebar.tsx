@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield, FaTicketAlt, FaQrcode, FaLayerGroup, FaCity } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
 import { useAuth } from '@/context/AuthContext';
 import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
+import { useEsEscritorio } from '@/hooks/useEsEscritorio';
 import './Sidebar.css';
 
 type MenuItem = {
@@ -12,8 +13,8 @@ type MenuItem = {
   path?: string;
   icon?: React.ReactNode;
   subItems?: MenuItem[];
-  /** Hidden when the tenant lacks this capability. */
-  requires?: 'executesServices';
+  /** Hidden when the tenant lacks this capability (`usesQrs` = premium module "QRs y tickets"). */
+  requires?: 'executesServices' | 'registersExternal' | 'usesQrs';
 };
 
 const hasInventarioPlan = () => {
@@ -71,8 +72,8 @@ const baseMenu: MenuItem[] = [
 
 // Admin-only entries (role='admin') injected at the end of the menu.
 const adminMenu: MenuItem[] = [
-  { id: 'tickets', label: 'Tickets', path: '/tickets', icon: <FaTicketAlt /> },
-  { id: 'service-qrs', label: 'QR de Servicios', path: '/configuracion/qr-services', icon: <FaQrcode /> },
+  { id: 'tickets', label: 'Tickets', path: '/tickets', icon: <FaTicketAlt />, requires: 'usesQrs' },
+  { id: 'service-qrs', label: 'QR de Servicios', path: '/configuracion/qr-services', icon: <FaQrcode />, requires: 'usesQrs' },
   // "Mi organización" link for tenant admins (not superadmin — they go to /admin)
   { id: 'my-organization', label: 'Mi Organización', path: '/my-organization', icon: <FaCity /> },
 ];
@@ -86,13 +87,35 @@ const superadminMenu: MenuItem[] = [
 interface SidebarProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  /** Compact mode (a strip of icons) on desktop. Default: fixed. Ignored below the large-screen breakpoint. */
+  compacto?: boolean;
+  /** The compact menu is open (floating over the content). */
+  abierto?: boolean;
+  onAbrir?: () => void;
+  onCerrar?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }) => {
+/** Wait before a hover opens the compact menu, so crossing the edge by accident does not open it. */
+export const ESPERA_APERTURA_MS = 200;
+
+const Sidebar: React.FC<SidebarProps> = ({
+  isMobileOpen = false,
+  onCloseMobile,
+  compacto = false,
+  abierto = false,
+  onAbrir,
+  onCerrar,
+}) => {
   const [openId, setOpenId] = useState<string | null>(null);
   const location = useLocation();
   const { user } = useAuth();
   const { can, organizationCustomerId } = useTenantCapabilities();
+  const esEscritorio = useEsEscritorio();
+  // Below the breakpoint the menu is the drawer of always: the compact mode does not exist there.
+  const modoCompacto = compacto && esEscritorio;
+  const compactoCerrado = modoCompacto && !abierto;
+  const asideRef = useRef<HTMLElement | null>(null);
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inventoryEnabled = hasInventarioPlan();
   const executesServices = can('executesServices');
   const baseAdjusted = baseMenu
@@ -116,35 +139,117 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }
     user?.role === 'superadmin'
       ? [...baseAdjusted, ...superadminMenu]
       : user?.role === 'admin'
-      ? [...baseAdjusted, ...adminMenu]
+      ? [...baseAdjusted, ...adminMenu.filter((item) => !item.requires || can(item.requires))]
       : baseAdjusted;
 
   const handleMouseEnter = (id: string) => setOpenId(id);
   const handleMouseLeave = () => setOpenId(null);
 
-  const handleLinkClick = () => {
+  const cancelarApertura = () => {
+    if (temporizador.current) {
+      clearTimeout(temporizador.current);
+      temporizador.current = null;
+    }
+  };
+
+  // Hover with intent: the panel opens after a short wait; leaving before it ends cancels it. Once open, leaving does
+  // NOT close it (it closes by a click outside, Esc, navigation or a link).
+  const handleAsideMouseEnter = () => {
+    if (!compactoCerrado) return;
+    cancelarApertura();
+    temporizador.current = setTimeout(() => {
+      temporizador.current = null;
+      onAbrir?.();
+    }, ESPERA_APERTURA_MS);
+  };
+
+  // Keyboard: focus inside the menu opens it at once.
+  const handleAsideFocus = () => {
+    if (compactoCerrado) onAbrir?.();
+  };
+
+  // Touch (no hover): the first tap on the closed strip opens it WITHOUT following the link that was touched.
+  const handleAsideClickCapture = (e: React.MouseEvent) => {
+    if (!compactoCerrado) return;
+    e.preventDefault();
+    cancelarApertura();
+    onAbrir?.();
+  };
+
+  useEffect(() => cancelarApertura, []);
+  useEffect(() => {
+    if (!modoCompacto) cancelarApertura();
+  }, [modoCompacto]);
+
+  // While the compact panel is open: a click outside it or Esc closes it. Listeners exist only while it is open.
+  useEffect(() => {
+    if (!modoCompacto || !abierto) return undefined;
+    const alPresionar = (e: MouseEvent) => {
+      if (asideRef.current && !asideRef.current.contains(e.target as Node)) onCerrar?.();
+    };
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCerrar?.();
+    };
+    document.addEventListener('mousedown', alPresionar);
+    document.addEventListener('keydown', alTeclear);
+    return () => {
+      document.removeEventListener('mousedown', alPresionar);
+      document.removeEventListener('keydown', alTeclear);
+    };
+  }, [modoCompacto, abierto, onCerrar]);
+
+  // Navigating (by the menu or any other way) puts the compact menu back to the strip. Only a CHANGE of route closes
+  // it: mounting with the panel already open must not.
+  const rutaPrevia = useRef(location.pathname);
+  useEffect(() => {
+    if (rutaPrevia.current === location.pathname) return;
+    rutaPrevia.current = location.pathname;
+    if (modoCompacto && abierto) onCerrar?.();
+    // only a change of route must close it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  const handleLinkClick = (e?: React.MouseEvent) => {
     // Cerrar sidebar en móviles al hacer clic en un link
     if (onCloseMobile) {
       onCloseMobile();
     }
+    // and put the compact menu back to the strip; the first tap on a closed strip only OPENS it (the capture handler
+    // already prevented the default), so it must not close it again
+    if (modoCompacto && !e?.defaultPrevented) onCerrar?.();
   };
 
+  const clases = [
+    'sidebar',
+    isMobileOpen ? 'sidebar-mobile-open' : '',
+    modoCompacto ? 'sidebar-compacto' : '',
+    modoCompacto && abierto ? 'sidebar-flotando' : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <>
+    <div className={`sidebar-slot ${modoCompacto ? 'sidebar-slot-compacto' : ''}`}>
       {/* Backdrop para móviles */}
       {isMobileOpen && (
-        <div 
-          className="sidebar-backdrop" 
+        <div
+          className="sidebar-backdrop"
           onClick={onCloseMobile}
           aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
-      <aside className={`sidebar ${isMobileOpen ? 'sidebar-mobile-open' : ''}`}>
+      <aside
+        ref={asideRef}
+        className={clases}
+        aria-expanded={!modoCompacto || abierto}
+        onMouseEnter={handleAsideMouseEnter}
+        onMouseLeave={cancelarApertura}
+        onFocusCapture={handleAsideFocus}
+        onClickCapture={handleAsideClickCapture}
+      >
         {/* Botón cerrar para móviles */}
-        <button 
-          className="sidebar-close-btn d-lg-none" 
+        <button
+          className="sidebar-close-btn d-lg-none"
           onClick={onCloseMobile}
           aria-label="Cerrar menú"
         >
@@ -161,18 +266,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }
               : location.pathname.startsWith(pathOnly);
             return (
               <div key={m.id} onMouseEnter={() => handleMouseEnter(m.id)} onMouseLeave={handleMouseLeave}>
-                <Nav.Item className={`menu-item ${active ? 'active' : ''}`}>
+                <Nav.Item className={`menu-item ${active ? 'active' : ''}`} title={compactoCerrado ? m.label : undefined}>
                   <div className="d-flex align-items-center">
                     <span className="icon me-2">{m.icon}</span>
                     {m.path ? (
-                      <Link to={m.path} className="nav-link p-0" onClick={handleLinkClick}>{m.label}</Link>
+                      <Link to={m.path} className="nav-link p-0 menu-label" aria-label={m.label} onClick={handleLinkClick}>{m.label}</Link>
                     ) : (
-                      <span className="nav-label">{m.label}</span>
+                      <span className="nav-label menu-label">{m.label}</span>
                     )}
                   </div>
                 </Nav.Item>
 
-                {m.subItems && (
+                {m.subItems && !compactoCerrado && (
                   <div className={`submenu ${openId === m.id ? 'open' : ''}`}>
                     <Nav className="flex-column ms-3">
                       {m.subItems.map((s) => (
@@ -188,7 +293,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen = false, onCloseMobile }
           })}
         </Nav>
       </aside>
-    </>
+    </div>
   );
 };
 

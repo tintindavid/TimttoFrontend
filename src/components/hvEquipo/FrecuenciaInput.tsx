@@ -9,9 +9,11 @@ export interface FrecuenciaValue {
 interface Props {
   value: FrecuenciaValue;
   onChange: (v: FrecuenciaValue) => void;
+  /** Hides "Actividad única": a successor of a chain can not be single-shot. */
+  sinUnica?: boolean;
 }
 
-const FrecuenciaInput: React.FC<Props> = ({ value, onChange }) => {
+const FrecuenciaInput: React.FC<Props> = ({ value, onChange, sinUnica = false }) => {
   const [err, setErr] = React.useState<string | null>(null);
 
   const onMeses = (raw: string) => {
@@ -61,17 +63,19 @@ const FrecuenciaInput: React.FC<Props> = ({ value, onChange }) => {
       {err && !value.esUnica && (
         <div className="text-danger small mt-1" role="alert">{err}</div>
       )}
-      <Form.Check
-        type="radio"
-        id="freq-unica"
-        name="freq-mode"
-        label="Actividad única"
-        checked={value.esUnica}
-        onChange={() => {
-          setErr(null);
-          onChange({ esUnica: true });
-        }}
-      />
+      {!sinUnica && (
+        <Form.Check
+          type="radio"
+          id="freq-unica"
+          name="freq-mode"
+          label="Actividad única"
+          checked={value.esUnica}
+          onChange={() => {
+            setErr(null);
+            onChange({ esUnica: true });
+          }}
+        />
+      )}
     </div>
   );
 };

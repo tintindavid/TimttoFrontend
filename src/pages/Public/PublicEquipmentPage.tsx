@@ -5,10 +5,11 @@ import { usePublicEquipmentByToken } from '@/hooks/usePublicEquipment';
 import PublicEquipmentHeader from '@/components/public/PublicEquipmentHeader';
 import PublicEquipmentInfoGrid from '@/components/public/PublicEquipmentInfoGrid';
 import PublicMaintenanceHistoryTab from '@/components/public/PublicMaintenanceHistoryTab';
+import PublicActividadesExternasTab from '@/components/public/PublicActividadesExternasTab';
 import PublicEquipmentSkeleton from '@/components/public/PublicEquipmentSkeleton';
 import PublicEquipmentNotFound from './PublicEquipmentNotFound';
 
-type TabKey = 'mtto';
+type TabKey = 'mtto' | 'externas';
 
 /**
  * `/public/equipo/:qrToken` — mobile-first, read-only equipment history
@@ -29,6 +30,8 @@ const PublicEquipmentPage: React.FC = () => {
   }
 
   const payload = data.data;
+  // The backend omits the field when the tenant has no "Servicios de terceros" module: then there is no tab.
+  const actividadesExternas = payload.actividadesExternas;
 
   return (
     <div className="pb-4">
@@ -40,6 +43,11 @@ const PublicEquipmentPage: React.FC = () => {
           <Tab eventKey="mtto" title="Mtto">
             <PublicMaintenanceHistoryTab historial={payload.historial} />
           </Tab>
+          {actividadesExternas && (
+            <Tab eventKey="externas" title={`Actividades externas (${actividadesExternas.length})`}>
+              <PublicActividadesExternasTab actividades={actividadesExternas} />
+            </Tab>
+          )}
         </Tabs>
       </div>
 

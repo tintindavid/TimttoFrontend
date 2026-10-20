@@ -1,13 +1,21 @@
 /** Derived tenant type (never stored): computed from the two capability flags. */
 export type TenantType = 'provider' | 'client' | 'hybrid';
 
-/** Capability keys a UI element or route can require. */
-export type TenantCapability = 'executesServices' | 'registersExternal';
+/**
+ * Capability keys a UI element or route can require. `registersExternal` is also the premium module
+ * "Servicios de terceros" (external activities and services), `usesQrs` the premium module "QRs y tickets" and
+ * `scheduleQuickLoad` the premium switch "Carga rápida desde el cronograma" (needs `registersExternal`).
+ */
+export type TenantCapability = 'executesServices' | 'registersExternal' | 'usesQrs' | 'scheduleQuickLoad';
 
 /** Response of GET /my-tenant/capabilities. */
 export interface TenantCapabilities {
   executesServices: boolean;
   registersExternal: boolean;
+  /** Premium module "QRs y tickets". Absent in an old backend response: read it as false when the rest is present. */
+  usesQrs: boolean;
+  /** Premium switch "Carga rápida desde el cronograma": effective value (true only with registersExternal). */
+  scheduleQuickLoad: boolean;
   type: TenantType;
   organizationCustomerId: string | null;
 }
@@ -16,6 +24,8 @@ export interface TenantCapabilities {
 export const ALL_CAPABILITIES_ENABLED: TenantCapabilities = {
   executesServices: true,
   registersExternal: true,
+  usesQrs: true,
+  scheduleQuickLoad: true,
   type: 'hybrid',
   organizationCustomerId: null,
 };
@@ -24,6 +34,8 @@ export const ALL_CAPABILITIES_ENABLED: TenantCapabilities = {
 export interface UpdateTenantCapabilitiesInput {
   executesServices?: boolean;
   registersExternal?: boolean;
+  usesQrs?: boolean;
+  scheduleQuickLoad?: boolean;
   type?: TenantType;
   organizationCustomerId?: string;
 }

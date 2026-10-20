@@ -37,7 +37,7 @@ const fillPaso1 = (opts: { unica?: boolean } = {}) => {
   // No provider is registered in this suite: use the free-text option
   fireEvent.change(screen.getByRole('combobox', { name: 'Proveedor' }), { target: { value: '__otro__' } });
   fireEvent.change(screen.getByRole('textbox', { name: 'Nombre del proveedor' }), { target: { value: 'ACME' } });
-  fireEvent.change(screen.getByLabelText(/Estado final/i), { target: { value: 'aprobada' } });
+  fireEvent.change(screen.getByLabelText(/^Resultado/i), { target: { value: 'aprobada' } });
   if (opts.unica) fireEvent.click(screen.getByLabelText(/Actividad única/i));
   fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
 };

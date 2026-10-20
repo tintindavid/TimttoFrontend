@@ -61,3 +61,21 @@ describe('RequireCapability', () => {
     );
   });
 });
+
+describe('RequireCapability with the premium module "QRs y tickets"', () => {
+  it('asks the context for usesQrs and redirects when the module is off', () => {
+    const can = vi.fn((c: string) => c !== 'usesQrs');
+    mocks.useTenantCapabilities.mockReturnValue({ can, isLoading: false });
+    render(
+      <MemoryRouter initialEntries={['/tickets']}>
+        <Routes>
+          <Route path="/" element={<div>Inicio</div>} />
+          <Route path="/tickets" element={<RequireCapability capability="usesQrs"><div>Tickets</div></RequireCapability>} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(can).toHaveBeenCalledWith('usesQrs');
+    expect(screen.getByText('Inicio')).toBeTruthy();
+    expect(screen.queryByText('Tickets')).toBeNull();
+  });
+});

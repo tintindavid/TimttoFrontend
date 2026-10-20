@@ -7,6 +7,7 @@ import Select from 'react-select';
 import { FaSortAlphaDown, FaSortAlphaUp } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useEquipoItems, useDeleteEquipoItem } from '@/hooks/useEquipoItems';
+import { getEstadoOperativoBadgeStyle } from '@/utils/estadoOperativoBadge.util';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { EquipoItem } from '@/types/equipoItem.types';
@@ -515,9 +516,10 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                       </td>
                       <td>{equipo.SedeId?.nombreSede || 'N/A'}</td>
                       <td>
-                        <Badge bg={getStatusColor(equipo.Estado)}>
-                          {equipo.Estado || 'N/A'}
-                        </Badge>
+                        {/* Real operative state (follows the last service), not the legacy `Estado` field. */}
+                        <span style={getEstadoOperativoBadgeStyle(equipo.EstadoOperativo)}>
+                          {equipo.EstadoOperativo || 'N/A'}
+                        </span>
                       </td>
                       <td>
                         <Badge bg="warning" text="dark">
@@ -526,9 +528,9 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
                       </td>
                       
                       <td>
-                        {equipo.UltimoMtto ? (
+                        {ultimoServicio(equipo) ? (
                           <small>
-                            {new Date(equipo.UltimoMtto).toLocaleDateString('es-ES')}
+                            {ultimoServicio(equipo)!.toLocaleDateString('es-ES', { timeZone: 'UTC' })}
                           </small>
                         ) : (
                           <span className="text-muted">Sin registro</span>
@@ -629,6 +631,15 @@ const CustomerEquiposSection: React.FC<CustomerEquiposSectionProps> = ({ custome
 };
 
 // Función auxiliar para colores de estado
+/** Latest of the last maintenance and the last external activity (both count as a service). */
+const ultimoServicio = (equipo: { UltimoMtto?: string; UltimaActividadExterna?: string | null }): Date | null => {
+  const fechas = [equipo.UltimoMtto, equipo.UltimaActividadExterna]
+    .filter((f): f is string => !!f)
+    .map((f) => new Date(f))
+    .filter((d) => !Number.isNaN(d.getTime()));
+  return fechas.length ? new Date(Math.max(...fechas.map((d) => d.getTime()))) : null;
+};
+
 const getStatusColor = (status?: string) => {
   switch (status) {
     case 'OPERATIVO': return 'success';

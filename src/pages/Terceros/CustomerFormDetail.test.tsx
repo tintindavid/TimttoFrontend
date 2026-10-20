@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   update: { mutateAsync: vi.fn(), isLoading: false },
   navigate: vi.fn(),
   auth: { user: { role: 'admin' } },
+  qrs: { current: true },
 }));
 
 vi.mock('@/hooks/useCustomers', () => ({
@@ -17,6 +18,13 @@ vi.mock('@/hooks/useCustomers', () => ({
   useUpdateCustomer: () => mocks.update,
 }));
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => mocks.auth }));
+vi.mock('@/context/TenantCapabilitiesContext', () => ({
+  useTenantCapabilities: () => ({
+    can: (c: string) => (c === 'usesQrs' ? mocks.qrs.current : true),
+    organizationCustomerId: null,
+    isLoading: false,
+  }),
+}));
 vi.mock('@/hooks/usePermission', () => ({ useHasPermission: () => true }));
 vi.mock('@/components/customers/CustomerSedesSection', () => ({ default: () => <div /> }));
 vi.mock('@/components/customers/CustomerServiciosSection', () => ({ default: () => <div /> }));
@@ -50,6 +58,7 @@ beforeEach(() => {
   mocks.update.mutateAsync.mockReset().mockResolvedValue({});
   mocks.navigate.mockReset();
   mocks.customer.current = undefined;
+  mocks.qrs.current = true;
 });
 
 describe('CustomerFormPage by kind', () => {
@@ -92,6 +101,16 @@ describe('CustomerDetailPage by kind', () => {
       expect(screen.queryByRole('tab', { name })).toBeNull();
     }
     expect(screen.getByText('Editar proveedor')).toBeTruthy();
+  });
+
+  it('a tenant without the premium module "QRs y tickets" does not see the QRs tab but keeps the others', () => {
+    mocks.qrs.current = false;
+    mocks.customer.current = { data: { ...base } };
+    renderAt('/terceros/x1');
+    expect(screen.queryByRole('tab', { name: 'QRs' })).toBeNull();
+    for (const name of ['Información General', 'Sedes', 'Servicios', 'Equipos', 'Órdenes de Trabajo', 'Accesos cliente']) {
+      expect(screen.getByRole('tab', { name })).toBeTruthy();
+    }
   });
 
   it('client (and legacy docs without kind) show all tabs', () => {

@@ -101,6 +101,24 @@ export interface Reporte {
     Consecutivo: string;
   };
   tipoMtto?:String;
+  /** 'interno': from a work order (default). 'externo': a service done by a third party and loaded by the tenant. */
+  origen?: 'interno' | 'externo';
+  externo?: ReporteExterno;
+}
+
+/** Block of a report registered as performed by a third party (reportes-externos-mp-mc). */
+export interface ReporteExterno {
+  proveedor?: string;
+  proveedorId?: string | null;
+  /** The third party's own document number (certificate, report). */
+  consecutivoDocumento?: string;
+  enlace?: string;
+  documento?: {
+    url?: string;
+    nombreOriginal?: string;
+    mimetype?: string;
+    tamanoBytes?: number;
+  };
 }
 
 export interface ActividadRealizada {

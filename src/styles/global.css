@@ -23,6 +23,8 @@ body, html, #root {
      and sidebar edge line up on desktop. Change this one line to resize
      the sidebar across the app. */
   --sidebar-width: 260px;
+  /* Width of the compact side menu (a strip of icons), sidebar-compacto-colapsable. */
+  --sidebar-rail-width: 64px;
 }
 
 body {

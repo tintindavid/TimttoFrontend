@@ -52,6 +52,7 @@ vi.mock('@/hooks/useServiceQrs', () => ({
 // the "QR Equipos" sub-tab gating, not the (unchanged) "solicitar" form.
 vi.mock('@/hooks/useCustomers', () => ({
   useCustomers: () => ({ data: { data: [] }, isLoading: false }),
+  useCustomer: () => ({ data: { data: { Razonsocial: 'Hospital San Rafael' } }, isLoading: false }),
 }));
 
 const mockUseHasPermission = vi.fn();

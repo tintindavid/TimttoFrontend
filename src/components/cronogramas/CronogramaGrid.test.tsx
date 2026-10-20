@@ -1,6 +1,6 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { CronogramaGrid } from './CronogramaGrid';
 import type { CronogramaActividadExterna, CronogramaEquipo, GrupoServicioSede } from '@/types/cronograma.types';
 
@@ -152,5 +152,128 @@ describe('CronogramaGrid - empty', () => {
   it('shows the empty message without groups', () => {
     render(<CronogramaGrid grupos={[]} equiposSeleccionados={[]} onToggleEquipo={vi.fn()} />);
     expect(screen.getByText('No hay equipos para mostrar')).toBeInTheDocument();
+  });
+});
+
+describe('CronogramaGrid - quick load (cronograma-carga-rapida)', () => {
+  afterEach(() => { vi.useRealTimers(); });
+  // 15 June of the year shown: March and June are due (past / current month), December is in the future
+  const enJunio = () => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(AHORA, 5, 15, 10, 0, 0)); };
+
+  it('without the callback no cell is a button (read-only grid, e.g. General)', () => {
+    enJunio();
+    renderGrid(equipo({ cadenas: [cadena({ meses: ['ene'] })] }));
+    expect(screen.queryAllByTestId('celda-cargar')).toHaveLength(0);
+    expect(screen.getAllByTestId('celda-estado').length).toBeGreaterThan(0);
+  });
+
+  it('a due cell is a button that reports the equipment, the row and the month', () => {
+    enJunio();
+    const onCargarCelda = vi.fn();
+    const e = equipo({ mesesMtto: ['Mar'] });
+    renderGrid(e, { onCargarCelda });
+    const boton = screen.getByRole('button', { name: /Cargar Mantenimiento preventivo de Marzo/ });
+    fireEvent.click(boton);
+    expect(onCargarCelda).toHaveBeenCalledTimes(1);
+    const celda = onCargarCelda.mock.calls[0][0];
+    expect(celda.equipo._id).toBe('e1');
+    expect(celda.fila.tipo).toBe('mp');
+    expect(celda.mes).toBe('Mar');
+    expect(within(boton).getByTestId('celda-estado')).toHaveAttribute('data-estado', 'programado');
+  });
+
+  it('the current month is clickable, a later month is not', () => {
+    enJunio();
+    renderGrid(equipo({ mesesMtto: ['Jun', 'Dic'] }), { onCargarCelda: vi.fn() });
+    expect(screen.getByRole('button', { name: /Cargar Mantenimiento preventivo de Junio/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /de Diciembre/ })).toBeNull();
+    expect(screen.getAllByTestId('celda-estado')).toHaveLength(2); // both cells still draw their state
+  });
+
+  it('a cell that is already done is a button that asks for its read-only summary, whatever the permission', () => {
+    enJunio();
+    const onCargarCelda = vi.fn();
+    renderGrid(
+      equipo({ mesesMtto: ['Mar'], mesesRealizados: [{ mes: 'mar', fecha: `${AHORA}-03-12T00:00:00.000Z` }] }),
+      { onCargarCelda, puedeCargarFila: () => false },
+    );
+    const boton = screen.getByRole('button', { name: /Ver resumen de Mantenimiento preventivo de Marzo/ });
+    expect(within(boton).getByTestId('celda-estado')).toHaveAttribute('data-estado', 'realizado');
+    fireEvent.click(boton);
+    expect(onCargarCelda.mock.calls[0][0].estado).toBe('realizado');
+    expect(onCargarCelda.mock.calls[0][0].mes).toBe('Mar');
+  });
+
+  it('a done cell stays inert in a read-only grid (no callback)', () => {
+    enJunio();
+    renderGrid(equipo({ mesesMtto: ['Mar'], mesesRealizados: [{ mes: 'mar', fecha: `${AHORA}-03-12T00:00:00.000Z` }] }));
+    expect(screen.queryAllByTestId('celda-cargar')).toHaveLength(0);
+    expect(screen.getByTestId('celda-estado')).toHaveAttribute('data-estado', 'realizado');
+  });
+
+  it('a due cell reports its state so the page opens the form', () => {
+    enJunio();
+    const onCargarCelda = vi.fn();
+    renderGrid(equipo({ mesesMtto: ['Mar'] }), { onCargarCelda });
+    fireEvent.click(screen.getByRole('button', { name: /Cargar Mantenimiento preventivo de Marzo/ }));
+    expect(onCargarCelda.mock.calls[0][0].estado).toBe('programado');
+  });
+
+  it('an overdue external cell is a button labelled with the activity', () => {
+    enJunio();
+    const onCargarCelda = vi.fn();
+    renderGrid(equipo({ mesesMtto: [], cadenas: [cadena({ meses: ['ene'], vencida: true })] }), { onCargarCelda });
+    fireEvent.click(screen.getByRole('button', { name: /Cargar Calibración de Enero/ }));
+    const celda = onCargarCelda.mock.calls[0][0];
+    expect(celda.fila.tipo).toBe('externa');
+    expect(celda.fila.cadena.cadenaId).toBe('c1');
+    expect(celda.mes).toBe('Ene');
+  });
+
+  it('the permission of the user is asked per kind of row', () => {
+    enJunio();
+    renderGrid(
+      equipo({ mesesMtto: ['Mar'], cadenas: [cadena({ meses: ['ene'] })] }),
+      { onCargarCelda: vi.fn(), puedeCargarFila: (fila) => fila.tipo === 'mp' },
+    );
+    expect(screen.getAllByTestId('celda-cargar')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /Mantenimiento preventivo/ })).toBeInTheDocument();
+  });
+
+  it('a future year has no clickable cell', () => {
+    enJunio();
+    renderGrid(equipo({ mesesMtto: ['Mar', 'Dic'] }), { onCargarCelda: vi.fn(), anio: AHORA + 1 });
+    expect(screen.queryAllByTestId('celda-cargar')).toHaveLength(0);
+  });
+
+  it('a past year: the preventive row is not clickable (the backend would not mark its month) but an external one is', () => {
+    enJunio();
+    renderGrid(
+      equipo({ mesesMtto: ['Mar', 'Dic'], cadenas: [cadena({ meses: ['mar', 'dic'] })] }),
+      { onCargarCelda: vi.fn(), anio: AHORA - 1 },
+    );
+    expect(screen.queryByRole('button', { name: /Cargar Mantenimiento preventivo/ })).toBeNull();
+    expect(screen.getAllByRole('button', { name: /Cargar Calibración/ })).toHaveLength(2);
+  });
+
+  it('an external cell before the latest activity of the chain is not clickable (it would send the chain back in time)', () => {
+    enJunio();
+    // March is overdue but the chain already has an activity registered in May of this year
+    renderGrid(
+      equipo({ mesesMtto: [], cadenas: [cadena({ meses: ['mar', 'may'], realizadas: [{ mes: 'may', fecha: `${AHORA}-05-10T00:00:00.000Z` }] })] }),
+      { onCargarCelda: vi.fn() },
+    );
+    expect(screen.queryByRole('button', { name: /Cargar Calibración de Marzo/ })).toBeNull();
+    // the cell of the month that is done still opens the summary
+    expect(screen.getByRole('button', { name: /Ver resumen de Calibración de Mayo/ })).toBeInTheDocument();
+  });
+
+  it('an external cell after the latest activity is clickable', () => {
+    enJunio();
+    renderGrid(
+      equipo({ mesesMtto: [], cadenas: [cadena({ meses: ['mar', 'jun'], realizadas: [{ mes: 'mar', fecha: `${AHORA}-03-10T00:00:00.000Z` }] })] }),
+      { onCargarCelda: vi.fn() },
+    );
+    expect(screen.getByRole('button', { name: /Cargar Calibración de Junio/ })).toBeInTheDocument();
   });
 });

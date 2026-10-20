@@ -22,6 +22,7 @@ const CustomerDetailPage: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const { can } = useTenantCapabilities();
   const executesServices = can('executesServices');
+  const usesQrs = can('usesQrs'); // premium module "QRs y tickets"
   // Portal-cliente tab visibility is permission-gated as of 2026-08-03
   // (previously role=admin only). Admin still passes because the backfill
   // adds the permission to the seeded Admin role in every tenant.
@@ -152,8 +153,8 @@ const CustomerDetailPage: React.FC = () => {
               </Tab>
             )}
 
-            {/* QRs — admin-only, mirrors visibility of /configuracion/qr-services */}
-            {!isProvider && isAdmin && (
+            {/* QRs — admin-only, mirrors visibility of /configuracion/qr-services; needs the premium module */}
+            {!isProvider && isAdmin && usesQrs && (
               <Tab eventKey="qrs" title="QRs">
                 <CustomerQrsSection customerId={customer._id!} />
               </Tab>

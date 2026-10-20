@@ -29,6 +29,8 @@ export const EstadoOperativoLabels: Record<EstadoOperativo, string> = {
 export const EstadoOperativoSources = [
   'manual',
   'report-close',
+  'report-external',
+  'actividad-externa',
   'bulk-upload',
   'migration',
 ] as const;
@@ -38,6 +40,8 @@ export type EstadoOperativoSource = typeof EstadoOperativoSources[number];
 export const EstadoOperativoSourceLabels: Record<EstadoOperativoSource, string> = {
   'manual': 'Manual',
   'report-close': 'Reporte cerrado',
+  'report-external': 'Servicio externo',
+  'actividad-externa': 'Actividad externa',
   'bulk-upload': 'Carga masiva',
   'migration': 'Migración',
 };
