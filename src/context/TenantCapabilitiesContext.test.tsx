@@ -22,6 +22,8 @@ const Probe: React.FC = () => {
       <span data-testid="exec">{String(c.can('executesServices'))}</span>
       <span data-testid="loading">{String(c.isLoading)}</span>
       <span data-testid="type">{c.type}</span>
+      <span data-testid="quick">{String(c.can('scheduleQuickLoad'))}</span>
+      <span data-testid="qrs">{String(c.can('usesQrs'))}</span>
     </div>
   );
 };
@@ -104,5 +106,32 @@ describe('TenantCapabilitiesProvider', () => {
     renderProvider();
     expect(mocks.getMine).not.toHaveBeenCalled();
     expect(screen.getByTestId('exec').textContent).toBe('true');
+  });
+});
+
+describe('TenantCapabilitiesProvider - the paid quick load is never assumed', () => {
+  it('is off while loading, although the other modules default to enabled', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue({ ...clientCaps, usesQrs: true, scheduleQuickLoad: true });
+    renderProvider();
+    expect(screen.getByTestId('loading').textContent).toBe('true');
+    expect(screen.getByTestId('quick').textContent).toBe('false');
+    expect(screen.getByTestId('qrs').textContent).toBe('true');
+    await waitFor(() => expect(screen.getByTestId('quick').textContent).toBe('true'));
+  });
+
+  it('stays off when the endpoint fails', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockRejectedValue(new Error('500'));
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('quick').textContent).toBe('false');
+    expect(screen.getByTestId('exec').textContent).toBe('true');
+  });
+
+  it('is on for the superadmin outside view-as (platform) and follows the tenant in view-as', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'superadmin' }, tenantId: '__platform__', viewAsTenantId: null });
+    renderProvider();
+    expect(screen.getByTestId('quick').textContent).toBe('true');
   });
 });

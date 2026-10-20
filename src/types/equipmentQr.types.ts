@@ -133,8 +133,24 @@ export interface PublicMaintenanceHistoryItem {
   tipoMtto?: string;
   responsable?: string;
   estadoOperativoFinal?: EstadoOperativo | string;
+  /** 'externo' when a third party did the service (the provider is then `responsable`). */
+  origen?: 'interno' | 'externo';
   tieneObservacion: boolean;
   observacionEstadoFinal?: string | null;
+}
+
+/** One third-party activity (calibration, verification...) — never carries the evidence address (D5). */
+export interface PublicActividadExterna {
+  tipo?: string | null;
+  tipoCustom?: string | null;
+  fecha: string | null;
+  proveedor?: string | null;
+  consecutivoDocumento?: string | null;
+  /** Result of the activity (aprobada, rechazada... or the free text of 'otro'). */
+  resultado?: string | null;
+  estadoOperativo?: EstadoOperativo | string | null;
+  tieneEvidencia: boolean;
+  proximaFecha?: string | null;
 }
 
 /** `GET /api/public/equipo/:qrToken` response body. */
@@ -143,4 +159,5 @@ export interface PublicEquipmentPayload {
   cliente: PublicClienteSummary;
   sede?: PublicSedeSummary;
   historial: PublicMaintenanceHistoryItem[];
+  actividadesExternas?: PublicActividadExterna[];
 }

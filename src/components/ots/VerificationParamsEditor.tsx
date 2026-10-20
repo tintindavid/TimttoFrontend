@@ -11,8 +11,16 @@ import {
 } from '@/constants/siMagnitudes';
 
 interface VerificationParamsEditorProps {
-  reporteId: string;
+  /** Required unless `mode` is "draft" (the report does not exist yet). */
+  reporteId?: string;
   value: VerificationParam[];
+  /**
+   * "saved" (default): edits a stored report and has a save button.
+   * "draft" (reportes-externos-mp-mc): the report does not exist yet, so rows live only here, every change is
+   * reported through `onChange`, `value` is only the initial content, and nothing is saved by this component.
+   */
+  mode?: 'saved' | 'draft';
+  onChange?: (value: VerificationParam[]) => void;
   disabled?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
   onSaved?: (value: VerificationParam[]) => void;
@@ -86,6 +94,8 @@ const valueSignature = (value: VerificationParam[]): string =>
 const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
   reporteId,
   value,
+  mode = 'saved',
+  onChange,
   disabled = false,
   onDirtyChange,
   onSaved,
@@ -102,8 +112,11 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
 
   // Reset only when the *content* of `value` actually changes — not when the
   // parent re-renders and creates a new array reference with the same content.
+  const isDraft = mode === 'draft';
   const incomingSignature = valueSignature(value);
   useEffect(() => {
+    // Draft mode: `value` is only the initial content; the rows belong to this component.
+    if (isDraft) return;
     const fresh = value.map(toDraft);
     setDrafts(fresh);
     setBaseline(serialize(fresh));
@@ -145,21 +158,33 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
   );
 
   // Auto-suggest when the editor first sees an empty value for this reporte.
+  const suggestKey = reporteId ?? (isDraft ? 'draft' : undefined);
   useEffect(() => {
-    if (!equipoId || !reporteId) return;
-    if (autoSuggestedRef.current === reporteId) return;
+    if (!equipoId || !suggestKey) return;
+    if (autoSuggestedRef.current === suggestKey) return;
     if (value && value.length > 0) {
-      autoSuggestedRef.current = reporteId;
+      autoSuggestedRef.current = suggestKey;
       return;
     }
-    autoSuggestedRef.current = reporteId;
+    autoSuggestedRef.current = suggestKey;
     loadSuggestion('auto');
-  }, [equipoId, reporteId, value, loadSuggestion]);
+  }, [equipoId, suggestKey, value, loadSuggestion]);
+
+  // Draft mode: tell the parent about every change (kept in a ref so a new callback each render is harmless)
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const draftSignature = serialize(drafts);
+  useEffect(() => {
+    if (!isDraft) return;
+    onChangeRef.current?.(drafts.map(fromDraft));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDraft, draftSignature]);
 
   const isDirty = serialize(drafts) !== baseline;
   useEffect(() => {
+    if (isDraft) return;
     onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+  }, [isDirty, isDraft, onDirtyChange]);
 
   const handleAddRow = useCallback(() => {
     setDrafts((prev) => {
@@ -190,6 +215,7 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
   }, []);
 
   const handleSave = useCallback(async () => {
+    if (!reporteId) return; // draft mode has nothing to save
     setError(null);
 
     const overflows: string[] = [];
@@ -436,27 +462,29 @@ const VerificationParamsEditor: React.FC<VerificationParamsEditorProps> = ({
             <FaPlus className="me-1" /> Agregar parámetro
           </Button>
 
-          <div className="d-flex align-items-center gap-2">
-            {isDirty && !isSaving && (
-              <span className="text-warning small">Cambios sin guardar</span>
-            )}
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSave}
-              disabled={disabled || !isDirty || isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-1" /> Guardando…
-                </>
-              ) : (
-                <>
-                  <FaSave className="me-1" /> Guardar
-                </>
+          {!isDraft && (
+            <div className="d-flex align-items-center gap-2">
+              {isDirty && !isSaving && (
+                <span className="text-warning small">Cambios sin guardar</span>
               )}
-            </Button>
-          </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSave}
+                disabled={disabled || !isDirty || isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-1" /> Guardando…
+                  </>
+                ) : (
+                  <>
+                    <FaSave className="me-1" /> Guardar
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </Card.Body>
     </Card>

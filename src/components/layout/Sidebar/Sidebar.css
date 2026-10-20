@@ -82,3 +82,74 @@
     }
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Slot of the side menu (sidebar-compacto-colapsable)
+   Below the large-screen breakpoint it is not a box (the menu is the drawer of
+   always); from there on it holds the width of the current mode, so that the
+   panel of the compact menu can float over the content without moving it.
+   --------------------------------------------------------------------------- */
+.sidebar-slot {
+  display: contents;
+}
+
+@media (min-width: 992px) {
+  .sidebar-slot {
+    display: flex;
+    position: relative;
+    flex: none;
+    width: var(--sidebar-width, 260px);
+    transition: width 0.2s ease;
+  }
+
+  .sidebar-slot.sidebar-slot-compacto {
+    width: var(--sidebar-rail-width, 64px);
+  }
+
+  /* Compact: a strip of icons that keeps its place in the flow (through the slot). */
+  .sidebar.sidebar-compacto {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--sidebar-rail-width, 64px);
+    z-index: 1030; /* above the content, below Bootstrap modals (1055) */
+    overflow-x: hidden;
+    padding-left: 0;
+    padding-right: 0;
+    transition: width 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Open: the panel grows over the content. */
+  .sidebar.sidebar-compacto.sidebar-flotando {
+    width: var(--sidebar-width, 260px);
+    padding: 12px;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Closed strip: only the icons. The text stays in the page for screen readers (visually hidden, not display:none). */
+  .sidebar.sidebar-compacto:not(.sidebar-flotando) .menu-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .sidebar.sidebar-compacto:not(.sidebar-flotando) .menu-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  .sidebar.sidebar-compacto:not(.sidebar-flotando) .menu-item .icon {
+    margin: 0 !important;
+    width: auto;
+  }
+
+  .sidebar.sidebar-compacto:not(.sidebar-flotando) .menu-item > .d-flex {
+    justify-content: center;
+    width: 100%;
+  }
+}

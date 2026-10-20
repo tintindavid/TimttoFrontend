@@ -38,6 +38,8 @@ export interface EquipoItem {
   Inventario?: string;
   Modelo?: string;
   UltimoMtto?: string; // ISO date
+  /** Date of the latest external activity (calibration, verification...), added by the list endpoint. */
+  UltimaActividadExterna?: string | null;
   mesesMtto?: string[];
   /** Maintenance reports already done (written when a report is processed): month as 'ene'..'dic' plus the date. */
   mesesMttoRealizados?: { fecha?: string; mes: string; consecutivo?: string }[];

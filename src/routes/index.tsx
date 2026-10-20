@@ -253,13 +253,16 @@ const AppRoutes: React.FC = () => {
         {/* hoja de vida de equipos */}
         <Route path="/hv-equipo/:equipoId" element={<HVEquipoPage />} />
 
-        {/* Tickets (panel) — rollout admin-only — widen role list when feature opens to technician/user */}
-        <Route path="tickets" element={<PrivateRoute roles={['admin']}><TicketsPage /></PrivateRoute>} />
-        <Route path="tickets/batch/:batchId" element={<PrivateRoute roles={['admin']}><TicketBatchView /></PrivateRoute>} />
-        <Route path="tickets/:id" element={<PrivateRoute roles={['admin']}><TicketDetailPage /></PrivateRoute>} />
+        {/* Premium module "QRs y tickets" (usesQrs): without it these routes redirect home with the usual notice */}
+        <Route element={<RequireCapability capability="usesQrs"><Outlet /></RequireCapability>}>
+          {/* Tickets (panel) — rollout admin-only — widen role list when feature opens to technician/user */}
+          <Route path="tickets" element={<PrivateRoute roles={['admin']}><TicketsPage /></PrivateRoute>} />
+          <Route path="tickets/batch/:batchId" element={<PrivateRoute roles={['admin']}><TicketBatchView /></PrivateRoute>} />
+          <Route path="tickets/:id" element={<PrivateRoute roles={['admin']}><TicketDetailPage /></PrivateRoute>} />
 
-        {/* QR de Servicios — rollout admin-only — widen role list when feature opens to technician/user */}
-        <Route path="configuracion/qr-services" element={<PrivateRoute roles={['admin']}><ServiceQrsPage /></PrivateRoute>} />
+          {/* QR de Servicios — rollout admin-only — widen role list when feature opens to technician/user */}
+          <Route path="configuracion/qr-services" element={<PrivateRoute roles={['admin']}><ServiceQrsPage /></PrivateRoute>} />
+        </Route>
 
         {/* Notificaciones — alias del existente /settings/notifications (mismo componente, dos URLs equivalentes).
             Sin roles gate externo: el componente ya oculta el tab "Reglas" cuando user.role !== 'admin',

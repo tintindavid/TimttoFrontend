@@ -17,11 +17,41 @@ const fillValid = () => {
   fireEvent.change(screen.getByLabelText(/^Fecha/i), { target: { value: '2026-01-15' } });
   fireEvent.change(screen.getByRole('combobox', { name: 'Proveedor' }), { target: { value: '__otro__' } });
   fireEvent.change(screen.getByRole('textbox', { name: 'Nombre del proveedor' }), { target: { value: 'ACME' } });
-  fireEvent.change(screen.getByLabelText(/^Estado final/i), { target: { value: 'aprobada' } });
+  fireEvent.change(screen.getByLabelText(/^Resultado/i), { target: { value: 'aprobada' } });
 };
 
 describe('CrearActividadExternaModal', () => {
   beforeEach(() => { mockProviders = []; });
+
+  it('con tipoFijo el tipo viene de la cadena y no se puede cambiar (carga rapida desde el cronograma)', () => {
+    render(
+      <CrearActividadExternaModal
+        show={true}
+        tipoFijo
+        initial={{ tipo: 'otro', tipoCustom: 'Tomografia', fecha: '2026-03-31' }}
+        onClose={() => {}}
+        onNext={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText(/Tipo de actividad/i)).toBeDisabled();
+    expect((screen.getByLabelText(/Tipo de actividad/i) as HTMLSelectElement).value).toBe('otro');
+    expect(screen.getByLabelText(/Especifica cuál/i)).toBeDisabled();
+    expect((screen.getByLabelText(/Especifica cuál/i) as HTMLInputElement).value).toBe('Tomografia');
+    expect((screen.getByLabelText(/Fecha/i) as HTMLInputElement).value).toBe('2026-03-31');
+  });
+
+  it('con tipoFijo (continuar una cadena) no ofrece "Actividad única", y sin tipoFijo sí', () => {
+    const { unmount } = render(<CrearActividadExternaModal show={true} tipoFijo initial={{ tipo: 'calibracion' }} onClose={() => {}} onNext={() => {}} />);
+    expect(screen.queryByLabelText(/Actividad única/i)).toBeNull();
+    unmount();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={() => {}} />);
+    expect(screen.getByLabelText(/Actividad única/i)).toBeInTheDocument();
+  });
+
+  it('sin tipoFijo el tipo sigue siendo editable (hoja de vida)', () => {
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={() => {}} />);
+    expect(screen.getByLabelText(/Tipo de actividad/i)).not.toBeDisabled();
+  });
 
   it('al seleccionar tipo=otro muestra input tipoCustom', () => {
     render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={() => {}} />);
@@ -165,5 +195,40 @@ describe('CrearActividadExternaModal', () => {
     const dto = onNext.mock.calls[0][0];
     expect(dto.proveedor).toBe('Taller Externo');
     expect(dto.proveedorId).toBeUndefined();
+  });
+});
+
+describe('CrearActividadExternaModal - estado operativo', () => {
+  it('asks for the operative state with the same options as a report, and keeps the result separate', () => {
+    render(<CrearActividadExternaModal show onClose={() => {}} onNext={() => {}} />);
+    const estado = screen.getByLabelText('Estado operativo *') as HTMLSelectElement;
+    expect(Array.from(estado.options).map((o) => o.value)).toEqual(['Operativo', 'Fuera de Servicio', 'En Mantenimiento', 'Espera de Repuestos', 'En Reparacion']);
+    const resultado = screen.getByLabelText('Resultado *') as HTMLSelectElement;
+    expect(Array.from(resultado.options).map((o) => o.value)).toContain('aprobada');
+    expect(screen.queryByLabelText(/Estado final/i)).toBeNull();
+  });
+
+  it('preselects the current state of the equipment, or Operativo when unknown', () => {
+    const { unmount } = render(<CrearActividadExternaModal show onClose={() => {}} onNext={() => {}} estadoActual="En Reparacion" />);
+    expect((screen.getByLabelText('Estado operativo *') as HTMLSelectElement).value).toBe('En Reparacion');
+    unmount();
+    render(<CrearActividadExternaModal show onClose={() => {}} onNext={() => {}} estadoActual="Dado de Baja" />);
+    expect((screen.getByLabelText('Estado operativo *') as HTMLSelectElement).value).toBe('Operativo');
+  });
+
+  it('sends the chosen operative state with the activity', () => {
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show onClose={() => {}} onNext={onNext} />);
+    fillValid();
+    fireEvent.change(screen.getByLabelText('Estado operativo *'), { target: { value: 'Fuera de Servicio' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    expect(onNext.mock.calls[0][0].estadoOperativo).toBe('Fuera de Servicio');
+    expect(onNext.mock.calls[0][0].estadoFinal).toBe('aprobada');
+  });
+
+  it('the custom result label follows the new name', () => {
+    render(<CrearActividadExternaModal show onClose={() => {}} onNext={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Resultado *'), { target: { value: 'otro' } });
+    expect(screen.getByLabelText('Especifica el resultado *')).toBeInTheDocument();
   });
 });

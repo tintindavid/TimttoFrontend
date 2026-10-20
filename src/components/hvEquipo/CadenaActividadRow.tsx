@@ -71,7 +71,8 @@ const CadenaActividadRow: React.FC<Props> = ({ grupo, onCerrar, onRemove, onCamb
               <th>Fecha</th>
               <th>Proveedor</th>
               <th>Consecutivo</th>
-              <th>Estado final</th>
+              <th>Resultado</th>
+              <th>Estado operativo</th>
               <th>Evidencia</th>
               <th>Acciones</th>
             </tr>
@@ -86,6 +87,7 @@ const CadenaActividadRow: React.FC<Props> = ({ grupo, onCerrar, onRemove, onCamb
                 </td>
                 <td>{a.consecutivoExterno}</td>
                 <td>{ESTADOS_FINAL_LABELS[a.estadoFinal]}</td>
+                <td>{a.estadoOperativo || '—'}</td>
                 <td>{renderEvidencia(a)}</td>
                 <td>
                   {onCambiarProveedor && (

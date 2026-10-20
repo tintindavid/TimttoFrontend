@@ -13,6 +13,11 @@ import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
 import { useCronograma } from '@/hooks/useCronograma';
 import { useCronogramaActividadesExternas } from '@/hooks/useCronogramaActividadesExternas';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
+import { useAuth } from '@/context/AuthContext';
+import { useHasPermission } from '@/hooks/usePermission';
+import CargaRapidaCelda, { type CeldaCarga } from '@/components/cronogramas/CargaRapidaCelda';
+import ResumenCeldaRealizada from '@/components/cronogramas/ResumenCeldaRealizada';
 import { useCreateOt } from '@/hooks/useOTs';
 
 // Servicios
@@ -91,15 +96,29 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
   );
   const equipos = useMemo(() => equiposData?.data || [], [equiposData?.data]);
 
+  // Premium module "Servicios de terceros": without it there is no external data, figure, column or filter.
+  const { can } = useTenantCapabilities();
+  const externasHabilitadas = can('registersExternal');
+  // Premium switch "Carga rápida desde el cronograma": a due cell opens the registration form of that activity.
+  const cargaRapida = externasHabilitadas && can('scheduleQuickLoad');
+  // The row checkboxes and "Seleccionar todos" only serve to create a work order: without that capability they are not shown.
+  const puedeCrearOT = can('executesServices');
+  const { user } = useAuth();
+  const puedeCrearReportes = useHasPermission('reports:create');
+  const [celdaCarga, setCeldaCarga] = useState<CeldaCarga | null>(null);
+
   // Actividades externas programadas del cliente (calibración, verificación, etc.)
   const {
     data: externasData,
     isError: errorExternas,
   } = useCronogramaActividadesExternas(
     { clienteId: clienteSeleccionado, anio },
-    { enabled: !!clienteSeleccionado }
+    { enabled: !!clienteSeleccionado && externasHabilitadas }
   );
-  const cadenasExternas = useMemo(() => externasData?.data ?? [], [externasData?.data]);
+  const cadenasExternas = useMemo(
+    () => (externasHabilitadas ? externasData?.data ?? [] : []),
+    [externasHabilitadas, externasData?.data]
+  );
 
   // Hook de cronograma
   const {
@@ -401,19 +420,19 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
         </Alert>
       ) : (
         <>
-          {errorExternas && (
+          {externasHabilitadas && errorExternas && (
             <Alert variant="warning" className="py-2">
               No se pudieron cargar las actividades externas; se muestra solo el mantenimiento preventivo.
             </Alert>
           )}
-          {externasData?.truncated && (
+          {externasHabilitadas && externasData?.truncated && (
             <Alert variant="info" className="py-2">
               Hay más actividades externas de las que se pueden mostrar; filtra por cliente para ver el detalle completo.
             </Alert>
           )}
 
           {/* Estadísticas */}
-          <CronogramaStatsCard stats={stats} />
+          <CronogramaStatsCard stats={stats} mostrarExternas={externasHabilitadas} mostrarSeleccion={puedeCrearOT} />
 
           {/* Acciones */}
           <CronogramaAcciones
@@ -449,7 +468,7 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
                 mesesSeleccionados={filtros.meses || []}
                 searchText={filtros.search || ''}
                 origenSeleccionado={filtros.origen ?? 'todos'}
-                onOrigenChange={(origen) => actualizarFiltros({ origen })}
+                onOrigenChange={externasHabilitadas ? (origen) => actualizarFiltros({ origen }) : undefined}
                 sedesOptions={sedes}
                 serviciosOptions={servicios}
                 ubicacionesOptions={ubicacionesUnicas}
@@ -471,18 +490,32 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
                 equiposSeleccionados={equiposSeleccionados}
                 onToggleEquipo={toggleEquipo}
                 onEditEquipo={handleEditEquipo}
-                mostrarCheckboxes={true}
+                mostrarCheckboxes={puedeCrearOT}
                 origen={filtros.origen ?? 'todos'}
                 anio={anio}
+                onCargarCelda={cargaRapida ? setCeldaCarga : undefined}
+                // Same rule as the backend: external activities need the admin role, preventive services reports:create
+                puedeCargarFila={(fila) => (fila.tipo === 'externa' ? user?.role === 'admin' : puedeCrearReportes)}
               />
             </Card.Body>
           </Card>
+          {celdaCarga && (celdaCarga.estado === 'realizado'
+            ? <ResumenCeldaRealizada celda={celdaCarga} anio={anio} onClose={() => setCeldaCarga(null)} />
+            : <CargaRapidaCelda celda={celdaCarga} anio={anio} onClose={() => setCeldaCarga(null)} />)}
           <p className="small text-muted mt-2" data-testid="leyenda-cronograma">
             <span className="badge bg-success">MP</span> Mantenimiento preventivo &nbsp;·&nbsp;
-            <span className="badge bg-info">Cal</span> <span className="badge bg-info">Ver</span> Actividades externas (calibración, verificación…) &nbsp;·&nbsp;
+            {externasHabilitadas && (
+              <>
+                <span className="badge bg-info">Cal</span> <span className="badge bg-info">Ver</span> Actividades externas (calibración, verificación…) &nbsp;·&nbsp;
+              </>
+            )}
             <span className="text-success">●</span> Realizado &nbsp;·&nbsp;
-            <span className="text-secondary">●</span> Programado &nbsp;·&nbsp;
-            <span className="text-danger">●</span> Vencido (solo actividades externas)
+            <span className="text-secondary">●</span> Programado
+            {externasHabilitadas && (
+              <>
+                &nbsp;·&nbsp; <span className="text-danger">●</span> Vencido (solo actividades externas)
+              </>
+            )}
           </p>
 
           {/* Paginación */}

@@ -59,7 +59,10 @@ const PublicMaintenanceHistoryTab: React.FC<PublicMaintenanceHistoryTabProps> = 
                   <span style={badgeStyle}>{h.estadoOperativoFinal || 'Sin estado'}</span>
                 </div>
                 <div className="small text-muted">{formatFechaLarga(h.fecha)}</div>
-                <div className="small">{h.responsable || 'Responsable no registrado'}</div>
+                <div className="small">
+                  {h.origen === 'externo' && <Badge bg="info" className="me-1">Externo</Badge>}
+                  {h.responsable || 'Responsable no registrado'}
+                </div>
               </div>
               {h.tieneObservacion && (
                 <button

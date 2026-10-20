@@ -38,6 +38,8 @@ const useInvalidate = (equipoId: string) => {
       qc.invalidateQueries(keys.cadenasVigentesPrefix(equipoId)),
       // The unified schedule reads the same chains.
       qc.invalidateQueries(['cronograma-actividades-externas']),
+      // An activity can change the operative state of the equipment (shown in the record and the schedule).
+      qc.invalidateQueries(['equipo-items']),
     ]);
 };
 

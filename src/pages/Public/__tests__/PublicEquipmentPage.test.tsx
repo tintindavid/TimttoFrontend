@@ -61,6 +61,40 @@ describe('PublicEquipmentPage', () => {
     mockUsePublicEquipmentByToken.mockReset();
   });
 
+  it('shows the external activities in their own tab, with the count', () => {
+    mockUsePublicEquipmentByToken.mockReturnValue({
+      data: {
+        data: {
+          ...payload,
+          actividadesExternas: [
+            { tipo: 'calibracion', fecha: '2026-10-17T00:00:00.000Z', proveedor: 'Biolab', consecutivoDocumento: 'CAL-1', resultado: 'aprobada', estadoOperativo: 'Operativo', tieneEvidencia: true, proximaFecha: null },
+          ],
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderAt();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Actividades externas (1)' }));
+    expect(screen.getByText(/Calibración CAL-1/)).toBeInTheDocument();
+    expect(screen.getByText('Biolab')).toBeInTheDocument();
+  });
+
+  it('without the field (tenant without the external module) there is no external tab, only Mtto', () => {
+    mockUsePublicEquipmentByToken.mockReturnValue({ data: { data: payload }, isLoading: false, isError: false });
+    renderAt();
+    expect(screen.queryByRole('tab', { name: /Actividades externas/ })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Mtto' })).toBeInTheDocument();
+  });
+
+  it('an empty list (module on, no activities) keeps the tab with 0', () => {
+    mockUsePublicEquipmentByToken.mockReturnValue({ data: { data: { ...payload, actividadesExternas: [] } }, isLoading: false, isError: false });
+    renderAt();
+    expect(screen.getByRole('tab', { name: 'Actividades externas (0)' })).toBeInTheDocument();
+  });
+
   it('renders the payload: header, info grid, and history cards', () => {
     mockUsePublicEquipmentByToken.mockReturnValue({
       data: { data: payload },

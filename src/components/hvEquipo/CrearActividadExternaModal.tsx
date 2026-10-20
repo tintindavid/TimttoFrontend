@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Form, Button, Row, Col } from 'react-bootstrap';
 import { TIPOS_ACTIVIDAD, ESTADOS_FINAL_LABELS } from '@/constants/actividadExterna';
 import type { CreateActividadDto } from '@/types/actividadExterna.types';
+import { EstadoOperativoValues, EstadoOperativoDefault } from '@/constants/estadoOperativo';
 import EvidenciaInput, { type EvidenciaValue } from './EvidenciaInput';
 import FrecuenciaInput from './FrecuenciaInput';
 import ProveedorSelect from './ProveedorSelect';
@@ -11,6 +12,10 @@ interface Props {
   onClose: () => void;
   onNext: (dto: CreateActividadDto, file?: File) => void;
   initial?: Partial<CreateActividadDto>;
+  /** Current operative state of the equipment, preselected in the form. */
+  estadoActual?: string;
+  /** The type (and the custom type text) come from a chain and cannot be changed (quick load from the schedule). */
+  tipoFijo?: boolean;
 }
 
 const DEFAULT_DATA: Partial<CreateActividadDto> = {
@@ -18,8 +23,11 @@ const DEFAULT_DATA: Partial<CreateActividadDto> = {
   frecuencia: { esUnica: false, meses: 12 },
 };
 
-const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, initial }) => {
-  const [data, setData] = useState<Partial<CreateActividadDto>>({ ...DEFAULT_DATA, ...initial });
+const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, initial, estadoActual, tipoFijo = false }) => {
+  const estadoInicial = (EstadoOperativoValues as readonly string[]).includes(estadoActual ?? '')
+    ? (estadoActual as string)
+    : EstadoOperativoDefault;
+  const [data, setData] = useState<Partial<CreateActividadDto>>({ ...DEFAULT_DATA, estadoOperativo: estadoInicial, ...initial });
   const [evidencia, setEvidencia] = useState<EvidenciaValue>({ mode: 'none' });
   const [err, setErr] = useState<string | null>(null);
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -35,7 +43,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
       tipoCustom: data.tipo === 'otro' ? data.tipoCustom?.trim() : undefined,
       estadoFinalCustom: data.estadoFinal === 'otro' ? data.estadoFinalCustom?.trim() : undefined,
     };
-    const required: (keyof CreateActividadDto)[] = ['tipo', 'consecutivoExterno', 'fecha', 'estadoFinal'];
+    const required: (keyof CreateActividadDto)[] = ['tipo', 'consecutivoExterno', 'fecha', 'estadoOperativo', 'estadoFinal'];
     for (const k of required) {
       if (!trimmed[k]) {
         setErr('Completa los campos obligatorios.');
@@ -86,6 +94,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
           <Form.Label>Tipo de actividad *</Form.Label>
           <Form.Select
             value={data.tipo ?? ''}
+            disabled={tipoFijo}
             onChange={(e) => update({ tipo: e.target.value as CreateActividadDto['tipo'] })}
           >
             <option value="">— seleccionar —</option>
@@ -97,7 +106,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
         {data.tipo === 'otro' && (
           <Form.Group className="mb-3" controlId="act-tipo-custom">
             <Form.Label>Especifica cuál *</Form.Label>
-            <Form.Control value={data.tipoCustom ?? ''} onChange={(e) => update({ tipoCustom: e.target.value })} />
+            <Form.Control value={data.tipoCustom ?? ''} disabled={tipoFijo} onChange={(e) => update({ tipoCustom: e.target.value })} />
           </Form.Group>
         )}
         <Row>
@@ -126,7 +135,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
           </Col>
           <Col>
             <Form.Group className="mb-3" controlId="act-estado">
-              <Form.Label>Estado final *</Form.Label>
+              <Form.Label>Resultado *</Form.Label>
               <Form.Select
                 value={data.estadoFinal ?? ''}
                 onChange={(e) => update({ estadoFinal: e.target.value as CreateActividadDto['estadoFinal'] })}
@@ -138,9 +147,21 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
             </Form.Group>
           </Col>
         </Row>
+        <Form.Group className="mb-3" controlId="act-estado-operativo">
+          <Form.Label>Estado operativo *</Form.Label>
+          <Form.Select
+            value={data.estadoOperativo ?? ''}
+            onChange={(e) => update({ estadoOperativo: e.target.value })}
+          >
+            {EstadoOperativoValues.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </Form.Select>
+          <Form.Text className="text-muted">Estado en que queda el equipo; pasa a ser su estado actual si es el último servicio.</Form.Text>
+        </Form.Group>
         {data.estadoFinal === 'otro' && (
           <Form.Group className="mb-3" controlId="act-estado-custom">
-            <Form.Label>Especifica estado final *</Form.Label>
+            <Form.Label>Especifica el resultado *</Form.Label>
             <Form.Control
               value={data.estadoFinalCustom ?? ''}
               onChange={(e) => update({ estadoFinalCustom: e.target.value })}
@@ -163,6 +184,7 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
           <FrecuenciaInput
             value={data.frecuencia ?? { esUnica: false, meses: 12 }}
             onChange={(f) => update({ frecuencia: f })}
+            sinUnica={tipoFijo}
           />
         </div>
         {err && <div className="text-danger small" role="alert">{err}</div>}

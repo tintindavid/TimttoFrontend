@@ -18,9 +18,11 @@ interface TenantCapabilitiesPanelProps {
 interface Flags {
   executesServices: boolean;
   registersExternal: boolean;
+  usesQrs: boolean;
+  scheduleQuickLoad: boolean;
 }
 
-const DEFAULT_FLAGS: Flags = { executesServices: true, registersExternal: false };
+const DEFAULT_FLAGS: Flags = { executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: false };
 const TYPE_ORDER: TenantType[] = ['provider', 'client', 'hybrid'];
 
 interface ApiErrorLike {
@@ -50,7 +52,14 @@ const extractCandidates = (err: ApiErrorLike): OrganizationCustomerCandidate[] =
 };
 
 const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenant }) => {
-  const current: Flags = tenant.capabilities ?? DEFAULT_FLAGS;
+  // A tenant stored before the QR module has no `usesQrs`: it is off.
+  const current: Flags = {
+    ...DEFAULT_FLAGS,
+    ...(tenant.capabilities ?? {}),
+    usesQrs: tenant.capabilities?.usesQrs ?? false,
+    // The quick load only counts with the external module (the backend reads it the same way).
+    scheduleQuickLoad: !!(tenant.capabilities?.registersExternal && tenant.capabilities?.scheduleQuickLoad),
+  };
   const currentType = getTenantType(current);
 
   const [flags, setFlags] = useState<Flags>(current);
@@ -62,15 +71,19 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
   // Re-sync the form when the saved capabilities change (after a successful save).
   const savedExecutes = current.executesServices;
   const savedRegisters = current.registersExternal;
+  const savedQrs = current.usesQrs;
+  const savedQuick = current.scheduleQuickLoad;
   useEffect(() => {
-    setFlags({ executesServices: savedExecutes, registersExternal: savedRegisters });
-  }, [savedExecutes, savedRegisters]);
+    setFlags({ executesServices: savedExecutes, registersExternal: savedRegisters, usesQrs: savedQrs, scheduleQuickLoad: savedQuick });
+  }, [savedExecutes, savedRegisters, savedQrs, savedQuick]);
 
   const nextType = getTenantType(flags);
   const invalid = !flags.executesServices && !flags.registersExternal;
   const unchanged =
     flags.executesServices === current.executesServices &&
-    flags.registersExternal === current.registersExternal;
+    flags.registersExternal === current.registersExternal &&
+    flags.usesQrs === current.usesQrs &&
+    flags.scheduleQuickLoad === current.scheduleQuickLoad;
 
   const submit = (organizationCustomerId?: string) => {
     const input: UpdateTenantCapabilitiesInput = { ...flags };
@@ -116,10 +129,14 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
                 size="sm"
                 variant={nextType === type ? 'primary' : 'outline-primary'}
                 onClick={() =>
-                  setFlags({
+                  // A preset only sets the two execution flags; the QR module is not part of the type.
+                  setFlags((f) => ({
+                    ...f,
                     executesServices: TENANT_TYPE_PRESETS[type].executesServices,
                     registersExternal: TENANT_TYPE_PRESETS[type].registersExternal,
-                  })
+                    // The quick load needs the external module: a preset that turns it off turns the quick load off too.
+                    scheduleQuickLoad: TENANT_TYPE_PRESETS[type].registersExternal ? f.scheduleQuickLoad : false,
+                  }))
                 }
               >
                 {TENANT_TYPE_PRESETS[type].label}
@@ -138,12 +155,30 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
             type="switch"
             id="cap-registers"
             className="mt-2"
-            label="Registra mantenimiento de terceros"
+            label="Servicios de terceros (módulo premium: actividades externas, servicios MP/MC externos y cronograma externo)"
             checked={flags.registersExternal}
-            onChange={(e) => setFlags((f) => ({ ...f, registersExternal: e.target.checked }))}
+            // Turning the external module off also turns off the quick load, which depends on it.
+            onChange={(e) => setFlags((f) => ({ ...f, registersExternal: e.target.checked, scheduleQuickLoad: e.target.checked ? f.scheduleQuickLoad : false }))}
+          />
+          <Form.Check
+            type="switch"
+            id="cap-quick-load"
+            className="mt-2 ms-4"
+            label="Carga rápida desde el cronograma (módulo premium: registrar actividades desde las celdas del cronograma)"
+            checked={flags.scheduleQuickLoad}
+            disabled={!flags.registersExternal}
+            onChange={(e) => setFlags((f) => ({ ...f, scheduleQuickLoad: e.target.checked }))}
+          />
+          <Form.Check
+            type="switch"
+            id="cap-qrs"
+            className="mt-2"
+            label="QRs y tickets (módulo premium: QR de equipos, QR de servicio y tickets)"
+            checked={flags.usesQrs}
+            onChange={(e) => setFlags((f) => ({ ...f, usesQrs: e.target.checked }))}
           />
           <Form.Text muted className="d-block mt-2">
-            El registro de mantenimiento de terceros estará disponible en una versión posterior.
+            Al apagar un módulo se ocultan y bloquean sus pantallas y servicios; los datos ya cargados no se eliminan.
           </Form.Text>
 
           {invalid && (
@@ -175,6 +210,22 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
             <strong>{TENANT_TYPE_PRESETS[currentType].label}</strong> a{' '}
             <strong>{TENANT_TYPE_PRESETS[nextType].label}</strong>.
           </p>
+          {flags.registersExternal !== current.registersExternal && (
+            <Alert variant="info" className="mb-2">
+              Servicios de terceros: {flags.registersExternal ? 'se activa' : 'se desactiva'} para este tenant.
+            </Alert>
+          )}
+          {flags.scheduleQuickLoad !== current.scheduleQuickLoad && (
+            <Alert variant="info" className="mb-2">
+              Carga rápida desde el cronograma: {flags.scheduleQuickLoad ? 'se activa' : 'se desactiva'} para este tenant.
+            </Alert>
+          )}
+          {flags.usesQrs !== current.usesQrs && (
+            <Alert variant="info" className="mb-2">
+              QRs y tickets: {flags.usesQrs ? 'se activa' : 'se desactiva'} para este tenant
+              {flags.usesQrs ? '.' : '; los QR impresos mostrarán una página de no encontrado.'}
+            </Alert>
+          )}
           {!flags.executesServices && (
             <Alert variant="warning" className="mb-0">
               Se ocultarán órdenes de trabajo, informes y diario, y se bloquearán las operaciones

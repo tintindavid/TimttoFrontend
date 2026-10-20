@@ -4,11 +4,13 @@ import Navbar from '../Navbar/Navbar';
 import Sidebar from '../Sidebar/Sidebar';
 import ViewAsBanner, { VIEW_AS_BANNER_HEIGHT } from '@/components/common/ViewAsBanner';
 import { useAuth } from '@/context/AuthContext';
+import { useSidebarModo } from '@/hooks/useSidebarModo';
 import './MainLayout.css';
 
 const MainLayout: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { viewAsTenantId } = useAuth();
+  const sidebarModo = useSidebarModo();
 
   const toggleMobileSidebar = () => setIsMobileSidebarOpen(!isMobileSidebarOpen);
   const closeMobileSidebar = () => setIsMobileSidebarOpen(false);
@@ -25,11 +27,19 @@ const MainLayout: React.FC = () => {
         aria-label="Timtto application"
         style={{ paddingTop: bannerOffset }}
       >
-        <Navbar onToggleMobileSidebar={toggleMobileSidebar} />
+        <Navbar
+          onToggleMobileSidebar={toggleMobileSidebar}
+          sidebarCompacto={sidebarModo.compacto}
+          onToggleSidebarModo={sidebarModo.alternar}
+        />
         <div className="app-body">
           <Sidebar
             isMobileOpen={isMobileSidebarOpen}
             onCloseMobile={closeMobileSidebar}
+            compacto={sidebarModo.compacto}
+            abierto={sidebarModo.abierto}
+            onAbrir={sidebarModo.abrir}
+            onCerrar={sidebarModo.cerrar}
           />
           <main className="app-content" role="main" tabIndex={-1} aria-live="polite">
             <Outlet />

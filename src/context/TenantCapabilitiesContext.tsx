@@ -38,9 +38,13 @@ export const TenantCapabilitiesProvider: React.FC<{ children: React.ReactNode }>
 
   const value = useMemo(
     () =>
-      isPlatformView || !data
-        ? buildValue(ALL_CAPABILITIES_ENABLED, !isPlatformView && !!user && isLoading)
-        : buildValue(data, false),
+      isPlatformView
+        ? buildValue(ALL_CAPABILITIES_ENABLED, false)
+        : !data
+          // Loading or failed: modules default to enabled so nothing flickers away, EXCEPT the paid quick load, which
+          // must not be offered to a tenant that may not have it.
+          ? buildValue({ ...ALL_CAPABILITIES_ENABLED, scheduleQuickLoad: false }, !!user && isLoading)
+          : buildValue(data, false),
     [isPlatformView, data, user, isLoading]
   );
 

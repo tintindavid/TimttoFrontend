@@ -6,10 +6,13 @@ import {
   FilaActividad,
   GrupoServicioSede,
   MESES,
+  MESES_MAP,
   Mes,
   OrigenCronograma,
 } from '@/types/cronograma.types';
 import { describirCadena, estadoMesExterno, estadoMesPreventivo, filasEquipo, formatearFechaUtc } from '@/utils/cronogramaExterno';
+import { puedeCargarCelda } from '@/utils/cronogramaCargaRapida';
+import type { CeldaCarga } from './CargaRapidaCelda';
 import { FaCheckCircle, FaEdit } from 'react-icons/fa';
 
 interface CronogramaGridProps {
@@ -18,6 +21,14 @@ interface CronogramaGridProps {
   onToggleEquipo: (equipoId: string) => void;
   onEditEquipo?: (equipo: any) => void;
   mostrarCheckboxes?: boolean;
+  /**
+   * Quick load (cronograma-carga-rapida): when given, a cell that is due (programado/vencido, not in a future month)
+   * becomes a button that calls it, and a done cell (realizado) becomes a button that asks for its read-only summary.
+   * Without it the grid is read-only, exactly as before (General schedule).
+   */
+  onCargarCelda?: (celda: CeldaCarga) => void;
+  /** Permission of the user for the kind of row (external activity or preventive); defaults to allowed. */
+  puedeCargarFila?: (fila: FilaActividad) => boolean;
   /** Which rows to draw: preventive (MP), external activities, or both (default). */
   origen?: OrigenCronograma;
   /** Year shown for the executed/pending state of each month (default: the current year). */
@@ -55,6 +66,8 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
   mostrarCheckboxes = true,
   origen = 'todos',
   anio = new Date().getUTCFullYear(),
+  onCargarCelda,
+  puedeCargarFila,
 }) => {
   if (grupos.length === 0 || grupos.every(g => g.equipos.length === 0)) {
     return (
@@ -75,6 +88,24 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
     const estado = estadoCelda(fila, equipo, mes, anio);
     if (!estado) return null;
 
+    // A done cell only reads (summary), so it needs no permission to create; a due cell needs it and the date rule
+    const esResumen = !!onCargarCelda && estado === 'realizado';
+    const clicable = esResumen || (!!onCargarCelda && (puedeCargarFila ? puedeCargarFila(fila) : true) && puedeCargarCelda(estado, mes, anio, new Date(), fila));
+    // A due cell becomes a button that opens the registration form of that activity (keeps the icon and its test ids)
+    const conAccion = (nodo: React.ReactNode) => (clicable ? (
+      <button
+        type="button"
+        className="btn btn-link p-0 border-0 celda-cargar"
+        style={{ lineHeight: 1 }}
+        data-testid="celda-cargar"
+        aria-label={`${esResumen ? 'Ver resumen de' : 'Cargar'} ${fila.titulo} de ${MESES_MAP[mes]}`}
+        title={esResumen ? 'Clic para ver el resumen de la actividad' : 'Clic para registrar esta actividad'}
+        onClick={() => onCargarCelda!({ equipo, fila, mes, estado })}
+      >
+        {nodo}
+      </button>
+    ) : nodo);
+
     const icono = (
       <FaCheckCircle
         className={COLOR_ESTADO[estado]}
@@ -88,7 +119,7 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
 
     if (fila.tipo === 'mp') {
       const texto = estado === 'realizado' ? 'Preventivo realizado' : 'Preventivo programado, sin reporte';
-      return <span title={texto}>{icono}</span>;
+      return conAccion(<span title={clicable ? undefined : texto}>{icono}</span>);
     }
 
     const cadena = fila.cadena!;
@@ -107,7 +138,7 @@ export const CronogramaGrid: React.FC<CronogramaGridProps> = ({
           </Tooltip>
         }
       >
-        <span>{icono}</span>
+        <span>{conAccion(icono)}</span>
       </OverlayTrigger>
     );
   };

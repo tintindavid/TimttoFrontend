@@ -46,3 +46,12 @@
     padding: 0;
   }
 }
+
+/* Compact side menu (sidebar-compacto-colapsable): the white brand rail shrinks to the width of the strip and
+   shows the simplified logo. */
+@media (min-width: 992px) {
+  .tt-navbar.tt-navbar-compacto .navbar-brand {
+    width: var(--sidebar-rail-width, 64px);
+    transition: width 0.2s ease;
+  }
+}

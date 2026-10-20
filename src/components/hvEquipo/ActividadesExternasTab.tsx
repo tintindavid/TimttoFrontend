@@ -4,7 +4,6 @@ import Swal from 'sweetalert2';
 import {
   useActividadesExternasPorEquipo,
   useCadenasVigentesPorTipo,
-  useCreateActividadExterna,
   useRemoveActividadExterna,
   useCerrarCadena,
   useUpdateActividadExterna,
@@ -14,24 +13,20 @@ import CrearActividadExternaModal from './CrearActividadExternaModal';
 import ContinuidadCadenaModal from './ContinuidadCadenaModal';
 import CambiarProveedorModal from './CambiarProveedorModal';
 import type { ActividadExterna, CadenaActividad, CreateActividadDto, UpdateActividadDto } from '@/types/actividadExterna.types';
-import { ERROR_CODE_MESSAGES } from '@/constants/actividadExterna';
+import { errorTextActividad as errorText, useGuardarActividadExterna } from '@/hooks/useGuardarActividadExterna';
 
 interface Props {
   equipoId: string;
   clienteId: string;
+  /** Current operative state of the equipment, preselected in the new activity form. */
+  estadoActual?: string;
 }
 
 type Step = 'closed' | 'paso1' | 'checking' | 'paso2';
 
-const errorText = (err: unknown): string => {
-  const e = err as { response?: { data?: { code?: string } }; message?: string };
-  const code = e?.response?.data?.code;
-  return (code && ERROR_CODE_MESSAGES[code]) || e?.message || 'Error desconocido';
-};
-
-const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
+const ActividadesExternasTab: React.FC<Props> = ({ equipoId, estadoActual }) => {
   const { data, isLoading, isError } = useActividadesExternasPorEquipo(equipoId);
-  const createMut = useCreateActividadExterna(equipoId);
+  const { guardar, guardando } = useGuardarActividadExterna(equipoId);
   const removeMut = useRemoveActividadExterna(equipoId);
   const cerrarMut = useCerrarCadena(equipoId);
   const updateMut = useUpdateActividadExterna(equipoId);
@@ -56,27 +51,15 @@ const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
 
   const persist = useCallback(
     async (dto: CreateActividadDto, cadenaIdSucesion?: string, file?: File) => {
-      try {
-        await createMut.mutateAsync({ dto: { ...dto, cadenaIdSucesion }, file });
-        reset();
-        await Swal.fire({
-          icon: 'success',
-          title: 'Actividad guardada',
-          text: cadenaIdSucesion
-            ? 'Cadena actualizada: anterior cerrada, nueva vigente.'
-            : 'Nueva cadena creada.',
-        });
-      } catch (err) {
-        await Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: errorText(err) });
-        setStep('paso1'); // allow retry from paso 1
-      }
+      const ok = await guardar(dto, cadenaIdSucesion, file, { alGuardar: reset });
+      if (!ok) setStep('paso1'); // allow retry from paso 1
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [createMut.mutateAsync],
+    [guardar],
   );
 
   const handlePaso1Next = (dto: CreateActividadDto, file?: File) => {
-    if (createMut.isLoading || step === 'checking') return;
+    if (guardando || step === 'checking') return;
     setPaso1Data(dto);
     setPaso1File(file);
     if (dto.frecuencia.esUnica) {
@@ -183,6 +166,7 @@ const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
       <CrearActividadExternaModal
         show={step === 'paso1' || step === 'checking'}
         initial={paso1Data ?? undefined}
+        estadoActual={estadoActual}
         onClose={reset}
         onNext={handlePaso1Next}
       />

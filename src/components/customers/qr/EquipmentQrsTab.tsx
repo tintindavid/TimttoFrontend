@@ -15,6 +15,7 @@ import { FaFilePdf, FaPlus, FaQrcode, FaSearch } from 'react-icons/fa';
 import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useCustomer } from '@/hooks/useCustomers';
 import {
   useEquipmentQrs,
   useExportEquipmentQrPdfBulk,
@@ -54,6 +55,10 @@ const EquipmentQrsTab: React.FC<EquipmentQrsTabProps> = ({ customerId }) => {
   useEffect(() => {
     setPage(1);
   }, [sedeId, servicio, estadoOperativo, debouncedSearch]);
+
+  // First line of the sticker: every QR of this tab belongs to the same client.
+  const { data: customerData } = useCustomer(customerId);
+  const clienteNombre = customerData?.data?.Razonsocial ?? null;
 
   const { data: sedesData, isLoading: loadingSedes } = useSedesByCustomer(customerId);
   const sedes: Sede[] = (sedesData?.data ?? []) as Sede[];
@@ -393,6 +398,7 @@ const EquipmentQrsTab: React.FC<EquipmentQrsTabProps> = ({ customerId }) => {
         show={showPreview}
         onHide={() => setShowPreview(false)}
         items={previewItems}
+        clienteNombre={clienteNombre}
         onConfirmExport={previewMode === 'export-selected' ? handleConfirmExportSelected : undefined}
         isExporting={exportBulkMut.isLoading}
       />
