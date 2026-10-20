@@ -1,6 +1,6 @@
 import React from 'react';
 import { Accordion } from 'react-bootstrap';
-import type { CadenaConActividades } from '@/types/actividadExterna.types';
+import type { ActividadExterna, CadenaConActividades } from '@/types/actividadExterna.types';
 import CadenaActividadRow from './CadenaActividadRow';
 import './ActividadesExternasList.css';
 
@@ -8,9 +8,10 @@ interface Props {
   grupos: CadenaConActividades[];
   onCerrarCadena: (id: string) => void;
   onRemoveActividad: (id: string) => void;
+  onCambiarProveedor?: (actividad: ActividadExterna) => void;
 }
 
-const ActividadesExternasList: React.FC<Props> = ({ grupos, onCerrarCadena, onRemoveActividad }) => {
+const ActividadesExternasList: React.FC<Props> = ({ grupos, onCerrarCadena, onRemoveActividad, onCambiarProveedor }) => {
   if (grupos.length === 0) {
     return (
       <p className="text-muted text-center p-4">
@@ -21,7 +22,13 @@ const ActividadesExternasList: React.FC<Props> = ({ grupos, onCerrarCadena, onRe
   return (
     <Accordion alwaysOpen>
       {grupos.map((g) => (
-        <CadenaActividadRow key={g.cadena._id} grupo={g} onCerrar={onCerrarCadena} onRemove={onRemoveActividad} />
+        <CadenaActividadRow
+          key={g.cadena._id}
+          grupo={g}
+          onCerrar={onCerrarCadena}
+          onRemove={onRemoveActividad}
+          onCambiarProveedor={onCambiarProveedor}
+        />
       ))}
     </Accordion>
   );

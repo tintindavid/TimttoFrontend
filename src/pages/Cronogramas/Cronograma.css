@@ -423,3 +423,12 @@
   background-color: #ffe082 !important;
 }
 
+/* One block of rows per equipment: a thicker line starts each block and the Act column stands out */
+.cronograma-grid tbody tr.fila-inicio-equipo > td {
+  border-top: 2px solid #adb5bd;
+}
+
+.cronograma-grid tbody td.act-cell {
+  background-color: #f8f9fa;
+  vertical-align: middle;
+}

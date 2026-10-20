@@ -43,6 +43,8 @@ export interface ActividadExterna {
   consecutivoExterno: string;
   fecha: string;
   proveedor: string;
+  /** Linked provider third party (Customer kind=provider); null for free-text providers. */
+  proveedorId?: string | null;
   observacion?: string;
   estadoFinal: EstadoFinal;
   estadoFinalCustom?: string;
@@ -66,7 +68,9 @@ export interface CreateActividadDto {
   tipoCustom?: string;
   consecutivoExterno: string;
   fecha: string;
-  proveedor: string;
+  /** Required unless `proveedorId` is sent (the server then copies the provider name). */
+  proveedor?: string;
+  proveedorId?: string;
   observacion?: string;
   estadoFinal: EstadoFinal;
   estadoFinalCustom?: string;
@@ -76,6 +80,9 @@ export interface CreateActividadDto {
 }
 
 export interface UpdateActividadDto {
+  /** Provider id; '' unlinks it (multipart bodies cannot carry null). */
+  proveedorId?: string;
+  proveedor?: string;
   observacion?: string;
   estadoFinal?: EstadoFinal;
   estadoFinalCustom?: string;

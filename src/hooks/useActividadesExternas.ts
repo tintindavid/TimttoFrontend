@@ -36,6 +36,8 @@ const useInvalidate = (equipoId: string) => {
     Promise.all([
       qc.invalidateQueries(keys.listByEquipo(equipoId)),
       qc.invalidateQueries(keys.cadenasVigentesPrefix(equipoId)),
+      // The unified schedule reads the same chains.
+      qc.invalidateQueries(['cronograma-actividades-externas']),
     ]);
 };
 
