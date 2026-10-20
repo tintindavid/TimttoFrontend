@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Container, Card, Form, Button, Spinner, Alert, InputGroup } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -32,6 +33,7 @@ const schema = yup.object({
 
 const ChangePasswordPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -61,6 +63,9 @@ const ChangePasswordPage: React.FC = () => {
         localStorage.setItem('token', newToken);
       }
       toast.success('Contraseña actualizada correctamente');
+      // The capabilities request answered 428 while the password was pending: ask for them again
+      // so a tenant with a reduced menu does not keep the default (everything enabled).
+      queryClient.invalidateQueries(['tenant-capabilities']);
       navigate('/');
     } catch (err: unknown) {
       // reason: axios error shape is not known at compile time

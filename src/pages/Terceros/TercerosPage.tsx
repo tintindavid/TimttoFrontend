@@ -21,6 +21,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { customerService } from '@/services/customer.service';
 import { Customer, CustomerKind } from '@/types/customer.types';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 
 const PAGE_SIZE = 20;
 
@@ -277,11 +278,28 @@ const ThirdPartyList: React.FC<ThirdPartyListProps> = ({ kind }) => {
 
 const TercerosPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab: CustomerKind = searchParams.get('tab') === 'provider' ? 'provider' : 'customer';
+  const { can } = useTenantCapabilities();
+  const showClients = can('executesServices');
+  const activeTab: CustomerKind =
+    !showClients || searchParams.get('tab') === 'provider' ? 'provider' : 'customer';
 
   const handleSelect = (key: string | null) => {
     setSearchParams(key === 'provider' ? { tab: 'provider' } : {}, { replace: true });
   };
+
+  // Tenants that do not execute services have no client list (their single organization
+  // client is reached from "Mi información"); only providers are managed here.
+  if (!showClients) {
+    return (
+      <Container fluid>
+        <div className="mb-3">
+          <h1>Proveedores</h1>
+          <p className="text-muted mb-0">Gestión de proveedores del tenant</p>
+        </div>
+        <ThirdPartyList kind="provider" />
+      </Container>
+    );
+  }
 
   return (
     <Container fluid>

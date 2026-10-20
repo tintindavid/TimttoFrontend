@@ -25,6 +25,7 @@ const ACTION_LABELS: Record<PlatformAuditAction, string> = {
   USER_PASSWORD_RESET: 'Reset de contraseña',
   VIEW_AS_ENTERED: 'View-as entrado',
   VIEW_AS_EXITED: 'View-as salido',
+  TENANT_CAPABILITIES_CHANGED: 'Capacidades cambiadas',
 };
 
 const ACTION_VARIANTS: Record<PlatformAuditAction, string> = {
@@ -36,6 +37,7 @@ const ACTION_VARIANTS: Record<PlatformAuditAction, string> = {
   USER_PASSWORD_RESET: 'secondary',
   VIEW_AS_ENTERED: 'dark',
   VIEW_AS_EXITED: 'dark',
+  TENANT_CAPABILITIES_CHANGED: 'primary',
 };
 
 const LIMIT = 25;
@@ -48,6 +50,7 @@ const ALL_ACTIONS: PlatformAuditAction[] = [
   'USER_PASSWORD_RESET',
   'VIEW_AS_ENTERED',
   'VIEW_AS_EXITED',
+  'TENANT_CAPABILITIES_CHANGED',
 ];
 
 const PlatformAuditPage: React.FC = () => {

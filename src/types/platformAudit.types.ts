@@ -8,7 +8,8 @@ export type PlatformAuditAction =
   | 'TENANT_SOFT_DELETED'
   | 'USER_PASSWORD_RESET'
   | 'VIEW_AS_ENTERED'
-  | 'VIEW_AS_EXITED';
+  | 'VIEW_AS_EXITED'
+  | 'TENANT_CAPABILITIES_CHANGED';
 
 export type PlatformAuditTargetType = 'tenant' | 'user';
 

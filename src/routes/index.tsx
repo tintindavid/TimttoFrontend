@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { LoginPage } from '@/pages/Auth/LoginPage';
 import DashboardPage from '@/pages/Dashboard/DashboardPage';
 import EquipoItemsPage from '@/pages/EquipoItems/EquipoItemsPage';
@@ -34,6 +34,7 @@ import ForgotPasswordPage from '@/pages/Auth/ForgotPasswordPage';
 import ResetPasswordPage from '@/pages/Auth/ResetPasswordPage';
 // My-organization redirect helper
 import { useAuth } from '@/context/AuthContext';
+import RequireCapability from '@/components/auth/RequireCapability';
 import TercerosPage from '@/pages/Terceros/TercerosPage';
 import CustomerFormPage from '@/pages/Terceros/CustomerFormPage';
 import CustomerDetailPage from '@/pages/Terceros/CustomerDetailPage';
@@ -170,27 +171,33 @@ const AppRoutes: React.FC = () => {
         <Route path="users/:id" element={<UserDetailPage />} />
         <Route path="users/:id/edit" element={<UserFormPage />} />
 
-        <Route path="ots" element={<OTsPage />} />
-        <Route path="ots/new" element={<CreateOtPage />} />
-        <Route path="ots/create" element={<CreateOtPage />} />
-        <Route path="ots/:id" element={<OtDetailPage />} />
-        <Route path="ots/:id/edit" element={<OtFormPage />} />
+        {/* Modules that require executesServices (OTs, reports, informes, diario).
+            Tenants without it are redirected home with a notice. */}
+        <Route element={<RequireCapability capability="executesServices"><Outlet /></RequireCapability>}>
+          <Route path="ots" element={<OTsPage />} />
+          <Route path="ots/new" element={<CreateOtPage />} />
+          <Route path="ots/create" element={<CreateOtPage />} />
+          <Route path="ots/:id" element={<OtDetailPage />} />
+          <Route path="ots/:id/edit" element={<OtFormPage />} />
 
-        {/* maintenance-orders alias (sidebar uses /maintenance-orders) */}
-        <Route path="maintenance-orders" element={<OTsPage />} />
-        <Route path="maintenance-orders/new" element={<CreateOtPage />} />
-        <Route path="maintenance-orders/create" element={<CreateOtPage />} />
-        <Route path="maintenance-orders/:id" element={<OtDetailPage />} />
-        <Route path="maintenance-orders/:id/edit" element={<OtFormPage />} />
+          {/* maintenance-orders alias (sidebar uses /maintenance-orders) */}
+          <Route path="maintenance-orders" element={<OTsPage />} />
+          <Route path="maintenance-orders/new" element={<CreateOtPage />} />
+          <Route path="maintenance-orders/create" element={<CreateOtPage />} />
+          <Route path="maintenance-orders/:id" element={<OtDetailPage />} />
+          <Route path="maintenance-orders/:id/edit" element={<OtFormPage />} />
+
+          {/* informes */}
+          <Route path="informes" element={<InformesPage />} />
+
+          {/* diario */}
+          <Route path="diario" element={<DiarioPage />} />
+
+          <Route path="reports" element={<ReportsPage />} />
+        </Route>
 
         {/* cronogramas */}
         <Route path="cronogramas" element={<CronogramasPage />} />
-
-        {/* informes */}
-        <Route path="informes" element={<InformesPage />} />
-
-        {/* diario */}
-        <Route path="diario" element={<DiarioPage />} />
 
         {/* customers, reports, protocols, settings, hv-equipo */}
         <Route path="terceros" element={<TercerosPage />} />
@@ -203,7 +210,7 @@ const AppRoutes: React.FC = () => {
         <Route path="customers/:id" element={<LegacyCustomerRedirect />} />
         <Route path="customers/:id/edit" element={<LegacyCustomerRedirect />} />
 
-        <Route path="reports" element={<ReportsPage />} />
+        {/* Read-only report viewer stays open: history is reachable from the equipment record */}
         <Route path="reports/:reporteId/view" element={<ViewReportPage />} />
 
         <Route path="protocols" element={<ProtocolsPage />} />
@@ -242,12 +249,6 @@ const AppRoutes: React.FC = () => {
         <Route path="my-organization" element={<MyOrgRoute />} />
         <Route path="my-tenant" element={<MyTenantPage />} />
 
-
-        {/* Ot / Ordenes de Trabajo */}
-        <Route path="ots" element={<OTsPage />} />
-        <Route path="ots/new" element={<CreateOtPage />} />
-        <Route path="ots/:id" element={<OtDetailPage />} />
-        <Route path="ots/:id/edit" element={<OtFormPage />} />
 
         {/* hoja de vida de equipos */}
         <Route path="/hv-equipo/:equipoId" element={<HVEquipoPage />} />

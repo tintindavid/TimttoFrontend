@@ -6,11 +6,13 @@ import { toast } from 'react-toastify';
 import Pagination from '@/components/common/Pagination';
 import RepuestoStatusDropdown from '@/components/repuestos/RepuestoStatusDropdown';
 import CreateOtFromRepuestosModal from '@/components/repuestos/CreateOtFromRepuestosModal';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useCreateOtFromRepuestos, useRepuestosList, useUpdateRepuesto } from '@/hooks/useRepuestos';
 
 const RepuestosSolicitadosPage: React.FC = () => {
   const navigate = useNavigate();
+  const { can } = useTenantCapabilities();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [estado, setEstado] = useState('');
@@ -133,7 +135,7 @@ const RepuestosSolicitadosPage: React.FC = () => {
           <p className="text-muted mb-0">Gestión global de repuestos por cliente, estado y búsqueda.</p>
         </Col>
         <Col xs="auto">
-          {selectedIds.length > 0 && (
+          {selectedIds.length > 0 && can('executesServices') && (
             <Button variant="primary" onClick={() => setShowOtModal(true)}>
               Crear OT ({selectedIds.length})
             </Button>

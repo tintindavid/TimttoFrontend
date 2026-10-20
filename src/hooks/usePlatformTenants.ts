@@ -6,6 +6,7 @@ import type {
   CreateTenantWithAdminInput,
   UpdateTenantMetadataInput,
   SuspendTenantInput,
+  UpdateTenantCapabilitiesInput,
 } from '@/types';
 
 /**
@@ -84,6 +85,26 @@ export const useUpdateTenantMetadata = () => {
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
           'Error al actualizar el tenant';
         toast.error(message);
+      },
+    }
+  );
+};
+
+/**
+ * Capabilities change. Errors are NOT toasted here: the caller handles the
+ * 409 ORGANIZATION_CUSTOMER_REQUIRED choice dialog and shows other errors itself.
+ */
+export const useUpdateTenantCapabilities = () => {
+  const qc = useQueryClient();
+  return useMutation(
+    ({ id, input }: { id: string; input: UpdateTenantCapabilitiesInput }) =>
+      PlatformTenantService.updateCapabilities(id, input),
+    {
+      onSuccess: () => {
+        qc.invalidateQueries(['platform-tenants']);
+        // View-as sessions of that tenant must refetch their menu flags.
+        qc.invalidateQueries(['tenant-capabilities']);
+        toast.success('Capacidades actualizadas');
       },
     }
   );

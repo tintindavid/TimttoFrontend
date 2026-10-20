@@ -56,7 +56,7 @@ const Step2AdminData: React.FC<Step2Props> = ({ defaultValues, onNext, onBack })
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <h5 className="mb-3">Paso 2 — Datos del primer administrador</h5>
+      <h5 className="mb-3">Paso 3 — Datos del primer administrador</h5>
 
       <Alert variant="info" className="mb-4">
         <strong>Nota:</strong> El backend generará una contraseña temporal segura y la devolverá

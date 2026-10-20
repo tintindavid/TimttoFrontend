@@ -24,3 +24,4 @@ export * from './platformAnalytics.types';
 export * from './clientAccessToken.types';
 export * from './publicPortal.types';
 export * from './notification.types';
+export * from './tenantCapabilities.types';

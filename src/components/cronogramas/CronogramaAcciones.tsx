@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, ButtonGroup, Form, OverlayTrigger, Tooltip } from 'react-bootstrap';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { FaPrint, FaPlus, FaCheckSquare, FaTimesCircle } from 'react-icons/fa';
 
 interface CronogramaAccionesProps {
@@ -24,6 +25,7 @@ export const CronogramaAcciones: React.FC<CronogramaAccionesProps> = ({
   onLimpiarSeleccion,
   mostrarCrearOT = true
 }) => {
+  const { can } = useTenantCapabilities();
   return (
     <div className="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded">
       <div className="d-flex align-items-center gap-3">
@@ -69,7 +71,7 @@ export const CronogramaAcciones: React.FC<CronogramaAccionesProps> = ({
           </Button>
         </OverlayTrigger>
 
-        {mostrarCrearOT && (
+        {mostrarCrearOT && can('executesServices') && (
           <Button
             variant="success"
             onClick={onCrearOT}

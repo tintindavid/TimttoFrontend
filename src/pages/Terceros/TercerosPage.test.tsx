@@ -7,6 +7,13 @@ const mocks = vi.hoisted(() => ({
   useCustomers: vi.fn(),
   deleteMutation: { mutateAsync: vi.fn() },
   navigate: vi.fn(),
+  executesServices: true,
+}));
+
+vi.mock('@/context/TenantCapabilitiesContext', () => ({
+  useTenantCapabilities: () => ({
+    can: (c: string) => (c === 'executesServices' ? mocks.executesServices : true),
+  }),
 }));
 
 vi.mock('@/hooks/useCustomers', () => ({
@@ -33,6 +40,7 @@ const renderPage = (url = '/terceros') =>
   );
 
 beforeEach(() => {
+  mocks.executesServices = true;
   mocks.navigate.mockReset();
   mocks.useCustomers.mockReset();
   mocks.useCustomers.mockImplementation((params: { kind: string }) => ({
@@ -85,5 +93,26 @@ describe('TercerosPage', () => {
     });
     renderPage('/terceros?tab=provider');
     expect(screen.getByText('Aún no hay proveedores registrados.')).toBeTruthy();
+  });
+});
+
+describe('TercerosPage — tenant without executesServices', () => {
+  it('hides the Clientes tab and its create action and lists providers by default', () => {
+    mocks.executesServices = false;
+    renderPage();
+
+    expect(screen.queryByRole('tab', { name: 'Clientes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Crear Cliente/ })).toBeNull();
+    expect(screen.queryByText('Cliente Uno')).toBeNull();
+    expect(screen.getByText('Proveedor Uno')).toBeTruthy();
+    expect(mocks.useCustomers.mock.calls.every(([p]) => p.kind === 'provider')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Nuevo proveedor/ }));
+    expect(mocks.navigate).toHaveBeenCalledWith('/terceros/new?kind=provider');
+  });
+
+  it('ignores a stale tab selection for clients', () => {
+    mocks.executesServices = false;
+    renderPage('/terceros');
+    expect(mocks.useCustomers.mock.calls.some(([p]) => p.kind === 'customer')).toBe(false);
   });
 });

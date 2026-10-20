@@ -40,7 +40,7 @@ const Step3Logo: React.FC<Step3Props> = ({ defaultFile, onNext, onBack }) => {
 
   return (
     <div>
-      <h5 className="mb-3">Paso 3 — Logo de la empresa (opcional)</h5>
+      <h5 className="mb-3">Paso 4 — Logo de la empresa (opcional)</h5>
 
       <Alert variant="info" className="mb-4">
         El logo es opcional. Puedes saltarte este paso y subirlo más tarde desde el perfil

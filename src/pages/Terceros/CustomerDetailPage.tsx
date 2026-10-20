@@ -10,6 +10,7 @@ import CustomerOTsSection from '@/components/customers/CustomerOTsSection';
 import CustomerQrsSection from '@/components/customers/CustomerQrsSection';
 import ClientTokensTab from '@/pages/Terceros/ClientTokensTab';
 import { useAuth } from '@/context/AuthContext';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { useHasPermission } from '@/hooks/usePermission';
 import { PERMISSIONS } from '@/constants/permissions';
 import { dataQueryOptions } from '@/config/queryClient';
@@ -19,6 +20,8 @@ const CustomerDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { can } = useTenantCapabilities();
+  const executesServices = can('executesServices');
   // Portal-cliente tab visibility is permission-gated as of 2026-08-03
   // (previously role=admin only). Admin still passes because the backfill
   // adds the permission to the seeded Admin role in every tenant.
@@ -142,7 +145,8 @@ const CustomerDetailPage: React.FC = () => {
               </Tab>
             )}
 
-            {!isProvider && (
+            {/* OTs and client tokens are part of the execution flow (executesServices). */}
+            {!isProvider && executesServices && (
               <Tab eventKey="ots" title="Órdenes de Trabajo">
                 <CustomerOTsSection customerId={customer._id!} />
               </Tab>
@@ -156,7 +160,7 @@ const CustomerDetailPage: React.FC = () => {
             )}
 
             {/* Accesos cliente — gated by PORTAL_CLIENTE_CREAR (2026-08-03). */}
-            {!isProvider && canManageClientPortal && (
+            {!isProvider && executesServices && canManageClientPortal && (
               <Tab eventKey="client-tokens" title="Accesos cliente">
                 <ClientTokensTab customerId={customer._id!} />
               </Tab>
