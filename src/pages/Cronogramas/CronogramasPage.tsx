@@ -1,18 +1,34 @@
 import React, { useState } from 'react';
-import { Container, Tabs, Tab } from 'react-bootstrap';
+import { Container, Tabs, Tab, Spinner } from 'react-bootstrap';
 import { FaUser, FaGlobe, FaCalendarAlt } from 'react-icons/fa';
 import { CronogramaPorCliente } from './CronogramaPorCliente';
 import { CronogramaGeneral } from './CronogramaGeneral';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import './Cronograma.css';
 
 /**
  * Página principal de Cronogramas de Mantenimiento
  * Contiene dos tabs:
- * - Tab 1: Cronograma por Cliente (con creación de OT)
- * - Tab 2: Cronograma General (solo visualización)
+ * - Tab 1: Cronograma por Cliente (con creación de OT), o "Mi Cronograma" para una organización cliente
+ * - Tab 2: Cronograma General (solo mantenimiento preventivo, solo visualización)
  */
 const CronogramasPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('por-cliente');
+  const { can, organizationCustomerId, isLoading } = useTenantCapabilities();
+
+  // A client organization (does not execute services and has its own client) sees "Mi Cronograma" with
+  // its own client already selected; every other tenant keeps "Por Cliente" with the client selector.
+  const clienteFijoId = !can('executesServices') && organizationCustomerId ? organizationCustomerId : undefined;
+
+  // Capabilities default to "everything enabled" while they load; rendering the tabs then would show the client
+  // selector for a client organization and keep its state when the real value arrives.
+  if (isLoading) {
+    return (
+      <Container fluid className="cronogramas-page py-4 text-center">
+        <Spinner animation="border" role="status" aria-label="Cargando cronograma" />
+      </Container>
+    );
+  }
 
   return (
     <Container fluid className="cronogramas-page py-4">
@@ -42,11 +58,12 @@ const CronogramasPage: React.FC = () => {
           title={
             <span>
               <FaUser className="me-2" />
-              Por Cliente
+              {clienteFijoId ? 'Mi Cronograma' : 'Por Cliente'}
             </span>
           }
         >
-          <CronogramaPorCliente />
+          {/* key: the selected client is initialised from clienteFijoId, so a change (view-as, late capabilities) remounts it */}
+          <CronogramaPorCliente key={clienteFijoId ?? 'selector'} clienteFijoId={clienteFijoId} />
         </Tab>
 
         {/* Tab 2: General */}

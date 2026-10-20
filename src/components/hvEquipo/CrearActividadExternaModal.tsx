@@ -4,6 +4,7 @@ import { TIPOS_ACTIVIDAD, ESTADOS_FINAL_LABELS } from '@/constants/actividadExte
 import type { CreateActividadDto } from '@/types/actividadExterna.types';
 import EvidenciaInput, { type EvidenciaValue } from './EvidenciaInput';
 import FrecuenciaInput from './FrecuenciaInput';
+import ProveedorSelect from './ProveedorSelect';
 
 interface Props {
   show: boolean;
@@ -29,17 +30,21 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
     const trimmed: Partial<CreateActividadDto> = {
       ...data,
       consecutivoExterno: data.consecutivoExterno?.trim(),
-      proveedor: data.proveedor?.trim(),
+      proveedor: data.proveedorId ? undefined : data.proveedor?.trim(),
       observacion: data.observacion?.trim() || undefined,
       tipoCustom: data.tipo === 'otro' ? data.tipoCustom?.trim() : undefined,
       estadoFinalCustom: data.estadoFinal === 'otro' ? data.estadoFinalCustom?.trim() : undefined,
     };
-    const required: (keyof CreateActividadDto)[] = ['tipo', 'consecutivoExterno', 'fecha', 'proveedor', 'estadoFinal'];
+    const required: (keyof CreateActividadDto)[] = ['tipo', 'consecutivoExterno', 'fecha', 'estadoFinal'];
     for (const k of required) {
       if (!trimmed[k]) {
         setErr('Completa los campos obligatorios.');
         return;
       }
+    }
+    if (!trimmed.proveedorId && !trimmed.proveedor) {
+      setErr('Selecciona un proveedor o escribe el nombre.');
+      return;
     }
     if (trimmed.tipo === 'otro' && !trimmed.tipoCustom) {
       setErr('Especifica el tipo de actividad cuando seleccionas "Otro".');
@@ -114,10 +119,10 @@ const CrearActividadExternaModal: React.FC<Props> = ({ show, onClose, onNext, in
         </Row>
         <Row>
           <Col>
-            <Form.Group className="mb-3" controlId="act-proveedor">
-              <Form.Label>Proveedor *</Form.Label>
-              <Form.Control value={data.proveedor ?? ''} onChange={(e) => update({ proveedor: e.target.value })} />
-            </Form.Group>
+            <ProveedorSelect
+              value={{ proveedorId: data.proveedorId, proveedor: data.proveedor }}
+              onChange={(v) => update({ proveedorId: v.proveedorId, proveedor: v.proveedor })}
+            />
           </Col>
           <Col>
             <Form.Group className="mb-3" controlId="act-estado">

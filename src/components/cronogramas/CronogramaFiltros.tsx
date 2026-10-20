@@ -2,7 +2,7 @@ import React from 'react';
 import { Row, Col, Form, Button, Badge } from 'react-bootstrap';
 import Select from 'react-select';
 import { FaTimes } from 'react-icons/fa';
-import { Mes, MESES, MESES_MAP } from '@/types/cronograma.types';
+import { Mes, MESES, MESES_MAP, OrigenCronograma } from '@/types/cronograma.types';
 import { Sede } from '@/types/sede.types';
 import { Servicio } from '@/types/servicio.types';
 
@@ -13,6 +13,9 @@ interface CronogramaFiltrosProps {
   ubicacionesSeleccionadas: string[];
   mesesSeleccionados: Mes[];
   searchText: string;
+  /** Origin filter (preventive / external). Rendered only when `onOrigenChange` is given. */
+  origenSeleccionado?: OrigenCronograma;
+  onOrigenChange?: (origen: OrigenCronograma) => void;
 
   // Opciones disponibles
   sedesOptions: Sede[];
@@ -37,6 +40,8 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
   ubicacionesSeleccionadas,
   mesesSeleccionados,
   searchText,
+  origenSeleccionado = 'todos',
+  onOrigenChange,
   sedesOptions,
   serviciosOptions,
   ubicacionesOptions,
@@ -88,7 +93,8 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
     serviciosSeleccionados.length +
     ubicacionesSeleccionadas.length +
     mesesSeleccionados.length +
-    (searchText ? 1 : 0);
+    (searchText ? 1 : 0) +
+    (origenSeleccionado !== 'todos' ? 1 : 0);
 
   // Estilos personalizados para react-select con z-index alto
   const selectStyles = {
@@ -106,7 +112,7 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
     <div className="cronograma-filtros mb-3">
       <Row className="g-3">
         {/* Búsqueda */}
-        <Col md={12}>
+        <Col md={onOrigenChange ? 9 : 12}>
           <Form.Group>
             <Form.Label className="small fw-bold">
               Búsqueda rápida
@@ -120,6 +126,24 @@ export const CronogramaFiltros: React.FC<CronogramaFiltrosProps> = ({
             />
           </Form.Group>
         </Col>
+
+        {/* Origen: preventivo / externo */}
+        {onOrigenChange && (
+          <Col md={3}>
+            <Form.Group controlId="cronograma-origen">
+              <Form.Label className="small fw-bold">Origen</Form.Label>
+              <Form.Select
+                size="sm"
+                value={origenSeleccionado}
+                onChange={(e) => onOrigenChange(e.target.value as OrigenCronograma)}
+              >
+                <option value="todos">Todos</option>
+                <option value="preventivo">Preventivo</option>
+                <option value="externo">Externo</option>
+              </Form.Select>
+            </Form.Group>
+          </Col>
+        )}
 
         {/* Sedes */}
         <Col md={3}>

@@ -7,11 +7,13 @@ import {
   useCreateActividadExterna,
   useRemoveActividadExterna,
   useCerrarCadena,
+  useUpdateActividadExterna,
 } from '@/hooks/useActividadesExternas';
 import ActividadesExternasList from './ActividadesExternasList';
 import CrearActividadExternaModal from './CrearActividadExternaModal';
 import ContinuidadCadenaModal from './ContinuidadCadenaModal';
-import type { CadenaActividad, CreateActividadDto } from '@/types/actividadExterna.types';
+import CambiarProveedorModal from './CambiarProveedorModal';
+import type { ActividadExterna, CadenaActividad, CreateActividadDto, UpdateActividadDto } from '@/types/actividadExterna.types';
 import { ERROR_CODE_MESSAGES } from '@/constants/actividadExterna';
 
 interface Props {
@@ -32,6 +34,8 @@ const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
   const createMut = useCreateActividadExterna(equipoId);
   const removeMut = useRemoveActividadExterna(equipoId);
   const cerrarMut = useCerrarCadena(equipoId);
+  const updateMut = useUpdateActividadExterna(equipoId);
+  const [editandoProveedor, setEditandoProveedor] = useState<ActividadExterna | null>(null);
 
   const [step, setStep] = useState<Step>('closed');
   const [paso1Data, setPaso1Data] = useState<CreateActividadDto | null>(null);
@@ -142,6 +146,16 @@ const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
     }
   };
 
+  const handleGuardarProveedor = async (dto: UpdateActividadDto) => {
+    if (!editandoProveedor) return;
+    try {
+      await updateMut.mutateAsync({ id: editandoProveedor._id, dto });
+      setEditandoProveedor(null);
+    } catch (err) {
+      await Swal.fire({ icon: 'error', title: 'No se pudo cambiar el proveedor', text: errorText(err) });
+    }
+  };
+
   return (
     <>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -157,8 +171,15 @@ const ActividadesExternasTab: React.FC<Props> = ({ equipoId }) => {
           grupos={data?.data ?? []}
           onCerrarCadena={handleCerrarCadena}
           onRemoveActividad={handleRemove}
+          onCambiarProveedor={setEditandoProveedor}
         />
       )}
+      <CambiarProveedorModal
+        actividad={editandoProveedor}
+        saving={updateMut.isLoading}
+        onClose={() => setEditandoProveedor(null)}
+        onSave={handleGuardarProveedor}
+      />
       <CrearActividadExternaModal
         show={step === 'paso1' || step === 'checking'}
         initial={paso1Data ?? undefined}

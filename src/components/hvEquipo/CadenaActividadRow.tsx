@@ -1,12 +1,14 @@
 import React from 'react';
 import { Accordion, Badge, Table, Button } from 'react-bootstrap';
-import type { CadenaConActividades } from '@/types/actividadExterna.types';
+import type { ActividadExterna, CadenaConActividades } from '@/types/actividadExterna.types';
 import { TIPOS_ACTIVIDAD, ESTADOS_FINAL_LABELS } from '@/constants/actividadExterna';
 
 interface Props {
   grupo: CadenaConActividades;
   onCerrar: (cadenaId: string) => void;
   onRemove: (actividadId: string) => void;
+  /** Opens the "Cambiar proveedor" dialog; the action is hidden when not provided. */
+  onCambiarProveedor?: (actividad: ActividadExterna) => void;
 }
 
 const HTTP_URL = /^https?:\/\//i;
@@ -18,7 +20,7 @@ const labelTipo = (t: string) => TIPOS_ACTIVIDAD.find((x) => x.value === t)?.lab
 
 const estaVencida = (iso?: string | null) => (iso ? new Date(iso).getTime() < Date.now() : false);
 
-const CadenaActividadRow: React.FC<Props> = ({ grupo, onCerrar, onRemove }) => {
+const CadenaActividadRow: React.FC<Props> = ({ grupo, onCerrar, onRemove, onCambiarProveedor }) => {
   const { cadena, actividades } = grupo;
   const [badgeBg, badgeText]: [string, string] =
     cadena.estado === 'vigente'
@@ -78,11 +80,25 @@ const CadenaActividadRow: React.FC<Props> = ({ grupo, onCerrar, onRemove }) => {
             {actividades.map((a) => (
               <tr key={a._id}>
                 <td>{a.fecha.slice(0, 10)}</td>
-                <td>{a.proveedor}</td>
+                <td>
+                  {a.proveedor}
+                  {a.proveedorId && <Badge bg="light" text="dark" className="ms-1" title="Vinculado a un proveedor registrado">vinculado</Badge>}
+                </td>
                 <td>{a.consecutivoExterno}</td>
                 <td>{ESTADOS_FINAL_LABELS[a.estadoFinal]}</td>
                 <td>{renderEvidencia(a)}</td>
                 <td>
+                  {onCambiarProveedor && (
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      className="me-1"
+                      aria-label={`Cambiar proveedor de ${a.consecutivoExterno}`}
+                      onClick={() => onCambiarProveedor(a)}
+                    >
+                      Cambiar proveedor
+                    </Button>
+                  )}
                   {!a.cerradaAt && (
                     <Button
                       size="sm"

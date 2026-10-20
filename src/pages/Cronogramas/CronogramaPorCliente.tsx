@@ -12,6 +12,7 @@ import { useSedesByCustomer } from '@/hooks/useSedes';
 import { useServiciosByCustomer } from '@/hooks/useServicios';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
 import { useCronograma } from '@/hooks/useCronograma';
+import { useCronogramaActividadesExternas } from '@/hooks/useCronogramaActividadesExternas';
 import { useCreateOt } from '@/hooks/useOTs';
 
 // Servicios
@@ -29,16 +30,31 @@ import EditEquipoModal from '@/components/ots/EditEquipoModal';
 // Tipos
 import { Mes } from '@/types/cronograma.types';
 
+interface CronogramaPorClienteProps {
+  /**
+   * Client of the organization itself ("Mi Cronograma"): when given, it is selected automatically and the
+   * client selector is not shown.
+   */
+  clienteFijoId?: string;
+}
+
+/** Years offered by the year selector: three back, the current one and the next. */
+const opcionesAnio = (actual: number) => [actual + 1, actual, actual - 1, actual - 2, actual - 3];
+
 /**
- * Tab 1: Cronograma de Mantenimiento por Cliente
+ * Tab 1: Cronograma de Mantenimiento por Cliente ("Mi Cronograma" for client organizations)
  * Permite filtrar equipos operativos de un cliente y crear OTs
  */
-export const CronogramaPorCliente: React.FC = () => {
+export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clienteFijoId }) => {
   const navigate = useNavigate();
   const createOtMutation = useCreateOt();
 
   // Estado del cliente seleccionado
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<string>('');
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<string>(clienteFijoId ?? '');
+
+  // Year used to decide which scheduled months are already done (default: the current year)
+  const anioActual = new Date().getUTCFullYear();
+  const [anio, setAnio] = useState<number>(anioActual);
   
   // Estado del modal de edición
   const [showEditModal, setShowEditModal] = useState(false);
@@ -75,6 +91,16 @@ export const CronogramaPorCliente: React.FC = () => {
   );
   const equipos = useMemo(() => equiposData?.data || [], [equiposData?.data]);
 
+  // Actividades externas programadas del cliente (calibración, verificación, etc.)
+  const {
+    data: externasData,
+    isError: errorExternas,
+  } = useCronogramaActividadesExternas(
+    { clienteId: clienteSeleccionado, anio },
+    { enabled: !!clienteSeleccionado }
+  );
+  const cadenasExternas = useMemo(() => externasData?.data ?? [], [externasData?.data]);
+
   // Hook de cronograma
   const {
     equiposFiltrados,
@@ -93,7 +119,7 @@ export const CronogramaPorCliente: React.FC = () => {
     actualizarFiltros,
     limpiarFiltros,
     cambiarPagina
-  } = useCronograma(equipos);
+  } = useCronograma(equipos, cadenasExternas);
 
   // Obtener ubicaciones únicas de los equipos
   const ubicacionesUnicas = useMemo(() => {
@@ -312,7 +338,8 @@ export const CronogramaPorCliente: React.FC = () => {
 
   return (
     <div className="cronograma-por-cliente">
-      {/* Selector de Cliente */}
+      {/* Selector de Cliente (no se muestra en "Mi Cronograma": el cliente es la propia organización) */}
+      {!clienteFijoId && (
       <Card className="mb-4 shadow-sm">
         <Card.Body>
           <Row className="align-items-center">
@@ -354,6 +381,7 @@ export const CronogramaPorCliente: React.FC = () => {
           </Row>
         </Card.Body>
       </Card>
+      )}
 
       {/* Contenido principal */}
       {!clienteSeleccionado ? (
@@ -369,10 +397,21 @@ export const CronogramaPorCliente: React.FC = () => {
       ) : equipos.length === 0 ? (
         <Alert variant="warning" className="text-center">
           <Alert.Heading>Sin Equipos Operativos</Alert.Heading>
-          <p>El cliente seleccionado no tiene equipos en estado operativo</p>
+          <p>{clienteFijoId ? 'Tu organización no tiene equipos en estado operativo' : 'El cliente seleccionado no tiene equipos en estado operativo'}</p>
         </Alert>
       ) : (
         <>
+          {errorExternas && (
+            <Alert variant="warning" className="py-2">
+              No se pudieron cargar las actividades externas; se muestra solo el mantenimiento preventivo.
+            </Alert>
+          )}
+          {externasData?.truncated && (
+            <Alert variant="info" className="py-2">
+              Hay más actividades externas de las que se pueden mostrar; filtra por cliente para ver el detalle completo.
+            </Alert>
+          )}
+
           {/* Estadísticas */}
           <CronogramaStatsCard stats={stats} />
 
@@ -390,12 +429,27 @@ export const CronogramaPorCliente: React.FC = () => {
           {/* Filtros */}
           <Card className="mb-3 shadow-sm">
             <Card.Body>
+              <Form.Group className="mb-3 d-flex align-items-center gap-2" controlId="cronograma-anio">
+                <Form.Label className="small fw-bold mb-0">Año</Form.Label>
+                <Form.Select
+                  size="sm"
+                  style={{ maxWidth: 110 }}
+                  value={anio}
+                  onChange={(e) => setAnio(Number(e.target.value))}
+                >
+                  {opcionesAnio(anioActual).map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
               <CronogramaFiltros
                 sedesSeleccionadas={filtros.sedeIds || []}
                 serviciosSeleccionados={filtros.servicioIds || []}
                 ubicacionesSeleccionadas={filtros.ubicaciones || []}
                 mesesSeleccionados={filtros.meses || []}
                 searchText={filtros.search || ''}
+                origenSeleccionado={filtros.origen ?? 'todos'}
+                onOrigenChange={(origen) => actualizarFiltros({ origen })}
                 sedesOptions={sedes}
                 serviciosOptions={servicios}
                 ubicacionesOptions={ubicacionesUnicas}
@@ -418,9 +472,18 @@ export const CronogramaPorCliente: React.FC = () => {
                 onToggleEquipo={toggleEquipo}
                 onEditEquipo={handleEditEquipo}
                 mostrarCheckboxes={true}
+                origen={filtros.origen ?? 'todos'}
+                anio={anio}
               />
             </Card.Body>
           </Card>
+          <p className="small text-muted mt-2" data-testid="leyenda-cronograma">
+            <span className="badge bg-success">MP</span> Mantenimiento preventivo &nbsp;·&nbsp;
+            <span className="badge bg-info">Cal</span> <span className="badge bg-info">Ver</span> Actividades externas (calibración, verificación…) &nbsp;·&nbsp;
+            <span className="text-success">●</span> Realizado &nbsp;·&nbsp;
+            <span className="text-secondary">●</span> Programado &nbsp;·&nbsp;
+            <span className="text-danger">●</span> Vencido (solo actividades externas)
+          </p>
 
           {/* Paginación */}
           <CronogramaPaginacion

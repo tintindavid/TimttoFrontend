@@ -14,6 +14,13 @@ vi.mock('@/hooks/useActividadesExternas', () => ({
   useCreateActividadExterna: () => ({ mutateAsync: mockMutate, isLoading: mockLoading }),
   useRemoveActividadExterna: () => ({ mutateAsync: vi.fn(), isLoading: false }),
   useCerrarCadena: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useUpdateActividadExterna: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+}));
+
+// The provider selector reads the tenant's providers; an empty list leaves only the free-text input.
+vi.mock('@/hooks/useCustomers', () => ({
+  useCustomers: () => ({ data: { data: [] } }),
+  useCreateCustomer: () => ({ mutateAsync: vi.fn(), isLoading: false }),
 }));
 
 vi.mock('sweetalert2', () => ({ default: { fire: vi.fn().mockResolvedValue({ isConfirmed: true }) } }));
@@ -27,7 +34,9 @@ const fillPaso1 = (opts: { unica?: boolean } = {}) => {
   fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'calibracion' } });
   fireEvent.change(screen.getByLabelText(/Consecutivo/i), { target: { value: 'CAL-1' } });
   fireEvent.change(screen.getByLabelText(/^Fecha/i), { target: { value: '2026-01-15' } });
-  fireEvent.change(screen.getByLabelText(/Proveedor/i), { target: { value: 'ACME' } });
+  // No provider is registered in this suite: use the free-text option
+  fireEvent.change(screen.getByRole('combobox', { name: 'Proveedor' }), { target: { value: '__otro__' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Nombre del proveedor' }), { target: { value: 'ACME' } });
   fireEvent.change(screen.getByLabelText(/Estado final/i), { target: { value: 'aprobada' } });
   if (opts.unica) fireEvent.click(screen.getByLabelText(/Actividad única/i));
   fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));

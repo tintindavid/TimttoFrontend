@@ -1,15 +1,37 @@
 import { useState, useMemo, useCallback } from 'react';
-import { CronogramaFiltros, CronogramaEquipo, CronogramaStats, Mes, MESES, GrupoServicioSede } from '@/types/cronograma.types';
+import { CronogramaFiltros, CronogramaEquipo, CronogramaStats, CronogramaActividadExterna, OrigenCronograma, Mes, MESES, GrupoServicioSede } from '@/types/cronograma.types';
+import { mesApiToMes } from '@/utils/cronogramaExterno';
 import { EquipoItem } from '@/types/equipoItem.types';
 
 /**
  * Hook personalizado para gestionar la lógica del cronograma de mantenimientos
  */
-export const useCronograma = (equipos: EquipoItem[]) => {
+const DIAS_POR_VENCER = 30;
+
+/** Months of a piece of equipment for the selected origin (preventive, external or both). */
+const mesesPorOrigen = (equipo: CronogramaEquipo, origen: OrigenCronograma): Mes[] => {
+  const preventivos = origen === 'externo' ? [] : (equipo.mesesMtto ?? []);
+  const externos = origen === 'preventivo'
+    ? []
+    : (equipo.cadenas ?? []).flatMap((c) => c.meses.map(mesApiToMes).filter((m): m is Mes => m !== null));
+  return [...new Set([...preventivos, ...externos])];
+};
+
+export const useCronograma = (equipos: EquipoItem[], cadenas: CronogramaActividadExterna[] = []) => {
   const [filtros, setFiltros] = useState<CronogramaFiltros>({});
   const [equiposSeleccionados, setEquiposSeleccionados] = useState<string[]>([]);
   const [paginaActual, setPaginaActual] = useState(1);
   const equiposPorPagina = 100;
+
+  const cadenasPorEquipo = useMemo(() => {
+    const mapa = new Map<string, CronogramaActividadExterna[]>();
+    cadenas.forEach((c) => {
+      const lista = mapa.get(c.equipoId) ?? [];
+      lista.push(c);
+      mapa.set(c.equipoId, lista);
+    });
+    return mapa;
+  }, [cadenas]);
 
   /**
    * Convierte EquipoItem a CronogramaEquipo para facilitar el trabajo
@@ -28,17 +50,23 @@ export const useCronograma = (equipos: EquipoItem[]) => {
       SedeId: eq.SedeId,
       Servicio: eq.Servicio,
       mesesMtto: eq.mesesMtto as Mes[] | undefined,
+      mesesRealizados: eq.mesesMttoRealizados,
+      cadenas: cadenasPorEquipo.get(eq._id!) ?? [],
       ClienteId: eq.ClienteId, // Mantener ClienteId original (puede ser string o objeto)
       Riesgo: eq.Riesgo,
       Invima: eq.Invima
     }));
-  }, [equipos]);
+  }, [equipos, cadenasPorEquipo]);
 
   /**
    * Filtra los equipos según los criterios seleccionados
    */
   const equiposFiltrados = useMemo(() => {
+    const origen = filtros.origen ?? 'todos';
     return cronogramaEquipos.filter(equipo => {
+      // Origen "externo": solo equipos con actividades externas programadas
+      if (origen === 'externo' && !(equipo.cadenas && equipo.cadenas.length > 0)) return false;
+
       // Filtro por cliente
       if (filtros.clienteId) {
         const clienteId = typeof equipo.ClienteId === 'object' 
@@ -70,9 +98,10 @@ export const useCronograma = (equipos: EquipoItem[]) => {
 
       // Filtro por meses (debe tener mantenimiento en TODOS los meses seleccionados)
       if (filtros.meses && filtros.meses.length > 0) {
-        if (!equipo.mesesMtto || equipo.mesesMtto.length === 0) return false;
+        const mesesEquipo = mesesPorOrigen(equipo, origen);
+        if (mesesEquipo.length === 0) return false;
         const tieneTodasLosMeses = filtros.meses.every(mes => 
-          equipo.mesesMtto!.includes(mes)
+          mesesEquipo.includes(mes)
         );
         if (!tieneTodasLosMeses) return false;
       }
@@ -148,12 +177,26 @@ export const useCronograma = (equipos: EquipoItem[]) => {
    * Estadísticas del cronograma
    */
   const stats = useMemo<CronogramaStats>(() => {
+    // With Origen "externo" the preventive maintenance is not part of the view, so its totals are zero
+    const conPreventivo = (filtros.origen ?? 'todos') === 'externo' ? [] : equiposFiltrados;
     const equiposPorMes = MESES.reduce((acc, mes) => {
-      acc[mes] = equiposFiltrados.filter(eq => 
+      acc[mes] = conPreventivo.filter(eq => 
         eq.mesesMtto?.includes(mes)
       ).length;
       return acc;
     }, {} as Record<Mes, number>);
+
+    const origen = filtros.origen ?? 'todos';
+    const conExternas = origen === 'preventivo' ? [] : equiposFiltrados.filter(eq => eq.cadenas && eq.cadenas.length > 0);
+    const equiposPorMesExterno = MESES.reduce((acc, mes) => {
+      acc[mes] = conExternas.filter(eq => eq.cadenas!.some(c => c.meses.map(mesApiToMes).includes(mes))).length;
+      return acc;
+    }, {} as Record<Mes, number>);
+    const cadenasVisibles = conExternas.flatMap(eq => eq.cadenas!);
+    const externasVencidas = cadenasVisibles.filter(c => c.vencida).length;
+    const externasPorVencer = cadenasVisibles.filter(
+      c => !c.vencida && c.diasParaVencer !== null && c.diasParaVencer <= DIAS_POR_VENCER
+    ).length;
 
     return {
       totalEquipos: cronogramaEquipos.length,
@@ -162,9 +205,12 @@ export const useCronograma = (equipos: EquipoItem[]) => {
       equiposVisiblesSeleccionados: equiposPaginados.filter(eq => 
         equiposSeleccionados.includes(eq._id)
       ).length,
-      equiposPorMes
+      equiposPorMes,
+      equiposPorMesExterno,
+      externasVencidas,
+      externasPorVencer
     };
-  }, [cronogramaEquipos.length, equiposFiltrados, equiposSeleccionados, equiposPaginados]);
+  }, [cronogramaEquipos.length, equiposFiltrados, equiposSeleccionados, equiposPaginados, filtros.origen]);
 
   /**
    * Seleccionar/deseleccionar un equipo

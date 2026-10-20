@@ -3,6 +3,7 @@
  */
 import { api } from './api';
 import { getUserIdFromToken } from '@/utils/token';
+import type { ActividadesExternasParams, ActividadesExternasResponse } from '@/types/cronograma.types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -186,3 +187,12 @@ const cronogramaService = {
 };
 
 export default cronogramaService;
+
+/**
+ * Scheduled external activities of the effective tenant (vigente chains with a due date).
+ * The tenant comes from the token; only clienteId/mes/tipo/limit are sent.
+ */
+export const getActividadesExternas = (params?: ActividadesExternasParams): Promise<ActividadesExternasResponse> =>
+  api
+    .get<ActividadesExternasResponse>('/cronogramas/actividades-externas', { params })
+    .then((r) => r.data);

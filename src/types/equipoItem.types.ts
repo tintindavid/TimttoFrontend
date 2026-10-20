@@ -39,6 +39,8 @@ export interface EquipoItem {
   Modelo?: string;
   UltimoMtto?: string; // ISO date
   mesesMtto?: string[];
+  /** Maintenance reports already done (written when a report is processed): month as 'ene'..'dic' plus the date. */
+  mesesMttoRealizados?: { fecha?: string; mes: string; consecutivo?: string }[];
   StatusReason?: string;
   isDeleted?: boolean;
   createdAt?: string;

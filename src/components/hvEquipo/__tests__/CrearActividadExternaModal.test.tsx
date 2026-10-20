@@ -1,16 +1,28 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
 import CrearActividadExternaModal from '../CrearActividadExternaModal';
+
+let mockProviders: { _id: string; Razonsocial: string }[] = [];
+vi.mock('@/hooks/useCustomers', () => ({
+  useCustomers: () => ({ data: { data: mockProviders } }),
+  useCreateCustomer: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+}));
+
+const render = (ui: React.ReactElement) => rtlRender(ui);
 
 const fillValid = () => {
   fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'calibracion' } });
   fireEvent.change(screen.getByLabelText(/Consecutivo/i), { target: { value: 'CAL-1' } });
   fireEvent.change(screen.getByLabelText(/^Fecha/i), { target: { value: '2026-01-15' } });
-  fireEvent.change(screen.getByLabelText(/Proveedor/i), { target: { value: 'ACME' } });
+  fireEvent.change(screen.getByRole('combobox', { name: 'Proveedor' }), { target: { value: '__otro__' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Nombre del proveedor' }), { target: { value: 'ACME' } });
   fireEvent.change(screen.getByLabelText(/^Estado final/i), { target: { value: 'aprobada' } });
 };
 
 describe('CrearActividadExternaModal', () => {
+  beforeEach(() => { mockProviders = []; });
+
   it('al seleccionar tipo=otro muestra input tipoCustom', () => {
     render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={() => {}} />);
     fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'otro' } });
@@ -70,7 +82,7 @@ describe('CrearActividadExternaModal', () => {
     const onNext = vi.fn();
     render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
     fillValid();
-    fireEvent.change(screen.getByLabelText(/Proveedor/i), { target: { value: '   ' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nombre del proveedor' }), { target: { value: '   ' } });
     fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
     expect(onNext).not.toHaveBeenCalled();
   });
@@ -113,5 +125,45 @@ describe('CrearActividadExternaModal', () => {
     const input = screen.getByLabelText(/Fecha/i) as HTMLInputElement;
     const today = new Date().toISOString().slice(0, 10);
     expect(input.max).toBe(today);
+  });
+
+  it('con proveedores registrados permite elegir uno y envía proveedorId sin nombre', () => {
+    mockProviders = [{ _id: 'p1', Razonsocial: 'ACME SAS' }, { _id: 'p2', Razonsocial: 'Metrologia SA' }];
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
+    fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'calibracion' } });
+    fireEvent.change(screen.getByLabelText(/Consecutivo/i), { target: { value: 'CAL-1' } });
+    fireEvent.change(screen.getByLabelText(/^Fecha/i), { target: { value: '2026-01-15' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Proveedor' }), { target: { value: 'p2' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    const dto = onNext.mock.calls[0][0];
+    expect(dto.proveedorId).toBe('p2');
+    expect(dto.proveedor).toBeUndefined();
+  });
+
+  it('con proveedores registrados bloquea el submit si no se elige ninguno', () => {
+    mockProviders = [{ _id: 'p1', Razonsocial: 'ACME SAS' }];
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
+    fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'calibracion' } });
+    fireEvent.change(screen.getByLabelText(/Consecutivo/i), { target: { value: 'CAL-1' } });
+    fireEvent.change(screen.getByLabelText(/^Fecha/i), { target: { value: '2026-01-15' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    expect(onNext).not.toHaveBeenCalled();
+  });
+
+  it('"Otro (escribir)" muestra el campo de texto y envía solo el nombre', () => {
+    mockProviders = [{ _id: 'p1', Razonsocial: 'ACME SAS' }];
+    const onNext = vi.fn();
+    render(<CrearActividadExternaModal show={true} onClose={() => {}} onNext={onNext} />);
+    fireEvent.change(screen.getByLabelText(/Tipo de actividad/i), { target: { value: 'calibracion' } });
+    fireEvent.change(screen.getByLabelText(/Consecutivo/i), { target: { value: 'CAL-1' } });
+    fireEvent.change(screen.getByLabelText(/^Fecha/i), { target: { value: '2026-01-15' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Proveedor' }), { target: { value: '__otro__' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nombre del proveedor' }), { target: { value: 'Taller Externo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    const dto = onNext.mock.calls[0][0];
+    expect(dto.proveedor).toBe('Taller Externo');
+    expect(dto.proveedorId).toBeUndefined();
   });
 });
