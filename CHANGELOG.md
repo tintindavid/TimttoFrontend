@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.25.0...v1.26.0) (2026-10-20)
+
+
+### Features
+
+* **cronogramas:** one row per activity with execution state and provider selector (frontend) ([#39](https://github.com/tintindavid/TimttoFrontend/issues/39)) ([745f8e3](https://github.com/tintindavid/TimttoFrontend/commit/745f8e39a4a77cc7d3ffcec4af913e899c9b32f7))
+
 # [1.25.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.24.0...v1.25.0) (2026-10-20)
 
 
