@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.26.0...v1.27.0) (2026-10-20)
+
+
+### Features
+
+* **cronogramas:** external services, premium modules, quick load and compact sidebar (frontend) ([63f8c39](https://github.com/tintindavid/TimttoFrontend/commit/63f8c39b60bcbf06b84986befe41186f7c8a40be))
+
 # [1.26.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.25.0...v1.26.0) (2026-10-20)
 
 
