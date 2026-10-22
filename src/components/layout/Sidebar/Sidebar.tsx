@@ -4,6 +4,7 @@ import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaLis
 import { Nav } from 'react-bootstrap';
 import { useAuth } from '@/context/AuthContext';
 import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
+import type { TenantCapability } from '@/types';
 import { useEsEscritorio } from '@/hooks/useEsEscritorio';
 import './Sidebar.css';
 
@@ -14,12 +15,7 @@ type MenuItem = {
   icon?: React.ReactNode;
   subItems?: MenuItem[];
   /** Hidden when the tenant lacks this capability (`usesQrs` = premium module "QRs y tickets"). */
-  requires?: 'executesServices' | 'registersExternal' | 'usesQrs';
-};
-
-const hasInventarioPlan = () => {
-  const plan = (localStorage.getItem('tenantPlan') || '').toLowerCase();
-  return plan.includes('inventario');
+  requires?: TenantCapability;
 };
 
 const buildThirdPartyItems = (base: MenuItem, organizationCustomerId: string | null): MenuItem[] => [
@@ -58,7 +54,7 @@ const baseMenu: MenuItem[] = [
     icon: <FaCogs />,
     subItems: [
       { id: 'repuestos-solicitados', label: 'Solicitados', path: '/repuestos/solicitados' },
-      { id: 'repuestos-inventario', label: 'Inventario', path: '/repuestos/inventario' },
+      { id: 'repuestos-inventario', label: 'Stock', path: '/repuestos/inventario', requires: 'usesInventoryBasic' },
     ],
   },
   { id: 'cronogramas', label: 'Cronogramas', path: '/cronogramas', icon: <FaCalendarAlt /> },
@@ -116,7 +112,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const compactoCerrado = modoCompacto && !abierto;
   const asideRef = useRef<HTMLElement | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inventoryEnabled = hasInventarioPlan();
   const executesServices = can('executesServices');
   const baseAdjusted = baseMenu
     .filter((item) => !item.requires || can(item.requires))
@@ -125,13 +120,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       // Tenants that do not execute services: their single organization client and the provider list.
       return buildThirdPartyItems(item, organizationCustomerId);
     })
-    .map((item) => {
-    if (item.id !== 'repuestos' || !item.subItems) return item;
-    return {
-      ...item,
-      subItems: item.subItems.filter((s) => s.id !== 'repuestos-inventario' || inventoryEnabled),
-    };
-  });
+    // Sub-items can require a capability too (e.g. "Stock" needs usesInventoryBasic).
+    .map((item) =>
+      item.subItems
+        ? { ...item, subItems: item.subItems.filter((s) => !s.requires || can(s.requires)) }
+        : item
+    );
   // rollout admin-only — widen role list when feature opens to technician/user
   // superadmin gets platform nav links only (they use AdminLayout for daily work,
   // but may still land on MainLayout for profile/dashboard)

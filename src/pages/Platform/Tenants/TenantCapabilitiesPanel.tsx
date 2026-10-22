@@ -20,9 +20,18 @@ interface Flags {
   registersExternal: boolean;
   usesQrs: boolean;
   scheduleQuickLoad: boolean;
+  usesInventoryBasic: boolean;
+  usesInventoryAdvanced: boolean;
 }
 
-const DEFAULT_FLAGS: Flags = { executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: false };
+const DEFAULT_FLAGS: Flags = {
+  executesServices: true,
+  registersExternal: false,
+  usesQrs: false,
+  scheduleQuickLoad: false,
+  usesInventoryBasic: false,
+  usesInventoryAdvanced: false,
+};
 const TYPE_ORDER: TenantType[] = ['provider', 'client', 'hybrid'];
 
 interface ApiErrorLike {
@@ -59,6 +68,9 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
     usesQrs: tenant.capabilities?.usesQrs ?? false,
     // The quick load only counts with the external module (the backend reads it the same way).
     scheduleQuickLoad: !!(tenant.capabilities?.registersExternal && tenant.capabilities?.scheduleQuickLoad),
+    usesInventoryBasic: tenant.capabilities?.usesInventoryBasic ?? false,
+    // Advanced Stock only counts with the basic level.
+    usesInventoryAdvanced: !!(tenant.capabilities?.usesInventoryBasic && tenant.capabilities?.usesInventoryAdvanced),
   };
   const currentType = getTenantType(current);
 
@@ -73,9 +85,18 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
   const savedRegisters = current.registersExternal;
   const savedQrs = current.usesQrs;
   const savedQuick = current.scheduleQuickLoad;
+  const savedInvBasic = current.usesInventoryBasic;
+  const savedInvAdvanced = current.usesInventoryAdvanced;
   useEffect(() => {
-    setFlags({ executesServices: savedExecutes, registersExternal: savedRegisters, usesQrs: savedQrs, scheduleQuickLoad: savedQuick });
-  }, [savedExecutes, savedRegisters, savedQrs, savedQuick]);
+    setFlags({
+      executesServices: savedExecutes,
+      registersExternal: savedRegisters,
+      usesQrs: savedQrs,
+      scheduleQuickLoad: savedQuick,
+      usesInventoryBasic: savedInvBasic,
+      usesInventoryAdvanced: savedInvAdvanced,
+    });
+  }, [savedExecutes, savedRegisters, savedQrs, savedQuick, savedInvBasic, savedInvAdvanced]);
 
   const nextType = getTenantType(flags);
   const invalid = !flags.executesServices && !flags.registersExternal;
@@ -83,7 +104,9 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
     flags.executesServices === current.executesServices &&
     flags.registersExternal === current.registersExternal &&
     flags.usesQrs === current.usesQrs &&
-    flags.scheduleQuickLoad === current.scheduleQuickLoad;
+    flags.scheduleQuickLoad === current.scheduleQuickLoad &&
+    flags.usesInventoryBasic === current.usesInventoryBasic &&
+    flags.usesInventoryAdvanced === current.usesInventoryAdvanced;
 
   const submit = (organizationCustomerId?: string) => {
     const input: UpdateTenantCapabilitiesInput = { ...flags };
@@ -177,6 +200,30 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
             checked={flags.usesQrs}
             onChange={(e) => setFlags((f) => ({ ...f, usesQrs: e.target.checked }))}
           />
+          <Form.Check
+            type="switch"
+            id="cap-inventory-basic"
+            className="mt-2"
+            label="Stock básico (módulo premium: catálogo de repuestos y accesorios)"
+            checked={flags.usesInventoryBasic}
+            // Turning the basic level off also turns off the advanced one, which depends on it.
+            onChange={(e) =>
+              setFlags((f) => ({
+                ...f,
+                usesInventoryBasic: e.target.checked,
+                usesInventoryAdvanced: e.target.checked ? f.usesInventoryAdvanced : false,
+              }))
+            }
+          />
+          <Form.Check
+            type="switch"
+            id="cap-inventory-advanced"
+            className="mt-2 ms-4"
+            label="Stock avanzado (módulo premium: cantidades, movimientos e historial)"
+            checked={flags.usesInventoryAdvanced}
+            disabled={!flags.usesInventoryBasic}
+            onChange={(e) => setFlags((f) => ({ ...f, usesInventoryAdvanced: e.target.checked }))}
+          />
           <Form.Text muted className="d-block mt-2">
             Al apagar un módulo se ocultan y bloquean sus pantallas y servicios; los datos ya cargados no se eliminan.
           </Form.Text>
@@ -218,6 +265,16 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
           {flags.scheduleQuickLoad !== current.scheduleQuickLoad && (
             <Alert variant="info" className="mb-2">
               Carga rápida desde el cronograma: {flags.scheduleQuickLoad ? 'se activa' : 'se desactiva'} para este tenant.
+            </Alert>
+          )}
+          {flags.usesInventoryBasic !== current.usesInventoryBasic && (
+            <Alert variant="info" className="mb-2">
+              Stock básico: {flags.usesInventoryBasic ? 'se activa' : 'se desactiva'} para este tenant.
+            </Alert>
+          )}
+          {flags.usesInventoryAdvanced !== current.usesInventoryAdvanced && (
+            <Alert variant="info" className="mb-2">
+              Stock avanzado: {flags.usesInventoryAdvanced ? 'se activa' : 'se desactiva'} para este tenant.
             </Alert>
           )}
           {flags.usesQrs !== current.usesQrs && (

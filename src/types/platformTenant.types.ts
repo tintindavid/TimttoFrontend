@@ -22,7 +22,7 @@ export interface PlatformTenant {
   ownerId?: string;
   plan?: string;
   /** Absent on tenants created before E5: treated as provider. */
-  capabilities?: { executesServices: boolean; registersExternal: boolean; usesQrs?: boolean; scheduleQuickLoad?: boolean };
+  capabilities?: { executesServices: boolean; registersExternal: boolean; usesQrs?: boolean; scheduleQuickLoad?: boolean; usesInventoryBasic?: boolean; usesInventoryAdvanced?: boolean };
   organizationCustomerId?: string | null;
   status: TenantStatus;
   isDeleted: boolean;
