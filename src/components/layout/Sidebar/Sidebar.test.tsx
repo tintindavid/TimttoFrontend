@@ -14,14 +14,25 @@ vi.mock('@/context/TenantCapabilitiesContext', () => ({
   useTenantCapabilities: capsMock.useTenantCapabilities,
 }));
 
-const caps = (executesServices: boolean, organizationCustomerId: string | null = null, usesQrs = true) => ({
+const caps = (
+  executesServices: boolean,
+  organizationCustomerId: string | null = null,
+  usesQrs = true,
+  inventoryBasic = true
+) => ({
   executesServices,
   registersExternal: !executesServices,
   usesQrs,
   organizationCustomerId,
   isLoading: false,
-  can: (c: 'executesServices' | 'registersExternal' | 'usesQrs') =>
-    c === 'executesServices' ? executesServices : c === 'usesQrs' ? usesQrs : !executesServices,
+  can: (c: string) =>
+    c === 'executesServices'
+      ? executesServices
+      : c === 'usesQrs'
+        ? usesQrs
+        : c === 'usesInventoryBasic'
+          ? inventoryBasic
+          : !executesServices,
 });
 
 beforeEach(() => {
@@ -88,6 +99,32 @@ describe('Sidebar — admin-only rollout gate for Tickets and QR de Servicios', 
 
     expect(screen.queryByRole('link', { name: 'Tickets' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'QR de Servicios' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Sidebar — Stock item', () => {
+  beforeEach(() => {
+    (useAuth as unknown as Mock).mockReset();
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { role: 'admin', email: 'a@x.io' },
+      isAuthenticated: true,
+    });
+  });
+
+  test('shows Stock (not Inventario) with usesInventoryBasic, regardless of localStorage', () => {
+    localStorage.setItem('tenantPlan', 'free');
+    renderSidebar();
+    expect(screen.getByRole('link', { name: 'Stock' })).toHaveAttribute('href', '/repuestos/inventario');
+    expect(screen.queryByRole('link', { name: 'Inventario' })).not.toBeInTheDocument();
+    localStorage.removeItem('tenantPlan');
+  });
+
+  test('hides Stock without usesInventoryBasic, even with a legacy inventario plan in localStorage', () => {
+    localStorage.setItem('tenantPlan', 'premium-inventario');
+    capsMock.useTenantCapabilities.mockReturnValue(caps(true, null, true, false));
+    renderSidebar();
+    expect(screen.queryByRole('link', { name: 'Stock' })).not.toBeInTheDocument();
+    localStorage.removeItem('tenantPlan');
   });
 });
 

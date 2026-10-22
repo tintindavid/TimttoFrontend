@@ -4,9 +4,16 @@ export type TenantType = 'provider' | 'client' | 'hybrid';
 /**
  * Capability keys a UI element or route can require. `registersExternal` is also the premium module
  * "Servicios de terceros" (external activities and services), `usesQrs` the premium module "QRs y tickets" and
+ * `usesInventoryBasic` / `usesInventoryAdvanced` the premium Stock levels (advanced needs basic) and
  * `scheduleQuickLoad` the premium switch "Carga rápida desde el cronograma" (needs `registersExternal`).
  */
-export type TenantCapability = 'executesServices' | 'registersExternal' | 'usesQrs' | 'scheduleQuickLoad';
+export type TenantCapability =
+  | 'executesServices'
+  | 'registersExternal'
+  | 'usesQrs'
+  | 'scheduleQuickLoad'
+  | 'usesInventoryBasic'
+  | 'usesInventoryAdvanced';
 
 /** Response of GET /my-tenant/capabilities. */
 export interface TenantCapabilities {
@@ -16,6 +23,10 @@ export interface TenantCapabilities {
   usesQrs: boolean;
   /** Premium switch "Carga rápida desde el cronograma": effective value (true only with registersExternal). */
   scheduleQuickLoad: boolean;
+  /** Premium Stock catalog (nombre + tipo). Absent in an old backend response: read it as false. */
+  usesInventoryBasic: boolean;
+  /** Premium Stock with quantities and movements (needs usesInventoryBasic). */
+  usesInventoryAdvanced: boolean;
   type: TenantType;
   organizationCustomerId: string | null;
 }
@@ -26,6 +37,8 @@ export const ALL_CAPABILITIES_ENABLED: TenantCapabilities = {
   registersExternal: true,
   usesQrs: true,
   scheduleQuickLoad: true,
+  usesInventoryBasic: true,
+  usesInventoryAdvanced: true,
   type: 'hybrid',
   organizationCustomerId: null,
 };
@@ -36,6 +49,8 @@ export interface UpdateTenantCapabilitiesInput {
   registersExternal?: boolean;
   usesQrs?: boolean;
   scheduleQuickLoad?: boolean;
+  usesInventoryBasic?: boolean;
+  usesInventoryAdvanced?: boolean;
   type?: TenantType;
   organizationCustomerId?: string;
 }

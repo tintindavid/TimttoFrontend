@@ -23,6 +23,8 @@ const Probe: React.FC = () => {
       <span data-testid="loading">{String(c.isLoading)}</span>
       <span data-testid="type">{c.type}</span>
       <span data-testid="quick">{String(c.can('scheduleQuickLoad'))}</span>
+      <span data-testid="inv-basic">{String(c.can('usesInventoryBasic'))}</span>
+      <span data-testid="inv-adv">{String(c.can('usesInventoryAdvanced'))}</span>
       <span data-testid="qrs">{String(c.can('usesQrs'))}</span>
     </div>
   );
@@ -133,5 +135,34 @@ describe('TenantCapabilitiesProvider - the paid quick load is never assumed', ()
     mocks.useAuth.mockReturnValue({ user: { role: 'superadmin' }, tenantId: '__platform__', viewAsTenantId: null });
     renderProvider();
     expect(screen.getByTestId('quick').textContent).toBe('true');
+  });
+});
+
+describe('TenantCapabilitiesProvider - Stock levels are never assumed', () => {
+  it('are off while loading, then follow the fetched flags', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue({ ...clientCaps, usesInventoryBasic: true, usesInventoryAdvanced: true });
+    renderProvider();
+    expect(screen.getByTestId('inv-basic').textContent).toBe('false');
+    expect(screen.getByTestId('inv-adv').textContent).toBe('false');
+    await waitFor(() => expect(screen.getByTestId('inv-basic').textContent).toBe('true'));
+    expect(screen.getByTestId('inv-adv').textContent).toBe('true');
+  });
+
+  it('stay off when the endpoint fails or the backend does not send them', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue(clientCaps);
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('inv-basic').textContent).toBe('false');
+    expect(screen.getByTestId('inv-adv').textContent).toBe('false');
+  });
+
+  it('advanced does not count without basic', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue({ ...clientCaps, usesInventoryBasic: false, usesInventoryAdvanced: true });
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('inv-adv').textContent).toBe('false');
   });
 });

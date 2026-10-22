@@ -41,10 +41,26 @@ export const TenantCapabilitiesProvider: React.FC<{ children: React.ReactNode }>
       isPlatformView
         ? buildValue(ALL_CAPABILITIES_ENABLED, false)
         : !data
-          // Loading or failed: modules default to enabled so nothing flickers away, EXCEPT the paid quick load, which
-          // must not be offered to a tenant that may not have it.
-          ? buildValue({ ...ALL_CAPABILITIES_ENABLED, scheduleQuickLoad: false }, !!user && isLoading)
-          : buildValue(data, false),
+          // Loading or failed: modules default to enabled so nothing flickers away, EXCEPT the paid quick load and
+          // the Stock levels, which must not be offered to a tenant that may not have them.
+          ? buildValue(
+              {
+                ...ALL_CAPABILITIES_ENABLED,
+                scheduleQuickLoad: false,
+                usesInventoryBasic: false,
+                usesInventoryAdvanced: false,
+              },
+              !!user && isLoading
+            )
+          // Old backend responses lack the inventory flags: read them as off.
+          : buildValue(
+              {
+                ...data,
+                usesInventoryBasic: !!data.usesInventoryBasic,
+                usesInventoryAdvanced: !!data.usesInventoryBasic && !!data.usesInventoryAdvanced,
+              },
+              false
+            ),
     [isPlatformView, data, user, isLoading]
   );
 

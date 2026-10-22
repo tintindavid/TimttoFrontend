@@ -46,7 +46,7 @@ describe('TenantCapabilitiesPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
     expect(mocks.mutate.mock.calls[0][0]).toEqual({
       id: 'mongo1',
-      input: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false },
+      input: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false },
     });
   });
 
@@ -64,7 +64,7 @@ describe('TenantCapabilitiesPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
     expect(mocks.mutate.mock.calls[0][0]).toEqual({
       id: 'mongo1',
-      input: { executesServices: true, registersExternal: false, usesQrs: true, scheduleQuickLoad: false },
+      input: { executesServices: true, registersExternal: false, usesQrs: true, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false },
     });
   });
 
@@ -73,7 +73,7 @@ describe('TenantCapabilitiesPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mixto' }));
     fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
-    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: true, usesQrs: true, scheduleQuickLoad: false });
+    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: true, usesQrs: true, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false });
   });
 
   it('turning only the QR module off warns that printed QR codes will show not found', () => {
@@ -115,7 +115,7 @@ describe('TenantCapabilitiesPanel', () => {
 
     expect(mocks.mutate.mock.calls[1][0]).toEqual({
       id: 'mongo1',
-      input: { executesServices: false, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, organizationCustomerId: 'c2' },
+      input: { executesServices: false, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, organizationCustomerId: 'c2' },
     });
   });
 
@@ -132,7 +132,7 @@ describe('TenantCapabilitiesPanel', () => {
 });
 
 describe('TenantCapabilitiesPanel - Carga rapida desde el cronograma', () => {
-  const withModule = () => tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false } });
+  const withModule = () => tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false } });
 
   it('the switch is disabled and off while "Servicios de terceros" is off', () => {
     render(<TenantCapabilitiesPanel tenant={tenant()} />);
@@ -147,22 +147,22 @@ describe('TenantCapabilitiesPanel - Carga rapida desde el cronograma', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
     expect(screen.getByText(/Carga rápida desde el cronograma: se activa/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
-    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true });
+    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false });
   });
 
   it('turning the external module off also turns the quick load off, so the request carries both', () => {
-    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true } })} />);
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false } })} />);
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).toBeChecked();
     fireEvent.click(screen.getByLabelText(/Servicios de terceros/));
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).not.toBeChecked();
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
-    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: false });
+    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false });
   });
 
   it('a preset that turns the external module off turns the quick load off; one that keeps it keeps it', () => {
-    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true } })} />);
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false } })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Prestador' }));
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Mixto' }));
@@ -170,8 +170,47 @@ describe('TenantCapabilitiesPanel - Carga rapida desde el cronograma', () => {
   });
 
   it('an inconsistent stored pair (quick load without the module) is shown as off', () => {
-    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: true } })} />);
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false } })} />);
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Guardar capacidades' })).toBeDisabled();
+  });
+});
+
+describe('TenantCapabilitiesPanel - Stock levels', () => {
+  const stockTenant = (basic: boolean, advanced: boolean) =>
+    tenant({
+      capabilities: {
+        executesServices: true,
+        registersExternal: false,
+        usesQrs: false,
+        scheduleQuickLoad: false,
+        usesInventoryBasic: basic,
+        usesInventoryAdvanced: advanced,
+      },
+    });
+
+  it('advanced is disabled while basic is off', () => {
+    render(<TenantCapabilitiesPanel tenant={tenant()} />);
+    expect(screen.getByLabelText(/Stock básico/)).not.toBeChecked();
+    expect(screen.getByLabelText(/Stock avanzado/)).toBeDisabled();
+  });
+
+  it('turning basic on and then advanced sends both flags', () => {
+    render(<TenantCapabilitiesPanel tenant={tenant()} />);
+    fireEvent.click(screen.getByLabelText(/Stock básico/));
+    fireEvent.click(screen.getByLabelText(/Stock avanzado/));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
+    expect(mocks.mutate.mock.calls[0][0].input).toMatchObject({ usesInventoryBasic: true, usesInventoryAdvanced: true });
+  });
+
+  it('turning basic off also turns advanced off in the same request', () => {
+    render(<TenantCapabilitiesPanel tenant={stockTenant(true, true)} />);
+    expect(screen.getByLabelText(/Stock avanzado/)).toBeChecked();
+    fireEvent.click(screen.getByLabelText(/Stock básico/));
+    expect(screen.getByLabelText(/Stock avanzado/)).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
+    expect(mocks.mutate.mock.calls[0][0].input).toMatchObject({ usesInventoryBasic: false, usesInventoryAdvanced: false });
   });
 });

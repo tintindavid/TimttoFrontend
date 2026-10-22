@@ -1,140 +1,165 @@
-import React from 'react';
-import { useMemo, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Container, Form, Modal, Row, Table } from 'react-bootstrap';
-import { toast } from 'react-toastify';
+import React, { useEffect, useState } from 'react';
 import {
-  useCreateInventarioRepuesto,
-  useDeleteInventarioRepuesto,
-  useInventarioList,
-  useUpdateInventarioRepuesto,
-} from '@/hooks/useInventarioRepuestos';
-import { InventarioRepuesto } from '@/types/inventarioRepuesto.types';
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Container,
+  Form,
+  InputGroup,
+  Pagination,
+  Row,
+  Spinner,
+  Table,
+} from 'react-bootstrap';
+import { FaArrowDown, FaArrowUp, FaSearch } from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useDeleteInventarioRepuesto, useInventarioList } from '@/hooks/useInventarioRepuestos';
+import InventarioItemModal from '@/components/inventario/InventarioItemModal';
+import InventarioMovimientoModal from '@/components/inventario/InventarioMovimientoModal';
+import InventarioHistorialModal from '@/components/inventario/InventarioHistorialModal';
+import { getApiErrorMessage } from '@/components/inventario/getApiErrorMessage';
+import {
+  INVENTARIO_TIPO_LABELS,
+  type InventarioRepuesto,
+  type InventarioTipo,
+} from '@/types/inventarioRepuesto.types';
 
-const hasInventarioPlan = () => {
-  const value = (localStorage.getItem('tenantPlan') || '').toLowerCase();
-  return value.includes('inventario');
-};
+const PAGE_SIZE = 20;
+type SortDirection = 'asc' | 'desc';
 
 const InventarioRepuestosPage: React.FC = () => {
-  const [search, setSearch] = useState('');
-  const [stockBajo, setStockBajo] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<InventarioRepuesto | null>(null);
-  const [formData, setFormData] = useState({
-    nombre: '',
-    referencia: '',
-    descripcion: '',
-    stockActual: 0,
-    stockMinimo: 0,
-    unidad: 'unidades',
-    precio: 0,
-  });
+  // Basic: catalog only. Advanced: quantities, movements and history.
+  const { can } = useTenantCapabilities();
+  const advanced = can('usesInventoryAdvanced');
 
-  const listQuery = useInventarioList({ page: 1, limit: 100, search, stockBajo });
-  const createMutation = useCreateInventarioRepuesto();
-  const updateMutation = useUpdateInventarioRepuesto();
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [tipo, setTipo] = useState<'' | InventarioTipo>('');
+  const [stockBajo, setStockBajo] = useState(false);
+
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [editing, setEditing] = useState<InventarioRepuesto | null>(null);
+  const [movimientoItem, setMovimientoItem] = useState<InventarioRepuesto | null>(null);
+  const [historialItem, setHistorialItem] = useState<InventarioRepuesto | null>(null);
+
+  // Debounce the raw input so we don't fire a request per keystroke.
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  // Any change that produces a different result-set must reset to page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, sortDirection, tipo, stockBajo]);
+
+  const { data, isLoading, isFetching, isError } = useInventarioList({
+    page,
+    limit: PAGE_SIZE,
+    search: debouncedSearch.trim() || undefined,
+    sortBy: 'nombre',
+    order: sortDirection,
+    tipo: tipo || undefined,
+    stockBajo: advanced && stockBajo ? true : undefined,
+  });
   const deleteMutation = useDeleteInventarioRepuesto();
 
-  const items = listQuery.data?.data || [];
-  const filteredItems = useMemo(() => items, [items]);
+  const rows = data?.data ?? [];
+  const totalPages = data?.pagination?.pages ?? 1;
+  const totalCount = data?.pagination?.total ?? rows.length;
+  const hasFilters = !!debouncedSearch.trim() || !!tipo || (advanced && stockBajo);
 
   const openCreate = () => {
     setEditing(null);
-    setFormData({
-      nombre: '',
-      referencia: '',
-      descripcion: '',
-      stockActual: 0,
-      stockMinimo: 0,
-      unidad: 'unidades',
-      precio: 0,
-    });
-    setShowModal(true);
+    setShowItemModal(true);
   };
 
   const openEdit = (item: InventarioRepuesto) => {
     setEditing(item);
-    setFormData({
-      nombre: item.nombre || '',
-      referencia: item.referencia || '',
-      descripcion: item.descripcion || '',
-      stockActual: item.stockActual || 0,
-      stockMinimo: item.stockMinimo || 0,
-      unidad: item.unidad || 'unidades',
-      precio: item.precio || 0,
-    });
-    setShowModal(true);
+    setShowItemModal(true);
   };
 
-  const handleSave = async () => {
+  const handleDelete = async (item: InventarioRepuesto) => {
+    if (!item._id) return;
+    if (!window.confirm(`¿Desea eliminar "${item.nombre}" del catálogo?`)) return;
     try {
-      if (!formData.nombre.trim()) {
-        toast.error('El nombre es obligatorio');
-        return;
-      }
-
-      if (editing?._id) {
-        await updateMutation.mutateAsync({ id: editing._id, data: formData });
-        toast.success('Ítem de inventario actualizado');
-      } else {
-        await createMutation.mutateAsync(formData);
-        toast.success('Ítem de inventario creado');
-      }
-      setShowModal(false);
-    } catch (error: any) {
-      toast.error(error?.message || 'Error guardando ítem de inventario');
-    }
-  };
-
-  const handleDelete = async (id?: string) => {
-    if (!id) return;
-    if (!window.confirm('¿Desea eliminar este ítem del inventario?')) return;
-    try {
-      await deleteMutation.mutateAsync(id);
+      await deleteMutation.mutateAsync(item._id);
       toast.success('Ítem eliminado');
-    } catch (error: any) {
-      toast.error(error?.message || 'Error eliminando ítem');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Error eliminando ítem'));
     }
   };
 
-  if (!hasInventarioPlan()) {
-    return (
-      <Container>
-        <Alert variant="warning" className="mt-3">
-          Tu plan actual no incluye la funcionalidad de inventario de repuestos.
-        </Alert>
-      </Container>
-    );
-  }
+  const colSpan = advanced ? 9 : 3;
 
   return (
     <Container>
       <Row className="align-items-center mb-3">
         <Col>
-          <h1 className="h4 mb-0">Inventario de repuestos</h1>
+          <h1 className="h4 mb-0">Stock</h1>
         </Col>
-        <Col xs="auto">
+        <Col className="text-end">
           <Button onClick={openCreate}>Crear ítem</Button>
         </Col>
       </Row>
 
-      <Row className="mb-3 g-2">
-        <Col md={8}>
-          <Form.Control
-            placeholder="Buscar por nombre o referencia"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <Row className="mb-3 g-2 align-items-center">
+        <Col md={advanced ? 5 : 6}>
+          <InputGroup>
+            <InputGroup.Text>
+              <FaSearch />
+            </InputGroup.Text>
+            <Form.Control
+              aria-label="Buscar ítems por nombre"
+              placeholder={advanced ? 'Buscar ítems por nombre o referencia...' : 'Buscar ítems por nombre...'}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            {isFetching && !isLoading && (
+              <InputGroup.Text>
+                <Spinner animation="border" size="sm" role="status" aria-label="Actualizando" />
+              </InputGroup.Text>
+            )}
+          </InputGroup>
         </Col>
-        <Col md={4} className="d-flex align-items-center">
-          <Form.Check
-            type="checkbox"
-            label="Mostrar solo stock bajo"
-            checked={stockBajo}
-            onChange={(e) => setStockBajo(e.target.checked)}
-          />
+        <Col md={advanced ? 2 : 3}>
+          <Form.Select
+            aria-label="Filtrar por tipo"
+            value={tipo}
+            onChange={(e) => setTipo(e.target.value as '' | InventarioTipo)}
+          >
+            <option value="">Todos los tipos</option>
+            {(Object.keys(INVENTARIO_TIPO_LABELS) as InventarioTipo[]).map((t) => (
+              <option key={t} value={t}>
+                {INVENTARIO_TIPO_LABELS[t]}
+              </option>
+            ))}
+          </Form.Select>
+        </Col>
+        {advanced && (
+          <Col md={2}>
+            <Form.Check
+              type="checkbox"
+              id="inv-stock-bajo"
+              label="Solo stock bajo"
+              checked={stockBajo}
+              onChange={(e) => setStockBajo(e.target.checked)}
+            />
+          </Col>
+        )}
+        <Col md={advanced ? 3 : 3} className="text-md-end">
+          <Button
+            variant="outline-secondary"
+            onClick={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+          >
+            Ordenar A–Z {sortDirection === 'asc' ? <FaArrowUp /> : <FaArrowDown />}
+          </Button>
         </Col>
       </Row>
+
+      {isError && <Alert variant="danger">No fue posible cargar el catálogo.</Alert>}
 
       <Card className="tt-card">
         <Card.Body>
@@ -142,96 +167,145 @@ const InventarioRepuestosPage: React.FC = () => {
             <thead>
               <tr>
                 <th>Nombre</th>
-                <th>Referencia</th>
-                <th>Descripción</th>
-                <th>Stock</th>
-                <th>Stock mínimo</th>
-                <th>Unidad</th>
-                <th>Precio</th>
-                <th>Estado</th>
+                <th>Tipo</th>
+                {advanced && (
+                  <>
+                    <th>Referencia</th>
+                    <th>Stock</th>
+                    <th>Stock mínimo</th>
+                    <th>Unidad</th>
+                    <th>Precio</th>
+                    <th>Estado</th>
+                  </>
+                )}
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filteredItems.map((item: InventarioRepuesto) => {
-                const isLow = (item.stockActual || 0) < (item.stockMinimo || 0);
+              {isLoading && (
+                <tr>
+                  <td colSpan={colSpan} className="text-center">
+                    <Spinner animation="border" variant="primary" size="sm" role="status" aria-label="Cargando" />
+                  </td>
+                </tr>
+              )}
+              {rows.map((item) => {
+                const isLow = advanced && (item.stockActual ?? 0) <= (item.stockMinimo ?? 0) && (item.stockMinimo ?? 0) > 0;
                 return (
                   <tr key={item._id} className={isLow ? 'table-warning' : ''}>
                     <td>{item.nombre}</td>
-                    <td>{item.referencia || '-'}</td>
-                    <td>{item.descripcion || '-'}</td>
-                    <td>{item.stockActual}</td>
-                    <td>{item.stockMinimo || 0}</td>
-                    <td>{item.unidad || '-'}</td>
-                    <td>{item.precio || 0}</td>
-                    <td>{isLow ? <Badge bg="warning" text="dark">Stock bajo</Badge> : <Badge bg="success">OK</Badge>}</td>
-                    <td className="d-flex gap-2">
-                      <Button size="sm" variant="outline-primary" onClick={() => openEdit(item)}>Editar</Button>
-                      <Button size="sm" variant="outline-danger" onClick={() => handleDelete(item._id)}>Eliminar</Button>
+                    <td>{INVENTARIO_TIPO_LABELS[item.tipo] ?? '-'}</td>
+                    {advanced && (
+                      <>
+                        <td>{item.referencia || '-'}</td>
+                        <td>{item.stockActual ?? 0}</td>
+                        <td>{item.stockMinimo ?? 0}</td>
+                        <td>{item.unidad || '-'}</td>
+                        <td>{item.precio ?? 0}</td>
+                        <td>
+                          {isLow ? (
+                            <Badge bg="warning" text="dark">
+                              Stock bajo
+                            </Badge>
+                          ) : (
+                            <Badge bg="success">OK</Badge>
+                          )}
+                        </td>
+                      </>
+                    )}
+                    <td>
+                      <div className="d-flex gap-2 flex-wrap">
+                        {advanced && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              aria-label={`Registrar movimiento de ${item.nombre}`}
+                              onClick={() => setMovimientoItem(item)}
+                            >
+                              Movimiento
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              aria-label={`Ver historial de ${item.nombre}`}
+                              onClick={() => setHistorialItem(item)}
+                            >
+                              Historial
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline-primary"
+                          aria-label={`Editar ${item.nombre}`}
+                          onClick={() => openEdit(item)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          aria-label={`Eliminar ${item.nombre}`}
+                          onClick={() => handleDelete(item)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </Table>
+          {!isLoading && !isError && rows.length === 0 && (
+            <p className="text-center text-muted my-3 mb-0">
+              {hasFilters ? 'Ningún ítem coincide con la búsqueda.' : 'Aún no hay ítems en el catálogo.'}
+            </p>
+          )}
         </Card.Body>
       </Card>
 
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{editing ? 'Editar ítem' : 'Crear ítem'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group className="mb-2">
-            <Form.Label>Nombre</Form.Label>
-            <Form.Control value={formData.nombre} onChange={(e) => setFormData((p) => ({ ...p, nombre: e.target.value }))} />
-          </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label>Referencia</Form.Label>
-            <Form.Control value={formData.referencia} onChange={(e) => setFormData((p) => ({ ...p, referencia: e.target.value }))} />
-          </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label>Descripción</Form.Label>
-            <Form.Control as="textarea" rows={2} value={formData.descripcion} onChange={(e) => setFormData((p) => ({ ...p, descripcion: e.target.value }))} />
-          </Form.Group>
-          <Row>
-            <Col>
-              <Form.Group className="mb-2">
-                <Form.Label>Stock actual</Form.Label>
-                <Form.Control type="number" min={0} value={formData.stockActual} onChange={(e) => setFormData((p) => ({ ...p, stockActual: Number(e.target.value) }))} />
-              </Form.Group>
-            </Col>
-            <Col>
-              <Form.Group className="mb-2">
-                <Form.Label>Stock mínimo</Form.Label>
-                <Form.Control type="number" min={0} value={formData.stockMinimo} onChange={(e) => setFormData((p) => ({ ...p, stockMinimo: Number(e.target.value) }))} />
-              </Form.Group>
-            </Col>
-          </Row>
-          <Row>
-            <Col>
-              <Form.Group className="mb-2">
-                <Form.Label>Unidad</Form.Label>
-                <Form.Select value={formData.unidad} onChange={(e) => setFormData((p) => ({ ...p, unidad: e.target.value }))}>
-                  <option value="unidades">unidades</option>
-                  <option value="metros">metros</option>
-                  <option value="pares">pares</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col>
-              <Form.Group className="mb-2">
-                <Form.Label>Precio</Form.Label>
-                <Form.Control type="number" min={0} value={formData.precio} onChange={(e) => setFormData((p) => ({ ...p, precio: Number(e.target.value) }))} />
-              </Form.Group>
-            </Col>
-          </Row>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
-          <Button onClick={handleSave}>Guardar</Button>
-        </Modal.Footer>
-      </Modal>
+      <div className="d-flex justify-content-between align-items-center mt-3">
+        <small className="text-muted">
+          Mostrando {rows.length} de {totalCount} ítems
+        </small>
+        {totalPages > 1 && (
+          <Pagination className="mb-0">
+            <Pagination.Prev disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} />
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+              <Pagination.Item key={pageNumber} active={pageNumber === page} onClick={() => setPage(pageNumber)}>
+                {pageNumber}
+              </Pagination.Item>
+            ))}
+            <Pagination.Next
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            />
+          </Pagination>
+        )}
+      </div>
+
+      <InventarioItemModal
+        show={showItemModal}
+        onHide={() => setShowItemModal(false)}
+        item={editing}
+        advanced={advanced}
+      />
+      {advanced && (
+        <>
+          <InventarioMovimientoModal
+            show={!!movimientoItem}
+            onHide={() => setMovimientoItem(null)}
+            item={movimientoItem}
+          />
+          <InventarioHistorialModal
+            show={!!historialItem}
+            onHide={() => setHistorialItem(null)}
+            item={historialItem}
+          />
+        </>
+      )}
     </Container>
   );
 };

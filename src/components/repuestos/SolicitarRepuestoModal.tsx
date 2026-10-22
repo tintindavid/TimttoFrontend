@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert } from 'react-bootstrap';
-import CreatableSelect from 'react-select/creatable';
+import AsyncSelect from 'react-select/async';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaPlus } from 'react-icons/fa';
 import { CreateRepuestoSolicitudDto, PrioridadRepuesto, OrigenRepuesto } from '@/types/repuesto.types';
 import { useCreateRepuestoSolicitud } from '@/hooks/useRepuestos';
-import { useInventarioList } from '@/hooks/useInventarioRepuestos';
+import { inventarioRepuestoService } from '@/services/inventarioRepuesto.service';
+import InventarioItemModal from '@/components/inventario/InventarioItemModal';
+import type { InventarioRepuesto } from '@/types/inventarioRepuesto.types';
 import { useAuth } from '@/context/AuthContext';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
+
+interface InventarioOption {
+  value: string;
+  label: string;
+}
+
+/** Sentinel option: opens the "create new part" modal instead of selecting an item. */
+const CREATE_OPTION_VALUE = '__create_new__';
+const SEARCH_LIMIT = 20;
 
 interface SolicitarRepuestoModalProps {
   show: boolean;
@@ -41,13 +53,33 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [inventarioSeleccionadoId, setInventarioSeleccionadoId] = useState<string | undefined>(undefined);
   const createRepuestoMutation = useCreateRepuestoSolicitud();
-  const hasInventarioPlan = (localStorage.getItem('tenantPlan') || '').toLowerCase().includes('inventario');
-  const { data: inventarioData } = useInventarioList({ page: 1, limit: 200, search: '' });
-  
+  // Stock catalog (basic level) enabled: pick/create catalog items; otherwise free text as before.
+  const { can } = useTenantCapabilities();
+  const hasInventario = can('usesInventoryBasic');
+  const [showCreateItem, setShowCreateItem] = useState(false);
+  const [createItemName, setCreateItemName] = useState('');
+  const [searchText, setSearchText] = useState('');
+
+  // Server-side search (no full catalog load); only active items are offered.
+  const loadOptions = async (inputValue: string): Promise<InventarioOption[]> => {
+    const response = await inventarioRepuestoService.list({
+      search: inputValue.trim() || undefined,
+      limit: SEARCH_LIMIT,
+      sortBy: 'nombre',
+      order: 'asc',
+      activo: true,
+    });
+    const options = (response.data || [])
+      .filter((it) => it._id)
+      .map((it) => ({ value: it._id as string, label: it.nombre }));
+    return [...options, { value: CREATE_OPTION_VALUE, label: '+ Crear nuevo repuesto' }];
+  };
+
   const {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors }
   } = useForm<Omit<CreateRepuestoSolicitudDto, 'ResponsableSolicitud'>>({
     resolver: yupResolver(schema),
@@ -77,8 +109,7 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
     };
     
     const userId = user?._id || (token ? getUserIdFromToken(token) : null);
-    console.log('DEBUG - userId final:', userId);
-    
+
     if (!userId) {
       alert('Error: Usuario no autenticado. Verifique que ha iniciado sesión correctamente.');
       return;
@@ -108,6 +139,7 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
 
   const handleClose = () => {
     reset();
+    setInventarioSeleccionadoId(undefined);
     onHide();
   };
 
@@ -138,7 +170,7 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
                   name="nombre"
                   control={control}
                   render={({ field }) => {
-                    if (!hasInventarioPlan) {
+                    if (!hasInventario) {
                       return (
                         <Form.Control
                           {...field}
@@ -149,26 +181,32 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
                       );
                     }
 
-                    const options = (inventarioData?.data || []).map((it: any) => ({
-                      value: it._id,
-                      label: it.nombre,
-                    }));
-
                     return (
-                      <CreatableSelect
+                      <AsyncSelect<InventarioOption>
+                        inputId="solicitar-repuesto-nombre"
+                        aria-label="Nombre del repuesto"
                         isClearable
-                        options={options}
-                        placeholder="Seleccionar o crear nombre de repuesto"
-                        value={field.value ? { value: inventarioSeleccionadoId || field.value, label: field.value } : null}
-                        onChange={(selected: any) => {
-                          const label = selected?.label || '';
-                          const value = selected?.value || undefined;
-                          field.onChange(label);
-                          setInventarioSeleccionadoId(value && options.some((op: any) => op.value === value) ? value : undefined);
+                        defaultOptions
+                        loadOptions={loadOptions}
+                        placeholder="Buscar repuesto del catálogo..."
+                        noOptionsMessage={() => 'Sin resultados'}
+                        loadingMessage={() => 'Buscando...'}
+                        onInputChange={(text, meta) => {
+                          if (meta.action === 'input-change') setSearchText(text);
                         }}
-                        onCreateOption={(inputValue: string) => {
-                          field.onChange(inputValue);
-                          setInventarioSeleccionadoId(undefined);
+                        value={
+                          field.value && inventarioSeleccionadoId
+                            ? { value: inventarioSeleccionadoId, label: field.value }
+                            : null
+                        }
+                        onChange={(selected) => {
+                          if (selected?.value === CREATE_OPTION_VALUE) {
+                            setCreateItemName(searchText.trim());
+                            setShowCreateItem(true);
+                            return;
+                          }
+                          field.onChange(selected?.label || '');
+                          setInventarioSeleccionadoId(selected?.value || undefined);
                         }}
                       />
                     );
@@ -258,6 +296,18 @@ export const SolicitarRepuestoModal: React.FC<SolicitarRepuestoModalProps> = ({
           </Button>
         </Modal.Footer>
       </Form>
+      {/* Kept outside the <Form> so its submit never submits the request; the request state is preserved. */}
+      <InventarioItemModal
+        show={showCreateItem}
+        onHide={() => setShowCreateItem(false)}
+        advanced={can('usesInventoryAdvanced')}
+        initialNombre={createItemName}
+        onSaved={(created: InventarioRepuesto) => {
+          // Select the new catalog item; the other request fields keep their value.
+          setValue('nombre', created.nombre, { shouldValidate: true });
+          setInventarioSeleccionadoId(created._id);
+        }}
+      />
     </Modal>
   );
 };

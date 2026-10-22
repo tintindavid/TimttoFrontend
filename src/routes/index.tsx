@@ -236,7 +236,14 @@ const AppRoutes: React.FC = () => {
         <Route path="actividades/:id/edit" element={<ActividadFormPage />} />
 
         <Route path="repuestos/solicitados" element={<RepuestosSolicitadosPage />} />
-        <Route path="repuestos/inventario" element={<InventarioRepuestosPage />} />
+        <Route
+          path="repuestos/inventario"
+          element={
+            <RequireCapability capability="usesInventoryBasic">
+              <InventarioRepuestosPage />
+            </RequireCapability>
+          }
+        />
 
         {/* Tenants management pages */}
         <Route path="tenants" element={<TenantsPage />} />

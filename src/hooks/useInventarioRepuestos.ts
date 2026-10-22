@@ -6,10 +6,12 @@ import {
   UpdateInventarioRepuestoDto,
 } from '@/types/inventarioRepuesto.types';
 
-export const useInventarioList = (params: InventarioRepuestoQueryParams = {}) => {
+export const useInventarioList = (params: InventarioRepuestoQueryParams = {}, enabled = true) => {
   return useQuery({
     queryKey: ['inventario-repuestos', params],
     queryFn: () => inventarioRepuestoService.list(params),
+    enabled,
+    keepPreviousData: true,
   });
 };
 
