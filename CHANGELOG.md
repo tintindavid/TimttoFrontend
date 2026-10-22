@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.27.0...v1.28.0) (2026-10-22)
+
+
+### Features
+
+* **inventario:** add basic/advanced spare-parts stock module ([87a23d3](https://github.com/tintindavid/TimttoFrontend/commit/87a23d358ae703a7e4efc2814b54d6971dbff34b))
+
 # [1.27.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.26.0...v1.27.0) (2026-10-20)
 
 
