@@ -279,7 +279,7 @@ const ThirdPartyList: React.FC<ThirdPartyListProps> = ({ kind }) => {
 const TercerosPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { can } = useTenantCapabilities();
-  const showClients = can('executesServices');
+  const showClients = can('managesCustomers');
   const activeTab: CustomerKind =
     !showClients || searchParams.get('tab') === 'provider' ? 'provider' : 'customer';
 
@@ -287,7 +287,7 @@ const TercerosPage: React.FC = () => {
     setSearchParams(key === 'provider' ? { tab: 'provider' } : {}, { replace: true });
   };
 
-  // Tenants that do not execute services have no client list (their single organization
+  // Tenants that do not manage customers have no client list (their single organization
   // client is reached from "Mi información"); only providers are managed here.
   if (!showClients) {
     return (

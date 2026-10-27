@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield, FaTicketAlt, FaQrcode, FaLayerGroup, FaCity } from 'react-icons/fa';
+import { FaCogs, FaTools, FaUsers, FaClipboardList, FaFilePdf, FaBuilding, FaList, FaCog, FaCalendarAlt, FaBook, FaFileAlt, FaTimes, FaUserShield, FaTicketAlt, FaQrcode, FaLayerGroup, FaCity, FaFileInvoice } from 'react-icons/fa';
 import { Nav } from 'react-bootstrap';
 import { useAuth } from '@/context/AuthContext';
 import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
@@ -32,10 +32,11 @@ const baseMenu: MenuItem[] = [
     label: 'Técnica',
     icon: <FaTools />,
     subItems: [
-      { id: 'actividades', label: 'Actividades', path: '/actividades' },
-      { id: 'protocolos', label: 'Protocolos', path: '/protocols' },
+      // Protocols and activities are attached to the reports of a work order, so they only make sense when the
+      // tenant executes services; a tenant that does not (client organization) keeps just the items catalog.
+      { id: 'actividades', label: 'Actividades', path: '/actividades', requires: 'executesServices' },
+      { id: 'protocolos', label: 'Protocolos', path: '/protocols', requires: 'executesServices' },
       { id: 'items', label: 'Items', path: '/items' }
-
     ],
   },
   {
@@ -55,6 +56,27 @@ const baseMenu: MenuItem[] = [
     subItems: [
       { id: 'repuestos-solicitados', label: 'Solicitados', path: '/repuestos/solicitados' },
       { id: 'repuestos-inventario', label: 'Stock', path: '/repuestos/inventario', requires: 'usesInventoryBasic' },
+    ],
+  },
+  {
+    id: 'requisiciones',
+    label: 'Requisiciones',
+    path: '/requisiciones',
+    icon: <FaFileInvoice />,
+    requires: 'usesRequisiciones',
+    subItems: [
+      { id: 'requisiciones-list', label: 'Requisiciones', path: '/requisiciones' },
+      { id: 'requisiciones-por-aprobar', label: 'Por aprobar', path: '/requisiciones/por-aprobar' },
+      {
+        id: 'requisiciones-config',
+        label: 'Configuración',
+        subItems: [
+          { id: 'requisiciones-areas', label: 'Áreas', path: '/requisiciones/configuracion/areas' },
+          { id: 'requisiciones-tipos', label: 'Tipos', path: '/requisiciones/configuracion/tipos' },
+          { id: 'requisiciones-reglas', label: 'Reglas de aprobación', path: '/requisiciones/configuracion/reglas' },
+          { id: 'requisiciones-presupuestos', label: 'Presupuestos', path: '/requisiciones/configuracion/presupuestos' },
+        ],
+      },
     ],
   },
   { id: 'cronogramas', label: 'Cronogramas', path: '/cronogramas', icon: <FaCalendarAlt /> },
@@ -112,18 +134,25 @@ const Sidebar: React.FC<SidebarProps> = ({
   const compactoCerrado = modoCompacto && !abierto;
   const asideRef = useRef<HTMLElement | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const executesServices = can('executesServices');
+  const managesCustomers = can('managesCustomers');
   const baseAdjusted = baseMenu
     .filter((item) => !item.requires || can(item.requires))
     .flatMap((item) => {
-      if (item.id !== 'customers' || executesServices) return [item];
-      // Tenants that do not execute services: their single organization client and the provider list.
+      if (item.id !== 'customers' || managesCustomers) return [item];
+      // Tenants that do not manage customers (client organizations, own maintenance): their single organization client and the provider list.
       return buildThirdPartyItems(item, organizationCustomerId);
     })
     // Sub-items can require a capability too (e.g. "Stock" needs usesInventoryBasic).
     .map((item) =>
       item.subItems
-        ? { ...item, subItems: item.subItems.filter((s) => !s.requires || can(s.requires)) }
+        ? {
+            ...item,
+            subItems: item.subItems
+              .filter((s) => !s.requires || can(s.requires))
+              .map((s) =>
+                s.subItems ? { ...s, subItems: s.subItems.filter((g) => !g.requires || can(g.requires)) } : s
+              ),
+          }
         : item
     );
   // rollout admin-only — widen role list when feature opens to technician/user
@@ -274,11 +303,25 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {m.subItems && !compactoCerrado && (
                   <div className={`submenu ${openId === m.id ? 'open' : ''}`}>
                     <Nav className="flex-column ms-3">
-                      {m.subItems.map((s) => (
-                        <Nav.Item key={s.id} className="py-1">
-                          <Link to={s.path || '#'} className="nav-link small" onClick={handleLinkClick}>{s.label}</Link>
-                        </Nav.Item>
-                      ))}
+                      {m.subItems.map((s) =>
+                        s.subItems ? (
+                          // Group inside a submenu (e.g. Requisiciones > Configuración): a label plus its links.
+                          <Nav.Item key={s.id} className="py-1" role="group" aria-label={s.label}>
+                            <span className="nav-label small text-muted">{s.label}</span>
+                            <Nav className="flex-column ms-3">
+                              {s.subItems.map((g) => (
+                                <Nav.Item key={g.id} className="py-1">
+                                  <Link to={g.path || '#'} className="nav-link small" onClick={handleLinkClick}>{g.label}</Link>
+                                </Nav.Item>
+                              ))}
+                            </Nav>
+                          </Nav.Item>
+                        ) : (
+                          <Nav.Item key={s.id} className="py-1">
+                            <Link to={s.path || '#'} className="nav-link small" onClick={handleLinkClick}>{s.label}</Link>
+                          </Nav.Item>
+                        )
+                      )}
                     </Nav>
                   </div>
                 )}

@@ -18,9 +18,11 @@ const caps = (
   executesServices: boolean,
   organizationCustomerId: string | null = null,
   usesQrs = true,
-  inventoryBasic = true
+  inventoryBasic = true,
+  managesCustomers = executesServices
 ) => ({
   executesServices,
+  managesCustomers,
   registersExternal: !executesServices,
   usesQrs,
   organizationCustomerId,
@@ -28,7 +30,9 @@ const caps = (
   can: (c: string) =>
     c === 'executesServices'
       ? executesServices
-      : c === 'usesQrs'
+      : c === 'managesCustomers'
+        ? managesCustomers
+        : c === 'usesQrs'
         ? usesQrs
         : c === 'usesInventoryBasic'
           ? inventoryBasic
@@ -161,6 +165,18 @@ describe('Sidebar — tenant capabilities', () => {
     expect(screen.getByRole('link', { name: 'Proveedores' })).toHaveAttribute('href', '/terceros?tab=provider');
     // Common modules stay
     expect(screen.getByRole('link', { name: 'Cronogramas' })).toBeInTheDocument();
+  });
+
+  test('own maintenance (executes services without managing customers) keeps OTs but replaces Terceros by Mi información and Proveedores', () => {
+    capsMock.useTenantCapabilities.mockReturnValue(caps(true, 'org123', true, true, false));
+    renderSidebar();
+
+    expect(screen.getByText('Órdenes de Trabajo')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Informes' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Diario' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Terceros' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Mi información' })).toHaveAttribute('href', '/terceros/org123');
+    expect(screen.getByRole('link', { name: 'Proveedores' })).toHaveAttribute('href', '/terceros?tab=provider');
   });
 });
 
@@ -352,5 +368,65 @@ describe('Sidebar - compact mode', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Cronogramas' }));
     expect(onAbrir).not.toHaveBeenCalled();
     expect(screen.getByTestId('ruta').textContent).toBe('/cronogramas'); // the first tap follows the link
+  });
+});
+
+describe('Sidebar - Requisiciones item', () => {
+  beforeEach(() => {
+    (useAuth as unknown as Mock).mockReset();
+    (useAuth as unknown as Mock).mockReturnValue({ user: { role: 'admin', email: 'a@x.io' }, isAuthenticated: true });
+  });
+
+  test('shows the menu with its sub-items and the Configuración group when usesRequisiciones is on', () => {
+    capsMock.useTenantCapabilities.mockReturnValue({
+      ...caps(true),
+      can: (c: string) => c !== 'usesRequisiciones' || true,
+    });
+    renderSidebar();
+    expect(screen.getByRole('link', { name: 'Por aprobar' })).toHaveAttribute('href', '/requisiciones/por-aprobar');
+    expect(screen.getByRole('link', { name: 'Áreas' })).toHaveAttribute('href', '/requisiciones/configuracion/areas');
+    expect(screen.getByRole('link', { name: 'Reglas de aprobación' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Presupuestos' })).toBeInTheDocument();
+  });
+
+  test('hides everything when usesRequisiciones is off', () => {
+    capsMock.useTenantCapabilities.mockReturnValue({
+      ...caps(true),
+      can: (c: string) => c !== 'usesRequisiciones',
+    });
+    renderSidebar();
+    expect(screen.queryByRole('link', { name: 'Requisiciones' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Por aprobar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Áreas' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Sidebar — Técnica group follows executesServices', () => {
+  beforeEach(() => {
+    (useAuth as unknown as Mock).mockReset();
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { role: 'admin', email: 'a@x.io' },
+      isAuthenticated: true,
+    });
+  });
+
+  test('a tenant that executes services sees Items, Protocolos and Actividades', () => {
+    capsMock.useTenantCapabilities.mockReturnValue(caps(true, null));
+    renderSidebar();
+
+    expect(screen.getByText('Técnica')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Items' })).toHaveAttribute('href', '/items');
+    expect(screen.getByRole('link', { name: 'Protocolos' })).toHaveAttribute('href', '/protocols');
+    expect(screen.getByRole('link', { name: 'Actividades' })).toHaveAttribute('href', '/actividades');
+  });
+
+  test('a tenant that does not execute services keeps only Items (protocols and activities hang from reports)', () => {
+    capsMock.useTenantCapabilities.mockReturnValue(caps(false, 'org123'));
+    renderSidebar();
+
+    expect(screen.getByText('Técnica')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Items' })).toHaveAttribute('href', '/items');
+    expect(screen.queryByRole('link', { name: 'Protocolos' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Actividades' })).not.toBeInTheDocument();
   });
 });

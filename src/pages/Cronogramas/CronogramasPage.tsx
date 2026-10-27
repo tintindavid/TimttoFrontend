@@ -16,9 +16,9 @@ const CronogramasPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('por-cliente');
   const { can, organizationCustomerId, isLoading } = useTenantCapabilities();
 
-  // A client organization (does not execute services and has its own client) sees "Mi Cronograma" with
+  // A client organization or an own-maintenance tenant (does not manage customers and has its own client) sees "Mi Cronograma" with
   // its own client already selected; every other tenant keeps "Por Cliente" with the client selector.
-  const clienteFijoId = !can('executesServices') && organizationCustomerId ? organizationCustomerId : undefined;
+  const clienteFijoId = !can('managesCustomers') && organizationCustomerId ? organizationCustomerId : undefined;
 
   // Capabilities default to "everything enabled" while they load; rendering the tabs then would show the client
   // selector for a client organization and keep its state when the real value arrives.

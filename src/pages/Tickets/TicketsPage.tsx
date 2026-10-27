@@ -49,6 +49,7 @@ const resolveClienteId = (t: Ticket): string => {
 const TicketsPage: React.FC = () => {
   const { can } = useTenantCapabilities();
   const executesServices = can('executesServices');
+  const managesCustomers = can('managesCustomers');
   const [statusTab, setStatusTab] = useState<TicketStatus>('pendiente');
   const [page, setPage] = useState<number>(1);
   const [clienteFilter, setClienteFilter] = useState<string>('');
@@ -83,7 +84,7 @@ const TicketsPage: React.FC = () => {
 
   const ticketsQuery = useTicketsList(filters);
   const statsQuery = useTicketStats();
-  const customersQuery = useCustomers();
+  const customersQuery = useCustomers(undefined, { enabled: managesCustomers });
   const usersQuery = useUsers({ limit: 100 });
 
   const tickets: Ticket[] = (ticketsQuery.data?.data ?? []) as Ticket[];
@@ -182,21 +183,23 @@ const TicketsPage: React.FC = () => {
       <Card className="mb-3">
         <Card.Body className="py-3">
           <div className="d-flex flex-wrap gap-3 align-items-end">
-            <div style={{ minWidth: 180 }}>
-              <Form.Label className="small mb-1">Cliente</Form.Label>
-              <Form.Select
-                size="sm"
-                value={clienteFilter}
-                onChange={(e) => { setClienteFilter(e.target.value); setPage(1); }}
-              >
-                <option value="">Todos</option>
-                {customers.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.Razonsocial || 'Sin nombre'}
-                  </option>
-                ))}
-              </Form.Select>
-            </div>
+            {managesCustomers && (
+              <div style={{ minWidth: 180 }}>
+                <Form.Label className="small mb-1">Cliente</Form.Label>
+                <Form.Select
+                  size="sm"
+                  value={clienteFilter}
+                  onChange={(e) => { setClienteFilter(e.target.value); setPage(1); }}
+                >
+                  <option value="">Todos</option>
+                  {customers.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.Razonsocial || 'Sin nombre'}
+                    </option>
+                  ))}
+                </Form.Select>
+              </div>
+            )}
             <div style={{ minWidth: 140 }}>
               <Form.Label className="small mb-1">Urgencia</Form.Label>
               <Form.Select

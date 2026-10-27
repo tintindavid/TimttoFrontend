@@ -25,6 +25,7 @@ const Probe: React.FC = () => {
       <span data-testid="quick">{String(c.can('scheduleQuickLoad'))}</span>
       <span data-testid="inv-basic">{String(c.can('usesInventoryBasic'))}</span>
       <span data-testid="inv-adv">{String(c.can('usesInventoryAdvanced'))}</span>
+      <span data-testid="manages">{String(c.can('managesCustomers'))}</span>
       <span data-testid="qrs">{String(c.can('usesQrs'))}</span>
     </div>
   );
@@ -109,6 +110,19 @@ describe('TenantCapabilitiesProvider', () => {
     expect(mocks.getMine).not.toHaveBeenCalled();
     expect(screen.getByTestId('exec').textContent).toBe('true');
   });
+
+  it('reports loading on a page reload: token present but the user not yet hydrated (no early redirect)', () => {
+    mocks.useAuth.mockReturnValue({ user: null, token: 'tkn', tenantId: 't1', viewAsTenantId: null });
+    renderProvider();
+    expect(screen.getByTestId('loading').textContent).toBe('true');
+    expect(screen.getByTestId('inv-basic').textContent).toBe('false');
+  });
+
+  it('is not loading when there is neither a token nor a user (logged out)', () => {
+    mocks.useAuth.mockReturnValue({ user: null, token: null, tenantId: null, viewAsTenantId: null });
+    renderProvider();
+    expect(screen.getByTestId('loading').textContent).toBe('false');
+  });
 });
 
 describe('TenantCapabilitiesProvider - the paid quick load is never assumed', () => {
@@ -164,5 +178,66 @@ describe('TenantCapabilitiesProvider - Stock levels are never assumed', () => {
     renderProvider();
     await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
     expect(screen.getByTestId('inv-adv').textContent).toBe('false');
+  });
+});
+
+describe('TenantCapabilitiesProvider - Requisiciones is never assumed', () => {
+  const Req: React.FC = () => <span data-testid="req">{String(useTenantCapabilities().can('usesRequisiciones'))}</span>;
+  const renderReq = () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={qc}>
+        <TenantCapabilitiesProvider>
+          <Req />
+        </TenantCapabilitiesProvider>
+      </QueryClientProvider>
+    );
+  };
+
+  it('is off while loading, then follows the fetched flag', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue({ ...clientCaps, usesRequisiciones: true });
+    renderReq();
+    expect(screen.getByTestId('req').textContent).toBe('false');
+    await waitFor(() => expect(screen.getByTestId('req').textContent).toBe('true'));
+  });
+
+  it('stays off when the backend does not send it', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue(clientCaps);
+    renderReq();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.getByTestId('req').textContent).toBe('false');
+  });
+
+  it('reads managesCustomers from the response and keeps it off for own maintenance', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue({
+      executesServices: true,
+      managesCustomers: false,
+      registersExternal: false,
+      type: 'provider',
+      organizationCustomerId: 'org1',
+    });
+    renderProvider();
+    expect(screen.getByTestId('manages').textContent).toBe('true'); // enabled while loading
+    await waitFor(() => expect(screen.getByTestId('manages').textContent).toBe('false'));
+    expect(screen.getByTestId('exec').textContent).toBe('true');
+  });
+
+  it('legacy backend without managesCustomers: it follows executesServices', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue({ executesServices: true, registersExternal: false, type: 'provider', organizationCustomerId: null });
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
+    expect(screen.getByTestId('manages').textContent).toBe('true');
+  });
+
+  it('managesCustomers requires executesServices even if the response says otherwise', async () => {
+    mocks.useAuth.mockReturnValue({ user: { role: 'admin' }, tenantId: 't1', viewAsTenantId: null });
+    mocks.getMine.mockResolvedValue({ ...clientCaps, managesCustomers: true });
+    renderProvider();
+    await waitFor(() => expect(screen.getByTestId('exec').textContent).toBe('false'));
+    expect(screen.getByTestId('manages').textContent).toBe('false');
   });
 });

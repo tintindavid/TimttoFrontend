@@ -25,3 +25,4 @@ export * from './clientAccessToken.types';
 export * from './publicPortal.types';
 export * from './notification.types';
 export * from './tenantCapabilities.types';
+export * from './requisicion.types';

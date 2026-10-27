@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -41,7 +42,11 @@ const evaluatePolicy = (pw: string): PolicyState => ({
 const isPolicyOk = (p: PolicyState): boolean =>
   p.length && p.upper && p.lower && p.digit;
 
-const CreateServiceQrModal: React.FC<CreateServiceQrModalProps> = ({ show, onHide, defaultClienteId }) => {
+const CreateServiceQrModal: React.FC<CreateServiceQrModalProps> = ({ show, onHide, defaultClienteId: contextClienteId }) => {
+  const { can, organizationCustomerId } = useTenantCapabilities();
+  const managesCustomers = can('managesCustomers');
+  // Without Gestiona clientes the client is always the organization customer (no selector).
+  const defaultClienteId = contextClienteId ?? (!managesCustomers ? organizationCustomerId ?? undefined : undefined);
   const [clienteId, setClienteId] = useState<string>(defaultClienteId ?? '');
   const [sedeId, setSedeId] = useState<string>('');
   const [servicioId, setServicioId] = useState<string>('');
@@ -55,7 +60,7 @@ const CreateServiceQrModal: React.FC<CreateServiceQrModalProps> = ({ show, onHid
   }, [defaultClienteId, show]);
 
   const createMutation = useCreateServiceQr();
-  const { data: customersData, isLoading: loadingCustomers } = useCustomers();
+  const { data: customersData, isLoading: loadingCustomers } = useCustomers(undefined, { enabled: managesCustomers });
   const customers: Customer[] = (customersData?.data ?? []) as Customer[];
 
   const { data: sedesData, isLoading: loadingSedes } = useSedesByCustomer(
@@ -139,6 +144,7 @@ const CreateServiceQrModal: React.FC<CreateServiceQrModalProps> = ({ show, onHid
         <Modal.Body>
           {submitError && <Alert variant="danger">{submitError}</Alert>}
 
+          {managesCustomers && (
           <Form.Group className="mb-3" controlId="qrCliente">
             <Form.Label>Cliente</Form.Label>
             {loadingCustomers ? (
@@ -160,6 +166,7 @@ const CreateServiceQrModal: React.FC<CreateServiceQrModalProps> = ({ show, onHid
               <Form.Text className="text-muted">Cliente fijado por el contexto.</Form.Text>
             )}
           </Form.Group>
+          )}
 
           <Form.Group className="mb-3" controlId="qrSede">
             <Form.Label>Sede</Form.Label>

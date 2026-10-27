@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import {
   Alert,
   Badge,
@@ -41,6 +42,7 @@ const formatDate = (iso?: string | null): string => {
 };
 
 const ServiceQrsPage: React.FC = () => {
+  const managesCustomers = useTenantCapabilities().can('managesCustomers');
   const [clienteFilter, setClienteFilter] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('');
 
@@ -57,7 +59,7 @@ const ServiceQrsPage: React.FC = () => {
   }, [clienteFilter, activeFilter]);
 
   const qrsQuery = useServiceQrs(filters);
-  const customersQuery = useCustomers();
+  const customersQuery = useCustomers(undefined, { enabled: managesCustomers });
   const activateMut = useActivateQr();
   const deactivateMut = useDeactivateQr();
   const deleteMut = useDeleteQr();
@@ -110,17 +112,19 @@ const ServiceQrsPage: React.FC = () => {
       <Card className="mb-3">
         <Card.Body className="py-3">
           <div className="d-flex flex-wrap gap-3 align-items-end">
-            <div style={{ minWidth: 220 }}>
-              <Form.Label className="small mb-1">Cliente</Form.Label>
-              <Form.Select size="sm" value={clienteFilter} onChange={(e) => setClienteFilter(e.target.value)}>
-                <option value="">Todos</option>
-                {customers.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.Razonsocial || 'Sin nombre'}
-                  </option>
-                ))}
-              </Form.Select>
-            </div>
+            {managesCustomers && (
+              <div style={{ minWidth: 220 }}>
+                <Form.Label className="small mb-1">Cliente</Form.Label>
+                <Form.Select size="sm" value={clienteFilter} onChange={(e) => setClienteFilter(e.target.value)}>
+                  <option value="">Todos</option>
+                  {customers.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.Razonsocial || 'Sin nombre'}
+                    </option>
+                  ))}
+                </Form.Select>
+              </div>
+            )}
             <div style={{ minWidth: 160 }}>
               <Form.Label className="small mb-1">Estado</Form.Label>
               <Form.Select size="sm" value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)}>
@@ -149,7 +153,7 @@ const ServiceQrsPage: React.FC = () => {
         <Table responsive bordered hover className="bg-white">
           <thead className="table-light">
             <tr>
-              <th>Cliente</th>
+              {managesCustomers && <th>Cliente</th>}
               <th>Sede</th>
               <th>Servicio</th>
               <th>Estado</th>
@@ -160,7 +164,7 @@ const ServiceQrsPage: React.FC = () => {
           <tbody>
             {qrs.map((qr) => (
               <tr key={qr._id}>
-                <td>{renderName(qr.ClienteId) || '—'}</td>
+                {managesCustomers && <td>{renderName(qr.ClienteId) || '—'}</td>}
                 <td>{renderName(qr.sedeId) || '—'}</td>
                 <td>{renderName(qr.servicioId) || '—'}</td>
                 <td>

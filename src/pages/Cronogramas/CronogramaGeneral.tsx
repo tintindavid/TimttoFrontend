@@ -8,6 +8,7 @@ import './Cronograma.css';
 
 // Services
 import { equipoItemService } from '@/services/equipoItem.service';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 
 // Tipos
 import { Mes, MESES, MESES_MAP } from '@/types/cronograma.types';
@@ -59,6 +60,7 @@ const getMesActual = (): Mes => {
  */
 export const CronogramaGeneral: React.FC = () => {
   const navigate = useNavigate();
+  const managesCustomers = useTenantCapabilities().can('managesCustomers');
   const mesActual = getMesActual();
   
   const [mesSeleccionado, setMesSeleccionado] = useState<Mes>(mesActual);
@@ -344,6 +346,7 @@ export const CronogramaGeneral: React.FC = () => {
           </div>
           
           <Row>
+            {managesCustomers && (
             <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>Clientes</Form.Label>
@@ -369,6 +372,7 @@ export const CronogramaGeneral: React.FC = () => {
                 />
               </Form.Group>
             </Col>
+            )}
             
             <Col md={4}>
               <Form.Group className="mb-3">
@@ -437,6 +441,7 @@ export const CronogramaGeneral: React.FC = () => {
       {/* Estadísticas */}
       {!isLoading && clientes.length > 0 && (
         <Row className="mb-4">
+          {managesCustomers && (
           <Col md={6}>
             <Card className="h-100 shadow-sm border-0">
               <Card.Body className="d-flex align-items-center">
@@ -450,6 +455,7 @@ export const CronogramaGeneral: React.FC = () => {
               </Card.Body>
             </Card>
           </Col>
+          )}
           <Col md={6}>
             <Card className="h-100 shadow-sm border-0">
               <Card.Body className="d-flex align-items-center">

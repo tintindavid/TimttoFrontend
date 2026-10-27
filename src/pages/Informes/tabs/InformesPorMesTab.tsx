@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 
 import { useAuth } from '@/context/AuthContext';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { informeService } from '@/services/informe.service';
 import { MonthRangeSelect } from '../components/MonthRangeSelect';
 import { InformePreview } from '../components/InformePreview';
@@ -29,6 +30,8 @@ function toOption(c: Customer): CustomerOption {
  */
 export const InformesPorMesTab: React.FC = () => {
   const { user } = useAuth();
+  const { can, organizationCustomerId } = useTenantCapabilities();
+  const managesCustomers = can('managesCustomers');
   const [customerSearch, setCustomerSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
@@ -52,9 +55,17 @@ export const InformesPorMesTab: React.FC = () => {
     return () => clearTimeout(t);
   }, [customerSearch]);
 
-  const searchEnabled = debouncedSearch.length >= 3;
+  // "Mantenimiento propio": there is no client selector; the report is always about the organization customer.
+  useEffect(() => {
+    if (!managesCustomers && organizationCustomerId) {
+      setSelectedCustomer({ value: organizationCustomerId, label: 'Mi organización' });
+    }
+  }, [managesCustomers, organizationCustomerId]);
+
+  const searchEnabled = debouncedSearch.length >= 3 && managesCustomers;
   const { data: customersData, isLoading: loadingCustomers } = useCustomers(
     searchEnabled ? { search: debouncedSearch, limit: 20 } : undefined,
+    { enabled: managesCustomers },
   );
 
   const customerOptions: CustomerOption[] =
@@ -145,7 +156,7 @@ export const InformesPorMesTab: React.FC = () => {
         <Col>
           <h2 className="fw-bold mb-1" style={{ color: '#1a2332' }}>Informe de Mantenimiento</h2>
           <p className="text-muted mb-0">
-            Seleccione un cliente y el rango de meses para generar el informe consolidado.
+            {managesCustomers ? 'Seleccione un cliente y el rango de meses' : 'Seleccione el rango de meses'} para generar el informe consolidado.
           </p>
         </Col>
       </Row>
@@ -155,6 +166,7 @@ export const InformesPorMesTab: React.FC = () => {
         <Card.Body>
           <Row className="g-3">
             {/* Customer search */}
+            {managesCustomers && (
             <Col xs={12} md={5}>
               <Form.Label className="fw-semibold text-muted small text-uppercase">Cliente</Form.Label>
               <Select<CustomerOption>
@@ -179,6 +191,7 @@ export const InformesPorMesTab: React.FC = () => {
                 aria-label="Seleccione cliente"
               />
             </Col>
+            )}
 
             {/* Month range */}
             <Col xs={12} md={5}>

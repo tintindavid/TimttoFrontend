@@ -18,7 +18,7 @@ vi.mock('./CronogramaGeneral', () => ({ CronogramaGeneral: () => <div data-testi
 
 let caps: { executesServices: boolean; organizationCustomerId: string | null; isLoading?: boolean };
 vi.mock('@/context/TenantCapabilitiesContext', () => ({
-  useTenantCapabilities: () => ({ ...caps, can: (c: string) => (c === 'executesServices' ? caps.executesServices : true) }),
+  useTenantCapabilities: () => ({ ...caps, can: (c: string) => (c === 'managesCustomers' ? caps.executesServices : true) }),
 }));
 
 beforeEach(() => {

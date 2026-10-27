@@ -46,7 +46,7 @@ describe('TenantCapabilitiesPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
     expect(mocks.mutate.mock.calls[0][0]).toEqual({
       id: 'mongo1',
-      input: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false },
+      input: { executesServices: true, managesCustomers: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, usesRequisiciones: false },
     });
   });
 
@@ -64,7 +64,7 @@ describe('TenantCapabilitiesPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
     expect(mocks.mutate.mock.calls[0][0]).toEqual({
       id: 'mongo1',
-      input: { executesServices: true, registersExternal: false, usesQrs: true, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false },
+      input: { executesServices: true, managesCustomers: true, registersExternal: false, usesQrs: true, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, usesRequisiciones: false },
     });
   });
 
@@ -73,7 +73,7 @@ describe('TenantCapabilitiesPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mixto' }));
     fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
-    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: true, usesQrs: true, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false });
+    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, managesCustomers: true, registersExternal: true, usesQrs: true, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, usesRequisiciones: false });
   });
 
   it('turning only the QR module off warns that printed QR codes will show not found', () => {
@@ -115,7 +115,7 @@ describe('TenantCapabilitiesPanel', () => {
 
     expect(mocks.mutate.mock.calls[1][0]).toEqual({
       id: 'mongo1',
-      input: { executesServices: false, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, organizationCustomerId: 'c2' },
+      input: { executesServices: false, managesCustomers: false, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, usesRequisiciones: false, organizationCustomerId: 'c2' },
     });
   });
 
@@ -132,7 +132,7 @@ describe('TenantCapabilitiesPanel', () => {
 });
 
 describe('TenantCapabilitiesPanel - Carga rapida desde el cronograma', () => {
-  const withModule = () => tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false } });
+  const withModule = () => tenant({ capabilities: { executesServices: true, managesCustomers: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false } });
 
   it('the switch is disabled and off while "Servicios de terceros" is off', () => {
     render(<TenantCapabilitiesPanel tenant={tenant()} />);
@@ -147,22 +147,22 @@ describe('TenantCapabilitiesPanel - Carga rapida desde el cronograma', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
     expect(screen.getByText(/Carga rápida desde el cronograma: se activa/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
-    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false });
+    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, managesCustomers: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false, usesRequisiciones: false });
   });
 
   it('turning the external module off also turns the quick load off, so the request carries both', () => {
-    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false } })} />);
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, managesCustomers: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false } })} />);
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).toBeChecked();
     fireEvent.click(screen.getByLabelText(/Servicios de terceros/));
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).not.toBeChecked();
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
-    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false });
+    expect(mocks.mutate.mock.calls[0][0].input).toEqual({ executesServices: true, managesCustomers: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, usesRequisiciones: false });
   });
 
   it('a preset that turns the external module off turns the quick load off; one that keeps it keeps it', () => {
-    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false } })} />);
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, managesCustomers: true, registersExternal: true, usesQrs: false, scheduleQuickLoad: true, usesInventoryBasic: false, usesInventoryAdvanced: false } })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Prestador' }));
     expect(screen.getByLabelText(/Carga rápida desde el cronograma/)).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Mixto' }));
@@ -212,5 +212,59 @@ describe('TenantCapabilitiesPanel - Stock levels', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
     expect(mocks.mutate.mock.calls[0][0].input).toMatchObject({ usesInventoryBasic: false, usesInventoryAdvanced: false });
+  });
+
+  it('Requisiciones switch is independent of the other flags', () => {
+    render(<TenantCapabilitiesPanel tenant={stockTenant(false, false)} />);
+    const sw = screen.getByLabelText(/Requisiciones/);
+    expect(sw).not.toBeChecked();
+    expect(sw).not.toBeDisabled();
+    fireEvent.click(sw);
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
+    expect(mocks.mutate.mock.calls[0][0].input).toMatchObject({ usesRequisiciones: true, usesInventoryBasic: false });
+  });
+});
+
+describe('TenantCapabilitiesPanel - Gestiona clientes', () => {
+  const premium = { executesServices: true, registersExternal: false, usesQrs: false, scheduleQuickLoad: false, usesInventoryBasic: false, usesInventoryAdvanced: false, usesRequisiciones: false };
+
+  it('reads a legacy tenant without the flag as managesCustomers = executesServices', () => {
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: true, registersExternal: false } })} />);
+    expect(screen.getByLabelText(/Gestiona clientes/)).toBeChecked();
+  });
+
+  it('is disabled and off while Ejecuta servicios is off', () => {
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { executesServices: false, managesCustomers: false, registersExternal: true } })} />);
+    expect(screen.getByLabelText(/Gestiona clientes/)).toBeDisabled();
+    expect(screen.getByLabelText(/Gestiona clientes/)).not.toBeChecked();
+  });
+
+  it('turning Ejecuta servicios off turns it off in the same request', () => {
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { ...premium, managesCustomers: true, registersExternal: true } })} />);
+    fireEvent.click(screen.getByLabelText(/Ejecuta servicios/));
+    expect(screen.getByLabelText(/Gestiona clientes/)).toBeDisabled();
+    expect(screen.getByLabelText(/Gestiona clientes/)).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
+    expect(mocks.mutate.mock.calls[0][0].input).toMatchObject({ executesServices: false, managesCustomers: false });
+  });
+
+  it('turning it off alone (own maintenance) sends managesCustomers false and keeps executesServices', () => {
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { ...premium, managesCustomers: true } })} />);
+    fireEvent.click(screen.getByLabelText(/Gestiona clientes/));
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
+    expect(screen.getByText(/Gestiona clientes: se desactiva/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
+    expect(mocks.mutate.mock.calls[0][0].input).toMatchObject({ executesServices: true, managesCustomers: false });
+  });
+
+  it('a type preset never turns it on or off', () => {
+    render(<TenantCapabilitiesPanel tenant={tenant({ capabilities: { ...premium, managesCustomers: false } })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mixto' }));
+    expect(screen.getByLabelText(/Gestiona clientes/)).not.toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar capacidades' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cambio' }));
+    expect(mocks.mutate.mock.calls[0][0].input).toMatchObject({ executesServices: true, managesCustomers: false, registersExternal: true });
   });
 });

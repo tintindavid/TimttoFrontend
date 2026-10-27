@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import {
   Alert,
   Badge,
@@ -50,6 +51,8 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 }) => {
   const { user } = useAuth();
   const createMutation = useCreateTicketsBatch();
+  const { can, organizationCustomerId } = useTenantCapabilities();
+  const managesCustomers = can('managesCustomers');
 
   const [clienteId, setClienteId] = useState<string>('');
   const [sedeId, setSedeId] = useState<string>('');
@@ -59,8 +62,13 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [equiposMap, setEquiposMap] = useState<Record<string, EquipoSelection>>({});
   const [submitError, setSubmitError] = useState<string>('');
 
+  // Without Gestiona clientes the client is always the organization customer (no selector).
+  useEffect(() => {
+    if (!managesCustomers && organizationCustomerId) setClienteId(organizationCustomerId);
+  }, [managesCustomers, organizationCustomerId, show]);
+
   // Queries
-  const { data: customersData, isLoading: loadingCustomers } = useCustomers();
+  const { data: customersData, isLoading: loadingCustomers } = useCustomers(undefined, { enabled: managesCustomers });
   const customers = useMemo<Customer[]>(
     () => (customersData?.data ?? []) as Customer[],
     [customersData],
@@ -233,6 +241,7 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
         <Modal.Body>
           {submitError && <Alert variant="danger">{submitError}</Alert>}
 
+          {managesCustomers && (
           <Form.Group className="mb-3" controlId="ticketCliente">
             <Form.Label>Cliente</Form.Label>
             {loadingCustomers ? (
@@ -256,6 +265,7 @@ const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
               </Form.Select>
             )}
           </Form.Group>
+          )}
 
             {/** Si solo hay una sede entonces se selecciona automáticamente */}
           <Row className="mb-3">

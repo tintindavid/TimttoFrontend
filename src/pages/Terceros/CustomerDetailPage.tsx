@@ -22,6 +22,7 @@ const CustomerDetailPage: React.FC = () => {
   const isAdmin = user?.role === 'admin';
   const { can } = useTenantCapabilities();
   const executesServices = can('executesServices');
+  const managesCustomers = can('managesCustomers');
   const usesQrs = can('usesQrs'); // premium module "QRs y tickets"
   // Portal-cliente tab visibility is permission-gated as of 2026-08-03
   // (previously role=admin only). Admin still passes because the backfill
@@ -161,7 +162,8 @@ const CustomerDetailPage: React.FC = () => {
             )}
 
             {/* Accesos cliente — gated by PORTAL_CLIENTE_CREAR (2026-08-03). */}
-            {!isProvider && executesServices && canManageClientPortal && (
+            {/* Client-portal access only makes sense with several clients (managesCustomers). */}
+            {!isProvider && executesServices && managesCustomers && canManageClientPortal && (
               <Tab eventKey="client-tokens" title="Accesos cliente">
                 <ClientTokensTab customerId={customer._id!} />
               </Tab>

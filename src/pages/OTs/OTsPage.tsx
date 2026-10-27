@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import {
   Alert,
   Badge,
@@ -62,6 +63,9 @@ const ESTADO_OPTIONS = [
 
 const OTsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { can } = useTenantCapabilities();
+  // "Mantenimiento propio" (no Gestiona clientes): every OT belongs to the organization, so no client column/filter.
+  const managesCustomers = can('managesCustomers');
   const deleteMutation = useDeleteOt();
   const canManageResponsables = useHasPermission(PERMISSIONS.OTS_MANAGE_RESPONSABLES);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -84,10 +88,10 @@ const OTsPage: React.FC = () => {
       Consecutivo: debouncedConsecutivo || undefined,
       EstadoOt: estadoFilter || undefined,
       // Partial match on Customer.Razonsocial resolved server-side (2026-08-02).
-      clienteName: debouncedClienteName || undefined,
+      clienteName: (managesCustomers && debouncedClienteName) || undefined,
       mine: activeTab === 'mine' ? true : undefined,
     }),
-    [page, debouncedConsecutivo, estadoFilter, debouncedClienteName, activeTab],
+    [page, debouncedConsecutivo, estadoFilter, debouncedClienteName, activeTab, managesCustomers],
   );
 
   const { data, isLoading, isFetching, error } = useOTs(queryParams);
@@ -325,16 +329,18 @@ const OTsPage: React.FC = () => {
             />
           </InputGroup>
         </Col>
-        <Col md={4}>
-          <InputGroup>
-            <InputGroup.Text><FaSearch /></InputGroup.Text>
-            <Form.Control
-              placeholder="Buscar por nombre de cliente..."
-              value={clienteNameInput}
-              onChange={(event) => { setClienteNameInput(event.target.value); setPage(1); }}
-            />
-          </InputGroup>
-        </Col>
+        {managesCustomers && (
+          <Col md={4}>
+            <InputGroup>
+              <InputGroup.Text><FaSearch /></InputGroup.Text>
+              <Form.Control
+                placeholder="Buscar por nombre de cliente..."
+                value={clienteNameInput}
+                onChange={(event) => { setClienteNameInput(event.target.value); setPage(1); }}
+              />
+            </InputGroup>
+          </Col>
+        )}
         <Col md={4}>
           <Form.Select
             value={estadoFilter}
@@ -378,7 +384,7 @@ const OTsPage: React.FC = () => {
             <Card.Body>
               <DataTable
                 data={ots}
-                columns={columns}
+                columns={managesCustomers ? columns : columns.filter((column) => column.key !== 'ClienteId')}
                 actions={(row: any) => {
                   const estado = row.EstadoOt?.toLowerCase() || 'pendiente';
                   const isPendiente = estado.includes('pendiente') || estado.includes('creada');

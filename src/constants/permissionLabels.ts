@@ -48,6 +48,11 @@ export const RESOURCE_LABELS: Record<string, ResourceLabel> = {
   sheetwork: { plural: 'Sheetwork', singular: 'sheetwork' },
   tickets: { plural: 'Tickets', singular: 'ticket' },
   'service-qrs': { plural: 'Códigos QR de Servicio', singular: 'QR de servicio' },
+  requisiciones: { plural: 'Requisiciones', singular: 'requisición' },
+  areas: { plural: 'Áreas', singular: 'área' },
+  'approval-rules': { plural: 'Reglas de aprobación', singular: 'regla de aprobación' },
+  budgets: { plural: 'Presupuestos', singular: 'presupuesto' },
+  'request-types': { plural: 'Tipos de requisición', singular: 'tipo de requisición' },
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -63,6 +68,16 @@ export const ACTION_LABELS: Record<string, string> = {
   'assign-role': 'Asignar rol',
   'manage-responsables': 'Gestionar responsables',
   'can-be-responsible': 'Ser elegible como responsable',
+  send: 'Enviar',
+  approve: 'Aprobar',
+  cancel: 'Cancelar',
+  'manage-all': 'Gestionar todas',
+  warehouse: 'Gestionar almacén',
+  'manage-suppliers': 'Gestionar proveedores',
+  'select-winner': 'Seleccionar ganador',
+  'issue-po': 'Emitir orden de compra',
+  'approve-po': 'Aprobar orden de compra',
+  'manage-deliverables': 'Gestionar entregables',
 };
 
 /**

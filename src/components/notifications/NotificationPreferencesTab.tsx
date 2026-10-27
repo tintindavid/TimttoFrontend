@@ -1,3 +1,4 @@
+import { getNotificationEventLabel } from '@/utils/notificationEventLabels';
 import React from 'react';
 import { Alert, Card, Form, Spinner, Table } from 'react-bootstrap';
 import { useNotificationEvents } from '@/hooks/useNotificationRules';
@@ -49,14 +50,14 @@ const NotificationPreferencesTab: React.FC = () => {
                     const muted = isMuted(event);
                     return (
                       <tr key={event}>
-                        <td>{event}</td>
+                        <td>{getNotificationEventLabel(event)}</td>
                         <td>
                           <Form.Check
                             type="switch"
                             id={`pref-inapp-${event}`}
                             checked={!muted}
                             onChange={(e) => handleToggleInapp(event, !e.target.checked)}
-                            aria-label={`Recibir ${event} por in-app`}
+                            aria-label={`Recibir ${getNotificationEventLabel(event)} por in-app`}
                           />
                         </td>
                         <td>

@@ -7,12 +7,12 @@ const mocks = vi.hoisted(() => ({
   useCustomers: vi.fn(),
   deleteMutation: { mutateAsync: vi.fn() },
   navigate: vi.fn(),
-  executesServices: true,
+  managesCustomers: true,
 }));
 
 vi.mock('@/context/TenantCapabilitiesContext', () => ({
   useTenantCapabilities: () => ({
-    can: (c: string) => (c === 'executesServices' ? mocks.executesServices : true),
+    can: (c: string) => (c === 'managesCustomers' ? mocks.managesCustomers : true),
   }),
 }));
 
@@ -40,7 +40,7 @@ const renderPage = (url = '/terceros') =>
   );
 
 beforeEach(() => {
-  mocks.executesServices = true;
+  mocks.managesCustomers = true;
   mocks.navigate.mockReset();
   mocks.useCustomers.mockReset();
   mocks.useCustomers.mockImplementation((params: { kind: string }) => ({
@@ -96,9 +96,9 @@ describe('TercerosPage', () => {
   });
 });
 
-describe('TercerosPage — tenant without executesServices', () => {
+describe('TercerosPage — tenant without managesCustomers (client organization or own maintenance)', () => {
   it('hides the Clientes tab and its create action and lists providers by default', () => {
-    mocks.executesServices = false;
+    mocks.managesCustomers = false;
     renderPage();
 
     expect(screen.queryByRole('tab', { name: 'Clientes' })).toBeNull();
@@ -111,7 +111,7 @@ describe('TercerosPage — tenant without executesServices', () => {
   });
 
   it('ignores a stale tab selection for clients', () => {
-    mocks.executesServices = false;
+    mocks.managesCustomers = false;
     renderPage('/terceros');
     expect(mocks.useCustomers.mock.calls.some(([p]) => p.kind === 'customer')).toBe(false);
   });
