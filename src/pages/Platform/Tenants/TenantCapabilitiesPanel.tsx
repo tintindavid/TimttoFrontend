@@ -17,20 +17,24 @@ interface TenantCapabilitiesPanelProps {
 
 interface Flags {
   executesServices: boolean;
+  managesCustomers: boolean;
   registersExternal: boolean;
   usesQrs: boolean;
   scheduleQuickLoad: boolean;
   usesInventoryBasic: boolean;
   usesInventoryAdvanced: boolean;
+  usesRequisiciones: boolean;
 }
 
 const DEFAULT_FLAGS: Flags = {
   executesServices: true,
+  managesCustomers: false,
   registersExternal: false,
   usesQrs: false,
   scheduleQuickLoad: false,
   usesInventoryBasic: false,
   usesInventoryAdvanced: false,
+  usesRequisiciones: false,
 };
 const TYPE_ORDER: TenantType[] = ['provider', 'client', 'hybrid'];
 
@@ -62,15 +66,19 @@ const extractCandidates = (err: ApiErrorLike): OrganizationCustomerCandidate[] =
 
 const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenant }) => {
   // A tenant stored before the QR module has no `usesQrs`: it is off.
+  const executes = tenant.capabilities?.executesServices ?? DEFAULT_FLAGS.executesServices;
   const current: Flags = {
     ...DEFAULT_FLAGS,
     ...(tenant.capabilities ?? {}),
+    // Legacy backend without the flag: it behaves as `executesServices`. It always needs executesServices.
+    managesCustomers: executes && (tenant.capabilities?.managesCustomers ?? executes),
     usesQrs: tenant.capabilities?.usesQrs ?? false,
     // The quick load only counts with the external module (the backend reads it the same way).
     scheduleQuickLoad: !!(tenant.capabilities?.registersExternal && tenant.capabilities?.scheduleQuickLoad),
     usesInventoryBasic: tenant.capabilities?.usesInventoryBasic ?? false,
     // Advanced Stock only counts with the basic level.
     usesInventoryAdvanced: !!(tenant.capabilities?.usesInventoryBasic && tenant.capabilities?.usesInventoryAdvanced),
+    usesRequisiciones: tenant.capabilities?.usesRequisiciones ?? false,
   };
   const currentType = getTenantType(current);
 
@@ -82,34 +90,42 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
 
   // Re-sync the form when the saved capabilities change (after a successful save).
   const savedExecutes = current.executesServices;
+  const savedManagesCustomers = current.managesCustomers;
   const savedRegisters = current.registersExternal;
   const savedQrs = current.usesQrs;
   const savedQuick = current.scheduleQuickLoad;
   const savedInvBasic = current.usesInventoryBasic;
   const savedInvAdvanced = current.usesInventoryAdvanced;
+  const savedRequisiciones = current.usesRequisiciones;
   useEffect(() => {
     setFlags({
       executesServices: savedExecutes,
+      managesCustomers: savedManagesCustomers,
       registersExternal: savedRegisters,
       usesQrs: savedQrs,
       scheduleQuickLoad: savedQuick,
       usesInventoryBasic: savedInvBasic,
       usesInventoryAdvanced: savedInvAdvanced,
+      usesRequisiciones: savedRequisiciones,
     });
-  }, [savedExecutes, savedRegisters, savedQrs, savedQuick, savedInvBasic, savedInvAdvanced]);
+  }, [savedExecutes, savedManagesCustomers, savedRegisters, savedQrs, savedQuick, savedInvBasic, savedInvAdvanced, savedRequisiciones]);
 
+  // Presets never touch "Gestiona clientes", but it only counts while "Ejecuta servicios" is on.
+  const effectiveManages = flags.executesServices && flags.managesCustomers;
   const nextType = getTenantType(flags);
   const invalid = !flags.executesServices && !flags.registersExternal;
   const unchanged =
     flags.executesServices === current.executesServices &&
+    effectiveManages === current.managesCustomers &&
     flags.registersExternal === current.registersExternal &&
     flags.usesQrs === current.usesQrs &&
     flags.scheduleQuickLoad === current.scheduleQuickLoad &&
     flags.usesInventoryBasic === current.usesInventoryBasic &&
-    flags.usesInventoryAdvanced === current.usesInventoryAdvanced;
+    flags.usesInventoryAdvanced === current.usesInventoryAdvanced &&
+    flags.usesRequisiciones === current.usesRequisiciones;
 
   const submit = (organizationCustomerId?: string) => {
-    const input: UpdateTenantCapabilitiesInput = { ...flags };
+    const input: UpdateTenantCapabilitiesInput = { ...flags, managesCustomers: effectiveManages };
     if (organizationCustomerId) input.organizationCustomerId = organizationCustomerId;
     mutation.mutate(
       { id: tenant._id, input },
@@ -172,7 +188,23 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
             id="cap-executes"
             label="Ejecuta servicios (órdenes de trabajo, informes, diario)"
             checked={flags.executesServices}
-            onChange={(e) => setFlags((f) => ({ ...f, executesServices: e.target.checked }))}
+            // Turning it off also turns off "Gestiona clientes", which depends on it.
+            onChange={(e) =>
+              setFlags((f) => ({
+                ...f,
+                executesServices: e.target.checked,
+                managesCustomers: e.target.checked ? f.managesCustomers : false,
+              }))
+            }
+          />
+          <Form.Check
+            type="switch"
+            id="cap-manages-customers"
+            className="mt-2 ms-4"
+            label="Gestiona clientes (módulo premium: varios clientes; apagado = mantenimiento propio, solo equipos de la organización)"
+            checked={effectiveManages}
+            disabled={!flags.executesServices}
+            onChange={(e) => setFlags((f) => ({ ...f, managesCustomers: e.target.checked }))}
           />
           <Form.Check
             type="switch"
@@ -223,6 +255,14 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
             checked={flags.usesInventoryAdvanced}
             disabled={!flags.usesInventoryBasic}
             onChange={(e) => setFlags((f) => ({ ...f, usesInventoryAdvanced: e.target.checked }))}
+          />
+          <Form.Check
+            type="switch"
+            id="cap-requisiciones"
+            className="mt-2"
+            label="Requisiciones (módulo premium: solicitudes de compra con aprobación por niveles, áreas y presupuestos)"
+            checked={flags.usesRequisiciones}
+            onChange={(e) => setFlags((f) => ({ ...f, usesRequisiciones: e.target.checked }))}
           />
           <Form.Text muted className="d-block mt-2">
             Al apagar un módulo se ocultan y bloquean sus pantallas y servicios; los datos ya cargados no se eliminan.
@@ -275,6 +315,19 @@ const TenantCapabilitiesPanel: React.FC<TenantCapabilitiesPanelProps> = ({ tenan
           {flags.usesInventoryAdvanced !== current.usesInventoryAdvanced && (
             <Alert variant="info" className="mb-2">
               Stock avanzado: {flags.usesInventoryAdvanced ? 'se activa' : 'se desactiva'} para este tenant.
+            </Alert>
+          )}
+          {flags.usesRequisiciones !== current.usesRequisiciones && (
+            <Alert variant="info" className="mb-2">
+              Requisiciones: {flags.usesRequisiciones ? 'se activa' : 'se desactiva'} para este tenant.
+            </Alert>
+          )}
+          {effectiveManages !== current.managesCustomers && (
+            <Alert variant="info" className="mb-2">
+              Gestiona clientes: {effectiveManages ? 'se activa' : 'se desactiva'} para este tenant
+              {effectiveManages
+                ? '.'
+                : '; solo podrá trabajar con los equipos de su propia organización (no podrá crear clientes).'}
             </Alert>
           )}
           {flags.usesQrs !== current.usesQrs && (

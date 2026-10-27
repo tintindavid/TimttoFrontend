@@ -31,6 +31,8 @@ export interface User {
   email: string;
   role: UserRole;
   roleId?: string | null;
+  /** Organizational area (premium module Requisiciones); may arrive populated. */
+  areaId?: string | { _id: string; nombre?: string } | null;
   // Effective RBAC permissions: hydrated by GET /auth/me from the user's role.
   // Empty for users with no roleId assigned. superadmin bypasses RBAC entirely.
   permissions?: string[];
@@ -70,6 +72,7 @@ export interface UpdateUserDto {
   email?: string;
   role?: UserRole;
   roleId?: string | null;
+  areaId?: string | null;
   phone?: string;
   city?: string;
   fechaNacimiento?: string | null;

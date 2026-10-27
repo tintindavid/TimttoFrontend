@@ -1,3 +1,4 @@
+import { getNotificationEventLabel } from '@/utils/notificationEventLabels';
 import React, { useEffect, useState } from 'react';
 import { Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import Select from 'react-select';
@@ -78,7 +79,7 @@ const NotificationRuleFormModal: React.FC<Props> = ({ show, onHide, onSubmit, ru
                 <option value="">Seleccionar evento...</option>
                 {events.map((ev) => (
                   <option key={ev} value={ev}>
-                    {ev}
+                    {getNotificationEventLabel(ev)}
                   </option>
                 ))}
               </Form.Select>

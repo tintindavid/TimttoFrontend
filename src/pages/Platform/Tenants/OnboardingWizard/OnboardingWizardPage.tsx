@@ -75,9 +75,22 @@ const OnboardingWizardPage: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    // Provider is the backend default: only non-default types travel in the payload.
     const { type, ...rest } = formData;
-    createMut.mutate(type === 'provider' ? rest : { ...rest, type }, {
+    // A client organization does not execute services: it travels as a preset. Tenants that execute services keep
+    // managing customers (previous behavior), so they travel as explicit flags (the backend accepts `type` OR
+    // `capabilities`, never both); the superadmin can turn "Gestiona clientes" off later for "own maintenance".
+    const payload =
+      type === 'client'
+        ? { ...rest, type }
+        : {
+            ...rest,
+            capabilities: {
+              executesServices: true,
+              registersExternal: type === 'hybrid',
+              managesCustomers: true,
+            },
+          };
+    createMut.mutate(payload, {
       onSuccess: (data) => {
         setCredentials(data);
       },

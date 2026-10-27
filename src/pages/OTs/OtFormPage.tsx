@@ -2,11 +2,13 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Button } from 'react-bootstrap';
 import { useOT, useCreateOt, useUpdateOt } from '@/hooks/useOTs';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 
 const OtFormPage: React.FC = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
+  const managesCustomers = useTenantCapabilities().can('managesCustomers');
 
   const { data } = useOT(id || '');
   const createMutation = useCreateOt();
@@ -30,10 +32,12 @@ const OtFormPage: React.FC = () => {
     <Container>
       <h1>{isEdit ? 'Editar OT' : 'Crear OT'}</h1>
       <form onSubmit={handleSubmit}>
-        <div className="mb-3">
-          <label>ClienteId</label>
-          <input name="ClienteId" defaultValue={data?.data?.ClienteId?._id || ''} className="form-control" />
-        </div>
+        {managesCustomers && (
+          <div className="mb-3">
+            <label>ClienteId</label>
+            <input name="ClienteId" defaultValue={data?.data?.ClienteId?._id || ''} className="form-control" />
+          </div>
+        )}
         <div className="mb-3">
           <label>Tipo Servicio</label>
           <input name="TipoServicio" defaultValue={data?.data?.TipoServicio || ''} className="form-control" />

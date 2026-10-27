@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 
 import { useAuth } from '@/context/AuthContext';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { informeService } from '@/services/informe.service';
 import { SelectOtsModal } from '../components/SelectOtsModal';
 import { InformePorOtPreview } from '../components/InformePorOtPreview';
@@ -30,6 +31,8 @@ function toOption(c: Customer): CustomerOption {
  */
 export const InformesPorOtTab: React.FC = () => {
   const { user } = useAuth();
+  const { can, organizationCustomerId } = useTenantCapabilities();
+  const managesCustomers = can('managesCustomers');
   const [customerSearch, setCustomerSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
@@ -53,9 +56,17 @@ export const InformesPorOtTab: React.FC = () => {
     return () => clearTimeout(t);
   }, [customerSearch]);
 
-  const searchEnabled = debouncedSearch.length >= 3;
+  // "Mantenimiento propio": there is no client selector; the report is always about the organization customer.
+  useEffect(() => {
+    if (!managesCustomers && organizationCustomerId) {
+      setSelectedCustomer({ value: organizationCustomerId, label: 'Mi organización' });
+    }
+  }, [managesCustomers, organizationCustomerId]);
+
+  const searchEnabled = debouncedSearch.length >= 3 && managesCustomers;
   const { data: customersData, isLoading: loadingCustomers } = useCustomers(
     searchEnabled ? { search: debouncedSearch, limit: 20 } : undefined,
+    { enabled: managesCustomers },
   );
 
   const customerOptions: CustomerOption[] =
@@ -158,7 +169,7 @@ export const InformesPorOtTab: React.FC = () => {
         <Col>
           <h2 className="fw-bold mb-1" style={{ color: '#1a2332' }}>Informe por OT</h2>
           <p className="text-muted mb-0">
-            Seleccione un cliente y las OTs a incluir para generar el informe consolidado de cumplimiento.
+            {managesCustomers ? 'Seleccione un cliente y las OTs' : 'Seleccione las OTs'} a incluir para generar el informe consolidado de cumplimiento.
           </p>
         </Col>
       </Row>
@@ -166,6 +177,7 @@ export const InformesPorOtTab: React.FC = () => {
       <Card className="shadow-sm mb-4">
         <Card.Body>
           <Row className="g-3">
+            {managesCustomers && (
             <Col xs={12} md={5}>
               <Form.Label className="fw-semibold text-muted small text-uppercase">Cliente</Form.Label>
               <Select<CustomerOption>
@@ -186,6 +198,7 @@ export const InformesPorOtTab: React.FC = () => {
                 aria-label="Seleccione cliente"
               />
             </Col>
+            )}
 
             <Col xs={12} md={7} className="d-flex align-items-end">
               {selectedCustomer && (

@@ -22,7 +22,7 @@ export interface PlatformTenant {
   ownerId?: string;
   plan?: string;
   /** Absent on tenants created before E5: treated as provider. */
-  capabilities?: { executesServices: boolean; registersExternal: boolean; usesQrs?: boolean; scheduleQuickLoad?: boolean; usesInventoryBasic?: boolean; usesInventoryAdvanced?: boolean };
+  capabilities?: { executesServices: boolean; managesCustomers?: boolean; registersExternal: boolean; usesQrs?: boolean; scheduleQuickLoad?: boolean; usesInventoryBasic?: boolean; usesInventoryAdvanced?: boolean; usesRequisiciones?: boolean };
   organizationCustomerId?: string | null;
   status: TenantStatus;
   isDeleted: boolean;
@@ -68,6 +68,8 @@ export interface CreateTenantWithAdminInput {
   logoFile?: File;
   /** Preset sent next to tenant/admin. Omitted (backend default provider) for provider tenants. */
   type?: TenantType;
+  /** Explicit flags (alternative to `type`; never both). Used for tenants that execute services. */
+  capabilities?: { executesServices?: boolean; registersExternal?: boolean; managesCustomers?: boolean };
 }
 
 // Slim admin shape returned inside the create response

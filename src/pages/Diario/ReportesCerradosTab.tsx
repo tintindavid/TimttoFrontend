@@ -16,6 +16,7 @@ import { FaEye, FaSearch, FaFilter, FaTimes, FaTools } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useClosedReportes } from '@/hooks/useReportes';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { useEquipoItems } from '@/hooks/useEquipoItems';
 import { useServicios } from '@/hooks/useServicios';
 import { Reporte } from '@/types/reporte.types';
@@ -28,6 +29,8 @@ import { es } from 'date-fns/locale';
  */
 const ReportesCerradosTab: React.FC = () => {
   const navigate = useNavigate();
+  const { can } = useTenantCapabilities();
+  const managesCustomers = can('managesCustomers');
 
   // Estados para filtros
   const [page, setPage] = useState(1);
@@ -58,7 +61,7 @@ const ReportesCerradosTab: React.FC = () => {
     servicio: servicio || undefined,
   });
 
-  const { data: customersData } = useCustomers();
+  const { data: customersData } = useCustomers(undefined, { enabled: managesCustomers });
   const { data: equiposData } = useEquipoItems({ page: 1, limit: 1000 });
   const { data: serviciosData } = useServicios();
 
@@ -172,6 +175,8 @@ const ReportesCerradosTab: React.FC = () => {
             </div>
 
             <Row className="g-2">
+              {/* Several clients only exist with the premium module "Gestiona clientes". */}
+              {managesCustomers && (
               <Col md={3}>
                 <Form.Label className="small mb-1">Cliente</Form.Label>
                 <Select
@@ -197,6 +202,7 @@ const ReportesCerradosTab: React.FC = () => {
                   }}
                 />
               </Col>
+              )}
 
               <Col md={3}>
                 <Form.Label className="small mb-1">Equipo</Form.Label>
@@ -331,7 +337,7 @@ const ReportesCerradosTab: React.FC = () => {
                   <tr>
                     <th>Consecutivo</th>
                     <th>Equipo</th>
-                    <th>Cliente</th>
+                    <th>{managesCustomers ? 'Cliente' : 'Sede'}</th>
                     <th>Tipo Mtto</th>
                     <th>Estado Operativo</th>
                     <th>Cierre HT</th>
@@ -355,7 +361,7 @@ const ReportesCerradosTab: React.FC = () => {
                         </small>
                       </td>
                       <td>
-                        <div>{(reporte as any).ClienteId?.Razonsocial || 'N/A'}</div>
+                        {managesCustomers && <div>{(reporte as any).ClienteId?.Razonsocial || 'N/A'}</div>}
                         <small className="text-muted">{reporte.equipoSnapshot?.Sede || ''}</small>
                       </td>
                       <td>

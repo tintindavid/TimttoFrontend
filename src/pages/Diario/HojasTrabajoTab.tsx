@@ -28,6 +28,7 @@ import {
 import SignatureCanvas from 'react-signature-canvas';
 import { useAllWorkSheets, useSignWorkSheet } from '@/hooks/useReportes';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { SheetWork } from '@/types/reporte.types';
 import { sheetworkService } from '@/services/sheetwork.service';
 import { format } from 'date-fns';
@@ -44,6 +45,8 @@ import { useCurrentUserData } from '@/context/userContext';
  * Muestra todas las hojas de trabajo con filtros y acciones
  */
 const HojasTrabajoTab: React.FC = () => {
+  const { can } = useTenantCapabilities();
+  const managesCustomers = can('managesCustomers');
   // Estados para filtros
   const [page, setPage] = useState(1);
   const [clienteId, setClienteId] = useState('');
@@ -71,7 +74,7 @@ const HojasTrabajoTab: React.FC = () => {
     numeroHoja: numeroHoja || undefined,
   });
 
-  const { data: customersData } = useCustomers();
+  const { data: customersData } = useCustomers(undefined, { enabled: managesCustomers });
   const signWorkSheetMutation = useSignWorkSheet();
 
   // Estados para modales
@@ -250,6 +253,8 @@ const HojasTrabajoTab: React.FC = () => {
             </div>
 
             <Row className="g-2">
+              {/* Several clients only exist with the premium module "Gestiona clientes". */}
+              {managesCustomers && (
               <Col md={3}>
                 <Form.Label className="small mb-1">Cliente</Form.Label>
                 <Select
@@ -275,6 +280,7 @@ const HojasTrabajoTab: React.FC = () => {
                   }}
                 />
               </Col>
+              )}
 
               <Col md={2}>
                 <Form.Label className="small mb-1">Estado</Form.Label>
@@ -374,7 +380,7 @@ const HojasTrabajoTab: React.FC = () => {
                 <thead className="table-light">
                   <tr>
                     <th>Número</th>
-                    <th>Cliente</th>
+                    {managesCustomers && <th>Cliente</th>}
                     <th>Equipos</th>
                     <th>Estado</th>
                     <th>Responsable</th>
@@ -395,10 +401,12 @@ const HojasTrabajoTab: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td>
-                        <div>{(hoja as any).clienteId?.Razonsocial || 'N/A'}</div>
-                        <small className="text-muted">{(hoja as any).clienteId?.Nit || ''}</small>
-                      </td>
+                      {managesCustomers && (
+                        <td>
+                          <div>{(hoja as any).clienteId?.Razonsocial || 'N/A'}</div>
+                          <small className="text-muted">{(hoja as any).clienteId?.Nit || ''}</small>
+                        </td>
+                      )}
                       <td>
                         <Badge bg="info">{hoja.reports?.length || 0} equipos</Badge>
                       </td>

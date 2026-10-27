@@ -18,6 +18,7 @@ import { toast } from 'react-toastify';
 import { FaPlus, FaCheck, FaMinus, FaTimes } from 'react-icons/fa';
 import Swal from 'sweetalert2';
 import EquipoForm from '@/components/equipos/EquipoForm';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 
 interface CreateOtFormData {
   customerId: string;
@@ -33,6 +34,9 @@ const CreateOtPage: React.FC = () => {
   const navigate = useNavigate();
   const createOtMutation = useCreateOt();
   const createCustomerMutation = useCreateCustomer();
+  const { can, organizationCustomerId } = useTenantCapabilities();
+  // "Mantenimiento propio": without Gestiona clientes there is no client selector and the server fills ClienteId.
+  const managesCustomers = can('managesCustomers');
 
   // Estados principales
   const [formData, setFormData] = useState<CreateOtFormData>({
@@ -91,9 +95,17 @@ const CreateOtPage: React.FC = () => {
   }, [customerSearch]);
 
   const { data: customersData, isLoading: loadingCustomers } = useCustomers(
-    debouncedCustomerSearch.length >= 3 ? { search: debouncedCustomerSearch, limit: 50 } : { limit: 20 }
+    debouncedCustomerSearch.length >= 3 ? { search: debouncedCustomerSearch, limit: 50 } : { limit: 20 },
+    { enabled: managesCustomers }
   );
   const customers = useMemo(() => customersData?.data || [], [customersData?.data]);
+
+  // Without Gestiona clientes the equipment always belongs to the organization customer (used only to load data).
+  useEffect(() => {
+    if (!managesCustomers && organizationCustomerId) {
+      setFormData(prev => (prev.customerId === organizationCustomerId ? prev : { ...prev, customerId: organizationCustomerId }));
+    }
+  }, [managesCustomers, organizationCustomerId]);
 
   // Queries dependientes del customer seleccionado
   const { data: sedesData, isLoading: loadingSedes } = useSedesByCustomer(
@@ -269,7 +281,7 @@ const CreateOtPage: React.FC = () => {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!formData.customerId) {
+    if (managesCustomers && !formData.customerId) {
       toast.error('Debe seleccionar un cliente');
       return;
     }
@@ -283,7 +295,8 @@ const CreateOtPage: React.FC = () => {
     
     try {
       const payload = {
-        ClienteId: formData.customerId,
+        // Only sent when the tenant manages customers; otherwise the server fills it with the organization customer.
+        ...(managesCustomers && { ClienteId: formData.customerId }),
         TipoServicio: formData.tipoServicio,
         OtPrioridad: formData.urgencia,
         equipos: formData.equiposSeleccionados,
@@ -301,7 +314,7 @@ const CreateOtPage: React.FC = () => {
       setIsSubmitting(false);
       setShowConfirmModal(false);
     }
-  }, [formData, createOtMutation, navigate]);
+  }, [formData, createOtMutation, navigate, managesCustomers]);
 
   // Manejadores para crear cliente
   const handleNewCustomerInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -482,6 +495,7 @@ const CreateOtPage: React.FC = () => {
         </Card.Header>
         <Card.Body>
           <Row>
+            {managesCustomers && (
             <Col md={6}>
               <Form.Group className="mb-3">
                 <Form.Label>Cliente <span className="text-danger">*</span></Form.Label>
@@ -532,6 +546,7 @@ const CreateOtPage: React.FC = () => {
                 </div>
               </Form.Group>
             </Col>
+            )}
             <Col md={3}>
               <Form.Group className="mb-3">
                 <Form.Label>Tipo de Servicio</Form.Label>
@@ -566,7 +581,7 @@ const CreateOtPage: React.FC = () => {
         </Card.Body>
       </Card>
             {/* Cliente Seleccionado */}
-      {selectedCustomer && (
+      {managesCustomers && selectedCustomer && (
         <Card className="mb-4">
           <Card.Body>
             <Row className="align-items-center">
@@ -611,10 +626,12 @@ const CreateOtPage: React.FC = () => {
           </Card.Header>
           <Card.Body>
             <Row>
-              <Col md={3}>
-                <strong>Cliente:</strong><br />
-                <span className="text-muted">{selectedCustomer?.Razonsocial}</span>
-              </Col>
+              {managesCustomers && (
+                <Col md={3}>
+                  <strong>Cliente:</strong><br />
+                  <span className="text-muted">{selectedCustomer?.Razonsocial}</span>
+                </Col>
+              )}
               <Col md={3}>
                 <strong>Tipo:</strong><br />
                 <Badge bg="primary" className="fs-6">{formData.tipoServicio}</Badge>
@@ -661,7 +678,7 @@ const CreateOtPage: React.FC = () => {
                 variant="outline-primary" 
                 size="sm"
                 onClick={() => setShowCreateEquipoModal(true)}
-                title="Crear nuevo equipo para este cliente"
+                title={managesCustomers ? 'Crear nuevo equipo para este cliente' : 'Crear nuevo equipo'}
                 >
                   <FaPlus className="me-1" /> Agregar Equipo
                 </Button>
@@ -899,7 +916,7 @@ const CreateOtPage: React.FC = () => {
         <Modal.Body>
           <p>¿Está seguro de crear la orden de trabajo con los siguientes datos?</p>
           <ul>
-            <li><strong>Cliente:</strong> {selectedCustomer?.Razonsocial}</li>
+            {managesCustomers && <li><strong>Cliente:</strong> {selectedCustomer?.Razonsocial}</li>}
             <li><strong>Tipo de Servicio:</strong> {formData.tipoServicio}</li>
             <li><strong>Urgencia:</strong> {formData.urgencia}</li>
             <li><strong>Equipos:</strong> {formData.equiposSeleccionados.length} seleccionados</li>
@@ -1136,10 +1153,10 @@ const CreateOtPage: React.FC = () => {
         size="xl"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Crear Nuevo Equipo - {selectedCustomer?.Razonsocial}</Modal.Title>
+          <Modal.Title>Crear Nuevo Equipo{managesCustomers && selectedCustomer ? ` - ${selectedCustomer.Razonsocial}` : ''}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {selectedCustomer && (
+          {(selectedCustomer || !managesCustomers) && (
             <EquipoForm
               customerId={formData.customerId}
               sedes={sedes}

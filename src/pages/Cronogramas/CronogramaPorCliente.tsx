@@ -103,6 +103,7 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
   const cargaRapida = externasHabilitadas && can('scheduleQuickLoad');
   // The row checkboxes and "Seleccionar todos" only serve to create a work order: without that capability they are not shown.
   const puedeCrearOT = can('executesServices');
+  const puedeElegirCliente = can('managesCustomers');
   const { user } = useAuth();
   const puedeCrearReportes = useHasPermission('reports:create');
   const [celdaCarga, setCeldaCarga] = useState<CeldaCarga | null>(null);
@@ -303,7 +304,8 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
       });
 
       const payload = {
-        ClienteId: clienteSeleccionado,
+        // Omitted without Gestiona clientes: the server fills it with the organization customer.
+        ...(puedeElegirCliente && { ClienteId: clienteSeleccionado }),
         TipoServicio: formData.tipoServicio,
         OtPrioridad: formData.prioridad,
         equipos: equiposSeleccionados
@@ -337,7 +339,7 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
         confirmButtonText: 'Aceptar'
       });
     }
-  }, [equiposSeleccionados, clienteSeleccionado, createOtMutation, limpiarSeleccion, navigate]);
+  }, [equiposSeleccionados, clienteSeleccionado, createOtMutation, limpiarSeleccion, navigate, puedeElegirCliente]);
 
   // Transformar customers para react-select (ordenados alfabéticamente)
   const customersOptions = useMemo(() => {

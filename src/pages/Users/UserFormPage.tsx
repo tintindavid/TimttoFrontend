@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner } from 'react-bootstrap';
 import { useUser, useCreateUser, useUpdateUser } from '@/hooks/useUsers';
 import { useRoles } from '@/hooks/useRoles';
+import { useGetAreas } from '@/hooks/useAreas';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { TIPO_CONTRATO_OPTIONS, TipoContrato } from '@/types/user.types';
 import Swal from 'sweetalert2';
 
@@ -13,6 +15,7 @@ interface FormState {
   phone: string;
   city: string;
   roleId: string;
+  areaId: string;
   fechaNacimiento: string;
   fechaIngreso: string;
   tipoContrato: TipoContrato;
@@ -26,6 +29,7 @@ const emptyState: FormState = {
   phone: '',
   city: '',
   roleId: '',
+  areaId: '',
   fechaNacimiento: '',
   fechaIngreso: '',
   tipoContrato: '',
@@ -42,9 +46,17 @@ const UserFormPage: React.FC = () => {
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
 
+  const { can } = useTenantCapabilities();
+  const usesRequisiciones = can('usesRequisiciones');
+  // Areas only exist for tenants with the Requisiciones module.
+  const { data: areasResponse } = useGetAreas({ limit: 100 }, usesRequisiciones);
+  const areas = (areasResponse?.data || []).filter((a) => a.activa);
+
   const roles = rolesResponse?.data || [];
   const [form, setForm] = useState<FormState>(emptyState);
   const [error, setError] = useState<string | null>(null);
+  const loadedUserArea = userResponse?.data?.areaId;
+  const loadedAreaId = typeof loadedUserArea === 'string' ? loadedUserArea : loadedUserArea?._id || '';
 
   useEffect(() => {
     if (!isEdit) return;
@@ -57,6 +69,7 @@ const UserFormPage: React.FC = () => {
       phone: user.phone || '',
       city: user.city || '',
       roleId: user.roleId || '',
+      areaId: typeof user.areaId === 'string' ? user.areaId : user.areaId?._id || '',
       fechaNacimiento: user.fechaNacimiento ? String(user.fechaNacimiento).slice(0, 10) : '',
       fechaIngreso: user.fechaIngreso ? String(user.fechaIngreso).slice(0, 10) : '',
       tipoContrato: user.tipoContrato || '',
@@ -84,6 +97,11 @@ const UserFormPage: React.FC = () => {
       phone: form.phone || undefined,
       city: form.city || undefined,
       roleId: form.roleId,
+      // Only the module's tenants manage areas; null clears the assignment on edit.
+      // On edit it is sent ONLY when it changed (the backend forbids sending your own areaId, even unchanged).
+      ...(usesRequisiciones && (!isEdit || form.areaId !== loadedAreaId)
+        ? { areaId: form.areaId || (isEdit ? null : undefined) }
+        : {}),
       fechaNacimiento: form.fechaNacimiento || null,
       fechaIngreso: form.fechaIngreso || null,
       tipoContrato: form.tipoContrato || '',
@@ -254,6 +272,23 @@ const UserFormPage: React.FC = () => {
             </Form.Select>
           </Card.Body>
         </Card>
+
+        {usesRequisiciones && (
+          <Card className="tt-card mb-3">
+            <Card.Body>
+              <Form.Label htmlFor="user-area" className="fw-semibold">Área</Form.Label>
+              <Form.Text className="d-block mb-2">
+                Área organizacional del usuario; se usa como área por defecto al crear requisiciones.
+              </Form.Text>
+              <Form.Select id="user-area" value={form.areaId} onChange={(e) => update('areaId', e.target.value)}>
+                <option value="">— Sin área —</option>
+                {areas.map((area) => (
+                  <option key={area._id} value={area._id}>{area.nombre}</option>
+                ))}
+              </Form.Select>
+            </Card.Body>
+          </Card>
+        )}
 
         <div className="d-flex gap-2">
           <Button type="submit" variant="primary" disabled={createMutation.isLoading || updateMutation.isLoading}>

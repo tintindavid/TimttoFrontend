@@ -151,6 +151,42 @@ export const PERMISSIONS = {
   SERVICE_QRS_CREATE: 'service-qrs:create',
   SERVICE_QRS_UPDATE: 'service-qrs:update',
   SERVICE_QRS_DELETE: 'service-qrs:delete',
+
+  REQUISICIONES_READ: 'requisiciones:read',
+  REQUISICIONES_CREATE: 'requisiciones:create',
+  REQUISICIONES_UPDATE: 'requisiciones:update',
+  REQUISICIONES_DELETE: 'requisiciones:delete',
+  REQUISICIONES_SEND: 'requisiciones:send',
+  REQUISICIONES_APPROVE: 'requisiciones:approve',
+  REQUISICIONES_CANCEL: 'requisiciones:cancel',
+  REQUISICIONES_MANAGE_ALL: 'requisiciones:manage-all',
+  // Declared now for later epics (warehouse review, suppliers, purchase orders, deliverables).
+  REQUISICIONES_WAREHOUSE: 'requisiciones:warehouse',
+  REQUISICIONES_MANAGE_SUPPLIERS: 'requisiciones:manage-suppliers',
+  REQUISICIONES_SELECT_WINNER: 'requisiciones:select-winner',
+  REQUISICIONES_ISSUE_PO: 'requisiciones:issue-po',
+  REQUISICIONES_APPROVE_PO: 'requisiciones:approve-po',
+  REQUISICIONES_MANAGE_DELIVERABLES: 'requisiciones:manage-deliverables',
+
+  AREAS_READ: 'areas:read',
+  AREAS_CREATE: 'areas:create',
+  AREAS_UPDATE: 'areas:update',
+  AREAS_DELETE: 'areas:delete',
+
+  APPROVAL_RULES_READ: 'approval-rules:read',
+  APPROVAL_RULES_CREATE: 'approval-rules:create',
+  APPROVAL_RULES_UPDATE: 'approval-rules:update',
+  APPROVAL_RULES_DELETE: 'approval-rules:delete',
+
+  BUDGETS_READ: 'budgets:read',
+  BUDGETS_CREATE: 'budgets:create',
+  BUDGETS_UPDATE: 'budgets:update',
+  BUDGETS_DELETE: 'budgets:delete',
+
+  REQUEST_TYPES_READ: 'request-types:read',
+  REQUEST_TYPES_CREATE: 'request-types:create',
+  REQUEST_TYPES_UPDATE: 'request-types:update',
+  REQUEST_TYPES_DELETE: 'request-types:delete',
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

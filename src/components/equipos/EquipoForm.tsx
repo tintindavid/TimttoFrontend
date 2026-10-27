@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import {
   Card, Form, Button, Row, Col, Spinner, Alert, Modal
 } from 'react-bootstrap';
@@ -59,6 +60,7 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
   const createMutation = useCreateEquipoItem();
 
   // Refetch sedes, servicios e items
+  const managesCustomers = useTenantCapabilities().can('managesCustomers');
   const { refetch: refetchSedes } = useSedesByCustomer(customerId);
   const { refetch: refetchServicios } = useServiciosByCustomer(customerId);
   const { refetch: refetchItems } = useItems({ limit: 100 });
@@ -304,16 +306,18 @@ const EquipoForm: React.FC<EquipoFormProps> = ({
             <Card.Body>
               <h6 className="text-muted mb-3">Contexto del Equipo</h6>
               <Row>
-                <Col md={3}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Cliente</Form.Label>
-                    <Form.Control 
-                      value="Cliente actual" 
-                      disabled 
-                      className="bg-white"
-                    />
-                  </Form.Group>
-                </Col>
+                {managesCustomers && (
+                  <Col md={3}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Cliente</Form.Label>
+                      <Form.Control 
+                        value="Cliente actual" 
+                        disabled 
+                        className="bg-white"
+                      />
+                    </Form.Group>
+                  </Col>
+                )}
                 <Col md={3}>
                   <Form.Group className="mb-3">
                     <Form.Label>Servicio *</Form.Label>

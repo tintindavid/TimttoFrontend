@@ -1,3 +1,4 @@
+import { getNotificationEventLabel } from '@/utils/notificationEventLabels';
 import React, { useState } from 'react';
 import { Alert, Badge, Button, Card, Spinner, Table } from 'react-bootstrap';
 import { toast } from 'react-toastify';
@@ -127,7 +128,7 @@ const NotificationRulesTab: React.FC = () => {
                 <tbody>
                   {rules.map((rule) => (
                     <tr key={rule._id}>
-                      <td>{rule.event}</td>
+                      <td>{getNotificationEventLabel(rule.event)}</td>
                       <td>
                         {rule.recipients.roles.map((role) => (
                           <Badge key={role} bg="secondary" pill className="me-1">

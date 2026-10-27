@@ -13,6 +13,7 @@ import { useCreateOtFromRepuestos, useRepuestosList, useUpdateRepuesto } from '@
 const RepuestosSolicitadosPage: React.FC = () => {
   const navigate = useNavigate();
   const { can } = useTenantCapabilities();
+  const managesCustomers = can('managesCustomers');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [estado, setEstado] = useState('');
@@ -23,7 +24,7 @@ const RepuestosSolicitadosPage: React.FC = () => {
   const [showOtModal, setShowOtModal] = useState(false);
 
   const repuestosQuery = useRepuestosList({ page, limit, estado, clienteId, search });
-  const customersQuery = useCustomers({ page: 1, limit: 200 });
+  const customersQuery = useCustomers({ page: 1, limit: 200 }, { enabled: managesCustomers });
   const updateMutation = useUpdateRepuesto();
   const createOtMutation = useCreateOtFromRepuestos();
 
@@ -154,6 +155,7 @@ const RepuestosSolicitadosPage: React.FC = () => {
             }}
           />
         </Col>
+        {managesCustomers && (
         <Col md={3}>
           <Form.Select
             value={clienteId}
@@ -168,6 +170,7 @@ const RepuestosSolicitadosPage: React.FC = () => {
             ))}
           </Form.Select>
         </Col>
+        )}
         <Col md={3}>
           <Form.Select
             value={estado}
@@ -204,7 +207,7 @@ const RepuestosSolicitadosPage: React.FC = () => {
                     <th></th>
                     <th>Nombre</th>
                     <th>Equipo</th>
-                    <th>Cliente</th>
+                    {managesCustomers && <th>Cliente</th>}
                     <th>Fecha solicitud</th>
                     <th>Estado</th>
                     <th>Prioridad</th>
@@ -240,7 +243,7 @@ const RepuestosSolicitadosPage: React.FC = () => {
                         </td>
                         <td role="button" onClick={() => handleOpenReport(r)}>{r.nombre}</td>
                         <td>{equipoTxt}</td>
-                        <td>{clienteNombre}</td>
+                        {managesCustomers && <td>{clienteNombre}</td>}
                         <td>{r.FechaSolicitud ? new Date(r.FechaSolicitud).toLocaleDateString() : '-'}</td>
                         <td style={{ minWidth: 160 }}>
                           <RepuestoStatusDropdown

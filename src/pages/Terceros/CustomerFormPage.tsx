@@ -12,7 +12,7 @@ const CustomerFormPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { can } = useTenantCapabilities();
-  const executesServices = can('executesServices');
+  const managesCustomers = can('managesCustomers');
 
   const { data: customerData } = useCustomer(id || '');
   const createMutation = useCreateCustomer();
@@ -42,13 +42,13 @@ const CustomerFormPage: React.FC = () => {
   // A tenant that does not execute services only has its organization client (no list of clients).
   const listPath = isProvider
     ? '/terceros?tab=provider'
-    : executesServices
+    : managesCustomers
     ? '/terceros'
     : id
     ? `/terceros/${id}`
     : '/terceros?tab=provider';
   // The organization client of such a tenant carries no logo (PDF headers use the tenant logo).
-  const showLogo = !isProvider && executesServices;
+  const showLogo = !isProvider && managesCustomers;
 
   // Inicializar datos cuando llegue la respuesta del backend
   useEffect(() => {
@@ -165,7 +165,7 @@ const CustomerFormPage: React.FC = () => {
 
   if (isEdit && !customerData) return <div className="d-flex justify-content-center my-4"><Spinner animation="border" /></div>;
 
-  if (!isEdit && !isProvider && !executesServices) {
+  if (!isEdit && !isProvider && !managesCustomers) {
     return <Navigate to="/terceros?tab=provider" replace />;
   }
 

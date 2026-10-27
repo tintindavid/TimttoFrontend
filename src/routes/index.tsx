@@ -57,6 +57,13 @@ import DiarioPage from '@/pages/Diario/DiarioPage';
 import InformesPage from '@/pages/Informes/InformesPage';
 import RepuestosSolicitadosPage from '@/pages/Repuestos/RepuestosSolicitadosPage';
 import InventarioRepuestosPage from '@/pages/Repuestos/InventarioRepuestosPage';
+import RequisicionesListPage from '@/pages/Requisiciones/RequisicionesListPage';
+import RequisicionFormPage from '@/pages/Requisiciones/RequisicionFormPage';
+import RequisicionDetailPage from '@/pages/Requisiciones/RequisicionDetailPage';
+import AreasPage from '@/pages/Requisiciones/config/AreasPage';
+import TiposRequisicionPage from '@/pages/Requisiciones/config/TiposPage';
+import ReglasAprobacionPage from '@/pages/Requisiciones/config/ReglasPage';
+import PresupuestosPage from '@/pages/Requisiciones/config/PresupuestosPage';
 import TicketsPage from '@/pages/Tickets/TicketsPage';
 import TicketDetailPage from '@/pages/Tickets/TicketDetailPage';
 import TicketBatchView from '@/pages/Tickets/TicketBatchView';
@@ -213,10 +220,13 @@ const AppRoutes: React.FC = () => {
         {/* Read-only report viewer stays open: history is reachable from the equipment record */}
         <Route path="reports/:reporteId/view" element={<ViewReportPage />} />
 
-        <Route path="protocols" element={<ProtocolsPage />} />
-        <Route path="protocols/new" element={<ProtocolFormPage />} />
-        <Route path="protocols/:id" element={<ProtocolDetailPage />} />
-        <Route path="protocols/:id/edit" element={<ProtocolFormPage />} />
+        {/* protocols are attached to work-order reports: only for tenants that execute services */}
+        <Route element={<RequireCapability capability="executesServices"><Outlet /></RequireCapability>}>
+          <Route path="protocols" element={<ProtocolsPage />} />
+          <Route path="protocols/new" element={<ProtocolFormPage />} />
+          <Route path="protocols/:id" element={<ProtocolDetailPage />} />
+          <Route path="protocols/:id/edit" element={<ProtocolFormPage />} />
+        </Route>
 
         <Route path="settings" element={<SettingsPage />} />
         <Route path="settings/notifications" element={<NotificationsSettingsPage />} />
@@ -230,10 +240,13 @@ const AppRoutes: React.FC = () => {
         <Route path="items/new" element={<ItemFormPage />} />
         <Route path="items/:id" element={<ItemDetailPage />} />
         <Route path="items/:id/edit" element={<ItemFormPage />} />
-        <Route path="actividades" element={<ActividadesPage />} /> 
-        <Route path="actividades/new" element={<ActividadFormPage />} />
-        <Route path="actividades/:id" element={<div>Actividad detalle (pendiente)</div>} />
-        <Route path="actividades/:id/edit" element={<ActividadFormPage />} />
+        {/* activities are attached to work-order reports: only for tenants that execute services */}
+        <Route element={<RequireCapability capability="executesServices"><Outlet /></RequireCapability>}>
+          <Route path="actividades" element={<ActividadesPage />} />
+          <Route path="actividades/new" element={<ActividadFormPage />} />
+          <Route path="actividades/:id" element={<div>Actividad detalle (pendiente)</div>} />
+          <Route path="actividades/:id/edit" element={<ActividadFormPage />} />
+        </Route>
 
         <Route path="repuestos/solicitados" element={<RepuestosSolicitadosPage />} />
         <Route
@@ -244,6 +257,19 @@ const AppRoutes: React.FC = () => {
             </RequireCapability>
           }
         />
+
+        {/* Premium module "Requisiciones" (usesRequisiciones): without it these routes redirect home with the usual notice. */}
+        <Route element={<RequireCapability capability="usesRequisiciones"><Outlet /></RequireCapability>}>
+          <Route path="requisiciones" element={<RequisicionesListPage vista="mias" />} />
+          <Route path="requisiciones/por-aprobar" element={<RequisicionesListPage vista="por-aprobar" />} />
+          <Route path="requisiciones/new" element={<RequisicionFormPage />} />
+          <Route path="requisiciones/configuracion/areas" element={<AreasPage />} />
+          <Route path="requisiciones/configuracion/tipos" element={<TiposRequisicionPage />} />
+          <Route path="requisiciones/configuracion/reglas" element={<ReglasAprobacionPage />} />
+          <Route path="requisiciones/configuracion/presupuestos" element={<PresupuestosPage />} />
+          <Route path="requisiciones/:id" element={<RequisicionDetailPage />} />
+          <Route path="requisiciones/:id/edit" element={<RequisicionFormPage />} />
+        </Route>
 
         {/* Tenants management pages */}
         <Route path="tenants" element={<TenantsPage />} />
