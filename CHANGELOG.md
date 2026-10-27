@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.28.0...v1.29.0) (2026-10-27)
+
+
+### Features
+
+* **requisiciones:** add premium requisitions module base with tiered approval (E1) ([eef8192](https://github.com/tintindavid/TimttoFrontend/commit/eef81921d30be06854a18bcb87d0dc4d59e54ae2))
+
 # [1.28.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.27.0...v1.28.0) (2026-10-22)
 
 
