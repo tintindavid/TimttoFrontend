@@ -1,3 +1,10 @@
+## [1.29.1](https://github.com/tintindavid/TimttoFrontend/compare/v1.29.0...v1.29.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **build:** add Linux native optional dependencies to package-lock ([a0ae57d](https://github.com/tintindavid/TimttoFrontend/commit/a0ae57d4ec650e9c8ff0e8c95fc075bb36af91f7))
+
 # [1.29.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.28.0...v1.29.0) (2026-10-27)
 
 
