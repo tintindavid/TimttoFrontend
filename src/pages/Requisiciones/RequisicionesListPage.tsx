@@ -39,13 +39,16 @@ const PAGE_SIZE = 20;
 type SortDirection = 'asc' | 'desc';
 
 interface Props {
-  /** `mias`: requisitions created by the user; `por-aprobar`: the approver inbox. */
+  /** `mias`: created by the user; `por-aprobar`: approver inbox; `por-recibir` / `por-confirmar`: reception inboxes. */
   vista: RequisicionVista;
 }
 
 const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
   const navigate = useNavigate();
   const canApprove = useHasPermission(PERMISSIONS.REQUISICIONES_APPROVE);
+  const hasReceive = useHasPermission(PERMISSIONS.REQUISICIONES_RECEIVE);
+  const hasManageAll = useHasPermission(PERMISSIONS.REQUISICIONES_MANAGE_ALL);
+  const canReceive = hasReceive || hasManageAll;
 
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -118,7 +121,11 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
     ? 'Ninguna requisición coincide con los filtros.'
     : vista === 'por-aprobar'
       ? 'No tienes requisiciones pendientes por aprobar.'
-      : 'Aún no has creado requisiciones.';
+      : vista === 'por-recibir'
+        ? 'No hay requisiciones pendientes de recibir.'
+        : vista === 'por-confirmar'
+          ? 'No tienes entregas pendientes de confirmar.'
+          : 'Aún no has creado requisiciones.';
 
   return (
     <Container fluid>
@@ -126,7 +133,18 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
         <Col>
           <h1>
             Requisiciones
-            <ReqHelp id={vista === 'por-aprobar' ? 'pagina.porAprobar' : 'pagina.listado'} placement="bottom" />
+            <ReqHelp
+              id={
+                vista === 'por-aprobar'
+                  ? 'pagina.porAprobar'
+                  : vista === 'por-recibir'
+                    ? 'pagina.porRecibir'
+                    : vista === 'por-confirmar'
+                      ? 'pagina.porConfirmar'
+                      : 'pagina.listado'
+              }
+              placement="bottom"
+            />
           </h1>
           <p className="text-muted mb-0">Solicitudes de compra y su flujo de aprobación</p>
         </Col>
@@ -160,6 +178,20 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
             <ReqHelp id="pagina.porAprobar" className="ms-0 me-2" />
           </Nav.Item>
         )}
+        {canReceive && (
+          <Nav.Item className="d-flex align-items-center">
+            <Nav.Link eventKey="por-recibir" onClick={() => navigate('/requisiciones/por-recibir')}>
+              Por recibir
+            </Nav.Link>
+            <ReqHelp id="pagina.porRecibir" className="ms-0 me-2" />
+          </Nav.Item>
+        )}
+        <Nav.Item className="d-flex align-items-center">
+          <Nav.Link eventKey="por-confirmar" onClick={() => navigate('/requisiciones/por-confirmar')}>
+            Por confirmar
+          </Nav.Link>
+          <ReqHelp id="pagina.porConfirmar" className="ms-0 me-2" />
+        </Nav.Item>
       </Nav>
 
       <Row className="g-2 mb-3">

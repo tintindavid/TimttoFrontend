@@ -56,7 +56,7 @@ const listResult = (rows: Requisicion[], total = rows.length) => ({
   isError: false,
 });
 
-const renderPage = (vista: 'mias' | 'por-aprobar' = 'mias') =>
+const renderPage = (vista: 'mias' | 'por-aprobar' | 'por-recibir' | 'por-confirmar' = 'mias') =>
   render(
     <MemoryRouter>
       <RequisicionesListPage vista={vista} />
@@ -161,11 +161,65 @@ describe('RequisicionesListPage help hints', () => {
     fireEvent.click(screen.getByRole('button', { name: /Guía del módulo/ }));
     expect(screen.getByRole('dialog')).toHaveTextContent('Guía del módulo de requisiciones');
     expect(screen.getByRole('heading', { name: '1. Creación' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '5. Próximas fases' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '9. Próximas fases' })).toBeInTheDocument();
   });
 
   it('shows the title hint of the approver inbox in the "por-aprobar" view', () => {
     renderPage('por-aprobar');
     expect(screen.getAllByRole('button', { name: 'Ayuda: Por aprobar' }).length).toBeGreaterThan(0);
+  });
+});
+
+describe('RequisicionesListPage reception views', () => {
+  beforeEach(() => {
+    mocks.permissions = new Set();
+    mocks.navigate.mockClear();
+    mocks.useGetRequisiciones.mockReset();
+    mocks.useGetRequisiciones.mockReturnValue(listResult([row({ estado: 'En_Recepcion' })]));
+  });
+
+  it('shows the Por recibir tab only with the receive (or manage-all) permission', () => {
+    const { unmount } = renderPage();
+    expect(screen.queryByRole('button', { name: 'Por recibir' })).not.toBeInTheDocument();
+    unmount();
+
+    mocks.permissions = new Set(['requisiciones:receive']);
+    const second = renderPage();
+    expect(screen.getByRole('button', { name: 'Por recibir' })).toBeInTheDocument();
+    second.unmount();
+
+    mocks.permissions = new Set(['requisiciones:manage-all']);
+    renderPage();
+    expect(screen.getByRole('button', { name: 'Por recibir' })).toBeInTheDocument();
+  });
+
+  it('always shows Por confirmar and navigates to each view', () => {
+    mocks.permissions = new Set(['requisiciones:receive']);
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Por confirmar' }));
+    expect(mocks.navigate).toHaveBeenLastCalledWith('/requisiciones/por-confirmar');
+    fireEvent.click(screen.getByRole('button', { name: 'Por recibir' }));
+    expect(mocks.navigate).toHaveBeenLastCalledWith('/requisiciones/por-recibir');
+  });
+
+  it('asks the server for the por-recibir / por-confirmar views and shows the new states and empty messages', () => {
+    renderPage('por-recibir');
+    expect(mocks.useGetRequisiciones).toHaveBeenCalledWith(expect.objectContaining({ vista: 'por-recibir' }));
+    expect(screen.getByText('En recepción', { selector: 'span' })).toHaveClass('bg-primary');
+
+    mocks.useGetRequisiciones.mockReturnValue(listResult([]));
+    const second = renderPage('por-confirmar');
+    expect(mocks.useGetRequisiciones).toHaveBeenLastCalledWith(expect.objectContaining({ vista: 'por-confirmar' }));
+    expect(screen.getByText('No tienes entregas pendientes de confirmar.')).toBeInTheDocument();
+    second.unmount();
+    renderPage('por-recibir');
+    expect(screen.getByText('No hay requisiciones pendientes de recibir.')).toBeInTheDocument();
+  });
+
+  it('offers the new states in the status filter', () => {
+    renderPage();
+    const select = screen.getByLabelText('Filtrar por estado');
+    expect(select).toHaveTextContent('En recepción');
+    expect(select).toHaveTextContent('Cerrada');
   });
 });

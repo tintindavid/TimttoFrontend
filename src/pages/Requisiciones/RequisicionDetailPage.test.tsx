@@ -53,8 +53,11 @@ vi.mock('@/hooks/useRequisiciones', () => ({
   useCambiarEstadoRequisicion: () => ({ mutateAsync: mocks.cambiarEstado, isLoading: false }),
   useEnviarRequisicion: () => ({ mutateAsync: mocks.enviar, isLoading: false }),
   useDeleteRequisicion: () => ({ mutateAsync: mocks.remove, isLoading: false }),
+  useRegistrarRecepcion: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useConfirmarEntrega: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useCerrarLinea: () => ({ mutateAsync: vi.fn(), isLoading: false }),
 }));
-vi.mock('react-toastify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('react-toastify', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 import { toast } from 'react-toastify';
 
 import RequisicionDetailPage from './RequisicionDetailPage';
@@ -188,6 +191,23 @@ describe('RequisicionDetailPage', () => {
     renderDetail(requisicion({ estado: 'Rechazada' }));
     expect(screen.getByRole('button', { name: 'Reabrir' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Retirar' })).not.toBeInTheDocument();
+  });
+
+  it('shows a warning toast per advertencia returned when reopening', async () => {
+    mocks.userId = 'creator';
+    mocks.cambiarEstado.mockResolvedValue({
+      data: { advertencias: ['Línea A retirada', { mensaje: 'Línea B retirada' }, { descripcion: 'Bomba', motivo: 'ya pertenece a REQ-9' }] },
+    });
+    const user = userEvent.setup();
+    renderDetail(requisicion({ estado: 'Rechazada' }));
+    await user.click(screen.getByRole('button', { name: 'Reabrir' }));
+    await user.type(screen.getByLabelText(/^Observación/), 'Reintentar');
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Reabrir' }));
+    await waitFor(() => expect(toast.warning).toHaveBeenCalledTimes(3));
+    expect(toast.warning).toHaveBeenCalledWith('Línea A retirada');
+    expect(toast.warning).toHaveBeenCalledWith('Línea B retirada');
+    expect(toast.warning).toHaveBeenCalledWith('Línea «Bomba» retirada: ya pertenece a REQ-9');
+    expect(toast.success).toHaveBeenCalledWith('Requisición reabierta.');
   });
 
   it('requires a reason to cancel and gates the button by permission', async () => {
@@ -369,5 +389,51 @@ describe('RequisicionDetailPage help hints', () => {
     mocks.userId = 'creator';
     renderDetail(requisicion({ estado: 'Rechazada' }));
     expect(screen.getByRole('button', { name: 'Ayuda: Reabrir' })).toBeInTheDocument();
+  });
+});
+
+describe('RequisicionDetailPage reception panel', () => {
+  beforeEach(() => {
+    mocks.permissions = new Set();
+    mocks.userId = 'boss';
+    mocks.detail.refetch = vi.fn().mockResolvedValue({});
+  });
+
+  it.each(['Aprobada', 'En_Recepcion', 'Cerrada'] as const)('shows the Recepción panel when the requisicion is %s', (estado) => {
+    renderDetail(requisicion({ estado, recepciones: [] }));
+    expect(screen.getByTestId('recepcion-panel')).toBeInTheDocument();
+  });
+
+  it.each(['Borrador', 'En_Aprobacion', 'Rechazada', 'Cancelada'] as const)('hides the Recepción panel when the requisicion is %s', (estado) => {
+    renderDetail(requisicion({ estado }));
+    expect(screen.queryByTestId('recepcion-panel')).not.toBeInTheDocument();
+  });
+
+  it('cannot cancel a closed requisicion and labels the new timeline events', () => {
+    mocks.permissions = new Set(['requisiciones:cancel']);
+    renderDetail(
+      requisicion({
+        estado: 'Cerrada',
+        timeline: [
+          { tipo: 'RECEPCION_REGISTRADA', fecha: '2026-10-02T10:00:00.000Z', actor: { tipo: 'usuario', nombre: 'Rita' } },
+          { tipo: 'ENTREGA_CONFIRMADA', fecha: '2026-10-02T11:00:00.000Z', actor: { tipo: 'usuario', nombre: 'Ana' } },
+          { tipo: 'ENTREGA_DISPUTADA', fecha: '2026-10-02T12:00:00.000Z', actor: { tipo: 'usuario', nombre: 'Ana' } },
+          { tipo: 'LINEA_CERRADA', fecha: '2026-10-02T13:00:00.000Z', actor: { tipo: 'usuario', nombre: 'Rita' } },
+          { tipo: 'LINEA_CANCELADA', fecha: '2026-10-02T14:00:00.000Z', actor: { tipo: 'usuario', nombre: 'Rita' } },
+          { tipo: 'CERRADA', fecha: '2026-10-02T15:00:00.000Z', actor: { tipo: 'sistema' }, estadoAnterior: 'En_Recepcion', estadoNuevo: 'Cerrada' },
+        ],
+      })
+    );
+    expect(screen.queryByRole('button', { name: 'Cancelar requisición' })).not.toBeInTheDocument();
+    const events = screen.getAllByTestId('timeline-event');
+    expect(events.map((e) => e.querySelector('.fw-semibold')?.textContent)).toEqual([
+      'Recepción registrada',
+      'Entrega confirmada',
+      'Entrega en disputa',
+      'Línea cerrada con faltante',
+      'Línea cancelada',
+      'Requisición cerrada',
+    ]);
+    expect(events[5]).toHaveTextContent('En recepción → Cerrada');
   });
 });

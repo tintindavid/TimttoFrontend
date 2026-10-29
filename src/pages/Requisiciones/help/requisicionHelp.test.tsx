@@ -16,10 +16,17 @@ import {
 } from './requisicionHelp';
 
 // Raw source of every page / component of the module (tests excluded), to check the ids they use.
-const sources = import.meta.glob(['../**/*.tsx', '!../**/*.test.tsx'], { query: '?raw', import: 'default', eager: true }) as Record<
-  string,
-  string
->;
+const sources = import.meta.glob(
+  [
+    '../**/*.tsx',
+    '!../**/*.test.tsx',
+    '../../Repuestos/**/*.tsx',
+    '!../../Repuestos/**/*.test.tsx',
+    '../../../components/repuestos/*.tsx',
+    '!../../../components/repuestos/*.test.tsx',
+  ],
+  { query: '?raw', import: 'default', eager: true }
+) as Record<string, string>;
 
 const usedIds = (): Set<string> => {
   const ids = new Set<string>();

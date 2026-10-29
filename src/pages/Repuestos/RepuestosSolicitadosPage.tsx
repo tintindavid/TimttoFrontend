@@ -1,19 +1,31 @@
 import React from 'react';
 import { useMemo, useState } from 'react';
-import { Button, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
+import { Button, Card, Col, Container, Form, OverlayTrigger, Row, Spinner, Table, Tooltip } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Pagination from '@/components/common/Pagination';
 import RepuestoStatusDropdown from '@/components/repuestos/RepuestoStatusDropdown';
 import CreateOtFromRepuestosModal from '@/components/repuestos/CreateOtFromRepuestosModal';
+import RepuestoRequisicionBadge from '@/components/repuestos/RepuestoRequisicionBadge';
+import HacerRequisicionModal from '@/pages/Requisiciones/components/HacerRequisicionModal';
+import ReasonModal from '@/pages/Requisiciones/components/ReasonModal';
+import ReqHelp from '@/pages/Requisiciones/help/ReqHelp';
+import { PERMISSIONS } from '@/constants/permissions';
 import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useCurrentUserPermissions } from '@/hooks/usePermission';
+import { REQUISICION_FILTRO_OPTIONS, canHacerRequisicion, isDisponible, isLinkedToRequisicion } from '@/utils/repuestoRequisicion';
 import { useCreateOtFromRepuestos, useRepuestosList, useUpdateRepuesto } from '@/hooks/useRepuestos';
 
 const RepuestosSolicitadosPage: React.FC = () => {
   const navigate = useNavigate();
   const { can } = useTenantCapabilities();
   const managesCustomers = can('managesCustomers');
+  // Requisiciones (premium): every addition below is gated on this flag; with it off the page is unchanged.
+  const usesRequisiciones = can('usesRequisiciones');
+  const { has } = useCurrentUserPermissions();
+  const canCreateRequisicion = has(PERMISSIONS.REQUISICIONES_CREATE);
+  const canManageAll = has(PERMISSIONS.REQUISICIONES_MANAGE_ALL);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [estado, setEstado] = useState('');
@@ -22,8 +34,19 @@ const RepuestosSolicitadosPage: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
   const [showOtModal, setShowOtModal] = useState(false);
+  const [requisicionEstado, setRequisicionEstado] = useState('');
+  const [showRequisicionModal, setShowRequisicionModal] = useState(false);
+  const [showOmitirModal, setShowOmitirModal] = useState(false);
+  const [motivoOmision, setMotivoOmision] = useState('');
 
-  const repuestosQuery = useRepuestosList({ page, limit, estado, clienteId, search });
+  const repuestosQuery = useRepuestosList({
+    page,
+    limit,
+    estado,
+    clienteId,
+    search,
+    ...(usesRequisiciones && requisicionEstado ? { requisicionEstado } : {}),
+  });
   const customersQuery = useCustomers({ page: 1, limit: 200 }, { enabled: managesCustomers });
   const updateMutation = useUpdateRepuesto();
   const createOtMutation = useCreateOtFromRepuestos();
@@ -104,8 +127,12 @@ const RepuestosSolicitadosPage: React.FC = () => {
     OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente';
   }) => {
     try {
-      const result = await createOtMutation.mutateAsync({ repuestoIds: selectedIds, payload });
+      const result = await createOtMutation.mutateAsync({
+        repuestoIds: selectedIds,
+        payload: motivoOmision ? { ...payload, omitirRequisicion: true, motivoOmision } : payload,
+      });
       setShowOtModal(false);
+      setMotivoOmision('');
       setSelectedIds([]);
       toast.success('OT creada exitosamente');
       const otId = result?.data?.ot?._id;
@@ -128,6 +155,30 @@ const RepuestosSolicitadosPage: React.FC = () => {
     [repuestos, selectedIds]
   );
 
+  const selectedRows = useMemo(
+    () => repuestos.filter((r: any) => selectedIds.includes(String(r._id))),
+    [repuestos, selectedIds]
+  );
+
+  // Requisiciones on: an OT is only created from available requests (the server enforces it too).
+  const allDisponible = selectedRows.every((r: any) => isDisponible(r));
+  const someUnlinked = selectedRows.some((r: any) => !isLinkedToRequisicion(r));
+  const otBlockedReason =
+    !usesRequisiciones || allDisponible
+      ? null
+      : someUnlinked
+        ? 'Hay solicitudes sin requisición. Haz una requisición y espera a que queden disponibles para crear la OT.'
+        : 'Hay solicitudes cuya requisición aún no está disponible. Se habilitan cuando el solicitante confirma la recepción.';
+  const canMakeRequisicion = selectedRows.length > 0 && selectedRows.every((r: any) => canHacerRequisicion(r));
+
+  const solicitudesParaRequisicion = selectedRows.map((r: any) => ({
+    _id: String(r._id),
+    nombre: r.nombre,
+    Cantidad: r.Cantidad,
+    PrecioRepuesto: r.PrecioRepuesto,
+    Prioridad: r.Prioridad,
+  }));
+
   return (
     <Container>
       <Row className="align-items-center mb-3">
@@ -135,13 +186,56 @@ const RepuestosSolicitadosPage: React.FC = () => {
           <h1 className="h4 mb-1">Repuestos solicitados</h1>
           <p className="text-muted mb-0">Gestión global de repuestos por cliente, estado y búsqueda.</p>
         </Col>
-        <Col xs="auto">
+        <Col xs="auto" className={usesRequisiciones ? 'd-flex flex-wrap align-items-center justify-content-end gap-2' : undefined}>
+          {usesRequisiciones && selectedIds.length > 0 && canCreateRequisicion && (
+            <>
+              <OverlayTrigger
+                placement="bottom"
+                overlay={
+                  <Tooltip id="tt-hacer-requisicion">
+                    {canMakeRequisicion
+                      ? 'Crear una requisición con las solicitudes seleccionadas.'
+                      : 'Solo puedes incluir solicitudes sin requisición.'}
+                  </Tooltip>
+                }
+              >
+                <span className="d-inline-block">
+                  <Button
+                    variant="outline-primary"
+                    disabled={!canMakeRequisicion}
+                    onClick={() => setShowRequisicionModal(true)}
+                  >
+                    Hacer requisición ({selectedIds.length})
+                  </Button>
+                </span>
+              </OverlayTrigger>
+              <ReqHelp id="solicitudes.hacerRequisicion" placement="bottom" className="ms-0" />
+            </>
+          )}
           {selectedIds.length > 0 && can('executesServices') && (
-            <Button variant="primary" onClick={() => setShowOtModal(true)}>
-              Crear OT ({selectedIds.length})
-            </Button>
+            <>
+              <Button variant="primary" onClick={() => setShowOtModal(true)} disabled={!!otBlockedReason}>
+                Crear OT ({selectedIds.length})
+              </Button>
+              {usesRequisiciones && <ReqHelp id="solicitudes.crearOt" placement="bottom" className="ms-0" />}
+              {otBlockedReason && canManageAll && (
+                <>
+                  <Button variant="outline-warning" onClick={() => setShowOmitirModal(true)}>
+                    Crear OT sin requisición
+                  </Button>
+                  <ReqHelp id="solicitudes.omitir" placement="bottom" className="ms-0" />
+                </>
+              )}
+            </>
           )}
         </Col>
+        {otBlockedReason && selectedIds.length > 0 && can('executesServices') && (
+          <Col xs={12}>
+            <small className="text-muted d-block text-end" role="note">
+              {otBlockedReason}
+            </small>
+          </Col>
+        )}
       </Row>
 
       <Row className="mb-3 g-2">
@@ -186,6 +280,25 @@ const RepuestosSolicitadosPage: React.FC = () => {
             <option value="Rechazado">Rechazado</option>
           </Form.Select>
         </Col>
+        {usesRequisiciones && (
+          <Col md={3} className="d-flex align-items-center gap-1">
+            <Form.Select
+              aria-label="Filtrar por requisición"
+              value={requisicionEstado}
+              onChange={(e) => {
+                setRequisicionEstado(e.target.value);
+                setPage(1);
+              }}
+            >
+              {REQUISICION_FILTRO_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Form.Select>
+            <ReqHelp id="solicitudes.filtro" className="ms-0" />
+          </Col>
+        )}
         <Col md={2}>
           <Form.Select value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
             <option value={10}>10</option>
@@ -210,6 +323,12 @@ const RepuestosSolicitadosPage: React.FC = () => {
                     {managesCustomers && <th>Cliente</th>}
                     <th>Fecha solicitud</th>
                     <th>Estado</th>
+                    {usesRequisiciones && (
+                      <th>
+                        Requisición
+                        <ReqHelp id="solicitudes.columna" />
+                      </th>
+                    )}
                     <th>Prioridad</th>
                     <th>Solicitado por</th>
                     <th>Acciones</th>
@@ -252,6 +371,11 @@ const RepuestosSolicitadosPage: React.FC = () => {
                             onChange={(value) => handleStatusChange(id, value)}
                           />
                         </td>
+                        {usesRequisiciones && (
+                          <td>
+                            <RepuestoRequisicionBadge repuesto={r} />
+                          </td>
+                        )}
                         <td>{r.Prioridad || '-'}</td>
                         <td>{solicitante}</td>
                         <td>
@@ -272,12 +396,40 @@ const RepuestosSolicitadosPage: React.FC = () => {
 
       <CreateOtFromRepuestosModal
         show={showOtModal}
-        onHide={() => setShowOtModal(false)}
+        onHide={() => {
+          setShowOtModal(false);
+          setMotivoOmision('');
+        }}
         selectedCount={selectedIds.length}
         selectedItems={selectedItems}
         onSubmit={handleCreateOt}
         submitting={createOtMutation.isPending}
       />
+
+      {usesRequisiciones && (
+        <>
+          <HacerRequisicionModal
+            show={showRequisicionModal}
+            onHide={() => setShowRequisicionModal(false)}
+            solicitudes={solicitudesParaRequisicion}
+            onCreated={() => setSelectedIds([])}
+          />
+          <ReasonModal
+            show={showOmitirModal}
+            title="Crear OT sin requisición"
+            label="Motivo de la excepción"
+            confirmLabel="Continuar"
+            confirmVariant="warning"
+            helpId="solicitudes.omitir"
+            onConfirm={(text) => {
+              setMotivoOmision(text);
+              setShowOmitirModal(false);
+              setShowOtModal(true);
+            }}
+            onHide={() => setShowOmitirModal(false)}
+          />
+        </>
+      )}
     </Container>
   );
 };

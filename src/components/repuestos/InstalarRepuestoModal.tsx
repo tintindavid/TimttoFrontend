@@ -35,13 +35,9 @@ export const InstalarRepuestoModal: React.FC<InstalarRepuestoModalProps> = ({
   repuesto,
   reporteId
 }) => {
-  const { user, token, isAuthenticated } = useAuth();
+  const { user, token } = useAuth();
   const [loading, setLoading] = useState(false);
   const instalarRepuestoMutation = useInstalarRepuesto();
-
-  console.log('InstalarRepuestoModal - user:', user);
-  console.log('InstalarRepuestoModal - token:', token);
-  console.log('InstalarRepuestoModal - isAuthenticated:', isAuthenticated);
 
   const {
     control,
@@ -71,10 +67,6 @@ export const InstalarRepuestoModal: React.FC<InstalarRepuestoModalProps> = ({
   }, [show, repuesto, reset]);
 
   const onSubmit = async (formData: InstalarRepuestoFormValues) => {
-    console.log('DEBUG Instalar Modal - user:', user);
-    console.log('DEBUG Instalar Modal - user?._id:', user?._id);
-    console.log('DEBUG Instalar Modal - token:', token);
-    
     // Función para extraer userId del token JWT como fallback
     const getUserIdFromToken = (token: string): string | null => {
       try {
@@ -87,7 +79,6 @@ export const InstalarRepuestoModal: React.FC<InstalarRepuestoModalProps> = ({
     };
     
     const userId = user?._id || (token ? getUserIdFromToken(token) : null);
-    console.log('DEBUG Instalar Modal - userId final:', userId);
     
     if (!userId) {
       alert('Error: Usuario no autenticado. Verifique que ha iniciado sesión correctamente.');
