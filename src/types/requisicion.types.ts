@@ -11,10 +11,12 @@ export type RequisicionEstado =
   | 'Enviada'
   | 'En_Aprobacion'
   | 'Aprobada'
+  | 'En_Recepcion'
+  | 'Cerrada'
   | 'Rechazada'
   | 'Cancelada';
 
-export type RequisicionVista = 'mias' | 'por-aprobar';
+export type RequisicionVista = 'mias' | 'por-aprobar' | 'por-recibir' | 'por-confirmar';
 
 export type AprobadorTipo = 'jefe_area' | 'rol' | 'usuarios';
 
@@ -39,6 +41,8 @@ export const REQUISICION_ESTADOS: RequisicionEstado[] = [
   'Enviada',
   'En_Aprobacion',
   'Aprobada',
+  'En_Recepcion',
+  'Cerrada',
   'Rechazada',
   'Cancelada',
 ];
@@ -49,9 +53,36 @@ export const REQUISICION_ESTADO_LABELS: Record<RequisicionEstado, string> = {
   Enviada: 'Enviada',
   En_Aprobacion: 'En aprobación',
   Aprobada: 'Aprobada',
+  En_Recepcion: 'En recepción',
+  Cerrada: 'Cerrada',
   Rechazada: 'Rechazada',
   Cancelada: 'Cancelada',
 };
+
+/** Line states of the reception flow (E2), mirroring the backend. */
+export type RequisicionLineaEstado =
+  | 'Pendiente'
+  | 'Recibida_Parcial'
+  | 'Recibida'
+  | 'Confirmada'
+  | 'En_Disputa'
+  | 'Cancelada';
+
+export const LINEA_ESTADO_LABELS: Record<RequisicionLineaEstado, string> = {
+  Pendiente: 'Pendiente',
+  Recibida_Parcial: 'Recibida parcial',
+  Recibida: 'Recibida',
+  Confirmada: 'Confirmada',
+  En_Disputa: 'En disputa',
+  Cancelada: 'Cancelada',
+};
+
+/** A request (spare part) behind a line; only the fields the reception panel needs. */
+export interface RequisicionLineaOrigen {
+  _id: string;
+  nombre?: string;
+  ResponsableSolicitud?: string | UserRef | null;
+}
 
 export interface RequisicionLineaSnapshot {
   nombre?: string;
@@ -71,9 +102,80 @@ export interface RequisicionLinea {
   inventarioItemId?: string | null;
   precioEstimado: number;
   moneda?: string;
-  estadoLinea?: string;
+  estadoLinea?: RequisicionLineaEstado | string;
+  /** Accumulated received quantity (E2). */
+  cantidadRecibida?: number;
+  /** Accumulated quantity confirmed by the requester (E2). */
+  cantidadConfirmada?: number;
+  /** Spare-part request this line came from; bare id or populated. */
+  origenSolicitudRepuestoId?: string | RequisicionLineaOrigen | null;
   snapshot?: RequisicionLineaSnapshot | null;
 }
+
+export type ConfirmacionResultado = 'Recibido' | 'No_Llego' | 'Incompleto';
+
+export const CONFIRMACION_RESULTADO_LABELS: Record<ConfirmacionResultado, string> = {
+  Recibido: 'Recibí',
+  No_Llego: 'No llegó',
+  Incompleto: 'Llegó incompleto',
+};
+
+export interface RecepcionEvidencia {
+  nombre: string;
+  url: string;
+  tipo?: string;
+}
+
+export interface RecepcionConfirmacion {
+  por?: string | UserRef | null;
+  fecha?: string;
+  resultado: ConfirmacionResultado;
+  cantidad?: number;
+  observacion?: string | null;
+}
+
+export interface RecepcionItem {
+  lineaId: string;
+  cantidadRecibida: number;
+  confirmacion?: RecepcionConfirmacion | null;
+}
+
+export interface Recepcion {
+  _id: string;
+  fecha: string;
+  recibidaPor?: string | UserRef | null;
+  documento?: string | null;
+  observacion?: string | null;
+  evidencias?: RecepcionEvidencia[];
+  items: RecepcionItem[];
+}
+
+export interface RegistrarRecepcionDto {
+  fecha?: string;
+  documento?: string;
+  observacion?: string;
+  items: Array<{ lineaId: string; cantidadRecibida: number }>;
+  /** Evidence files (image / PDF, up to 5, 5 MB each). */
+  evidencias?: File[];
+}
+
+export interface ConfirmarEntregaDto {
+  items: Array<{
+    lineaId: string;
+    resultado: ConfirmacionResultado;
+    cantidad?: number;
+    observacion?: string;
+  }>;
+}
+
+export interface CerrarLineaDto {
+  motivo: string;
+}
+
+/** Evidence limits enforced by the backend uploader. */
+export const EVIDENCIA_MAX_FILES = 5;
+export const EVIDENCIA_MAX_BYTES = 5 * 1024 * 1024;
+export const EVIDENCIA_TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 
 /** Line payload accepted when creating / editing a requisicion. */
 export interface RequisicionLineaInput {
@@ -152,6 +254,8 @@ export interface Requisicion {
   moneda?: string;
   aprobacion?: RequisicionAprobacion;
   timeline?: RequisicionTimelineEvent[];
+  /** Reception history (E2); immutable except for the one-time confirmation of each item. */
+  recepciones?: Recepcion[];
   createdAt?: string;
   updatedAt?: string;
   /** Optimistic-concurrency token: approve / reject must send the version of the requisicion that was shown. */
@@ -391,11 +495,34 @@ export interface PresupuestoResumenParams {
   periodo: string;
 }
 
+/** A line removed on reopen: plain text or an object (`mensaje`, or `descripcion` + `motivo`). */
+export type RequisicionAdvertenciaItem =
+  | string
+  | { mensaje?: string; descripcion?: string; motivo?: string; [key: string]: unknown };
+
+/** Requisicion returned by the reopen endpoint, with the optional list of removed lines. */
+export type RequisicionConAdvertencias = Requisicion & { advertencias?: RequisicionAdvertenciaItem[] };
+
 /** Spanish copy for the backend error codes the requisiciones endpoints can answer. */
 export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   TRANSICION_INVALIDA: 'La requisición no admite esa acción en su estado actual.',
   ESTADO_NO_EDITABLE: 'La requisición solo puede editarse en estado Borrador.',
-  SEPARACION_FUNCIONES: 'No puedes aprobar tu propia requisición ni más de un nivel de la misma.',
+  SEPARACION_FUNCIONES:
+    'No puedes aprobar tu propia requisición ni más de un nivel de la misma, ni confirmar una recepción que registraste tú (separación de funciones).',
+  CANTIDAD_EXCEDE: 'La cantidad recibida supera lo solicitado para alguna línea.',
+  CANTIDAD_INVALIDA: 'La cantidad indicada no es válida para esta confirmación.',
+  NO_ES_RESPONSABLE: 'Solo el responsable de la solicitud puede confirmar esta entrega.',
+  ENTREGA_YA_CONFIRMADA: 'Esta entrega ya fue confirmada y no se puede confirmar de nuevo.',
+  MOTIVO_REQUERIDO: 'Debes indicar un motivo.',
+  LINEA_NO_CERRABLE: 'Esta línea no se puede cerrar en su estado actual.',
+  LINEA_NO_RECIBIBLE: 'Esta línea no admite más recepciones.',
+  CONFIRMACIONES_PENDIENTES: 'La línea aún tiene entregas por confirmar; confírmalas antes de cerrarla.',
+  RECEPCION_NOT_FOUND: 'No se encontró la recepción indicada.',
+  STOCK_MOVIMIENTO_FALLIDO: 'No se pudo registrar el movimiento de inventario; la confirmación no se aplicó.',
+  SOLICITUD_YA_VINCULADA: 'Alguna de las solicitudes ya pertenece a otra requisición.',
+  SOLICITUD_EN_REQUISICION: 'La solicitud está en una requisición y aún no está disponible.',
+  SOLICITUD_NO_DISPONIBLE: 'Alguna solicitud seleccionada aún no está disponible: su requisición no ha sido confirmada.',
+  REQUIERE_REQUISICION: 'Alguna solicitud seleccionada debe pasar primero por una requisición.',
   CONFLICTO_CONCURRENTE: 'Otra persona modificó la requisición al mismo tiempo. Recarga e intenta de nuevo.',
   SOLO_CREADOR: 'Solo el creador o el solicitante puede realizar esta acción.',
   NIVEL_NO_PENDIENTE: 'Solo se pueden reasignar los aprobadores de niveles pendientes.',
@@ -420,6 +547,26 @@ export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   LINEA_DUPLICADA: 'Hay dos líneas con el mismo ítem de stock.',
   VERSION_DESACTUALIZADA: 'La requisición cambió mientras la revisabas. Recarga para ver la versión actual.',
   CAPABILITY_DISABLED: 'El módulo de Requisiciones no está activo para esta organización.',
+  SIN_LINEAS_VIGENTES:
+    'Ninguna línea de la requisición sigue vigente porque sus solicitudes ya pertenecen a otra requisición o no están disponibles. Puedes cancelarla.',
+  SOLICITUD_NO_ELEGIBLE: 'Alguna solicitud seleccionada no es elegible para una requisición.',
+  SOLICITUD_NOT_FOUND: 'No se encontró alguna de las solicitudes de repuesto indicadas.',
+  REQUISICION_NOT_FOUND: 'No se encontró la requisición indicada.',
+  LINEA_NOT_FOUND: 'No se encontró la línea indicada.',
+  LINEA_NO_ENCONTRADA: 'No se encontró la línea indicada.',
+  LINEA_REPETIDA: 'Hay líneas repetidas en la solicitud.',
+  LINEA_FUERA_DE_SELECCION: 'Alguna línea no forma parte de la selección indicada.',
+  SIN_LINEAS: 'La requisición debe tener al menos una línea.',
+  DEMASIADAS_LINEAS: 'La requisición supera el máximo de líneas permitido.',
+  ITEM_INVALIDO: 'Alguno de los ítems de stock indicados no es válido.',
+  ITEM_NO_ENCONTRADO: 'No se encontró alguno de los ítems de stock indicados.',
+  INVENTARIO_ITEM_NOT_FOUND: 'No se encontró el ítem de inventario indicado.',
+  JUSTIFICACION_REQUERIDA: 'Debes indicar una justificación.',
+  SOLICITANTE_INVALIDO: 'El solicitante seleccionado no es válido.',
+  CONSECUTIVO_DUPLICADO: 'No se pudo asignar el consecutivo de la requisición. Intenta de nuevo.',
+  INVALID_STATE: 'La acción no se puede realizar en el estado actual.',
+  INELIGIBLE_RESPONSABLES: 'Alguno de los responsables seleccionados no es elegible.',
+  INVALID_RESPONSABLE_USER_IDS: 'Alguno de los responsables seleccionados no es válido.',
 };
 
 /** Spanish labels for the conflicts listed by REGLAS_INCONSISTENTES. */

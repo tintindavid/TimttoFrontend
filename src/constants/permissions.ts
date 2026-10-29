@@ -160,6 +160,7 @@ export const PERMISSIONS = {
   REQUISICIONES_APPROVE: 'requisiciones:approve',
   REQUISICIONES_CANCEL: 'requisiciones:cancel',
   REQUISICIONES_MANAGE_ALL: 'requisiciones:manage-all',
+  REQUISICIONES_RECEIVE: 'requisiciones:receive',
   // Declared now for later epics (warehouse review, suppliers, purchase orders, deliverables).
   REQUISICIONES_WAREHOUSE: 'requisiciones:warehouse',
   REQUISICIONES_MANAGE_SUPPLIERS: 'requisiciones:manage-suppliers',
