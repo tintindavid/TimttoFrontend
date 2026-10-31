@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.29.1...v1.30.0) (2026-10-31)
+
+
+### Features
+
+* **requisiciones:** connect spare-part requests with requisitions and reception (E2) ([90915f9](https://github.com/tintindavid/TimttoFrontend/commit/90915f9d3d14e93e8506503896cfaa181fd206ce))
+
 ## [1.29.1](https://github.com/tintindavid/TimttoFrontend/compare/v1.29.0...v1.29.1) (2026-10-27)
 
 
