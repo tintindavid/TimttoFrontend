@@ -4,11 +4,15 @@ import {
   AprobarRequisicionDto,
   CambiarEstadoRequisicionDto,
   CancelarRequisicionDto,
+  CerrarLineaDto,
+  ConfirmarEntregaDto,
+  RegistrarRecepcionDto,
   CreateRequisicionDto,
   ReasignarAprobadoresDto,
   RechazarRequisicionDto,
   REQUISICION_QUERY_KEYS,
   Requisicion,
+  RequisicionConAdvertencias,
   RequisicionQueryParams,
   UpdateRequisicionDto,
 } from '@/types/requisicion.types';
@@ -56,7 +60,7 @@ export const requisicionService = {
 
   /** Retire (Enviada/En_Aprobacion) or reopen (Rechazada): back to Borrador. */
   cambiarEstado: async (id: string, data: CambiarEstadoRequisicionDto) => {
-    const response = await api.patch<ApiResponse<Requisicion>>(`/requisiciones/${id}/estado`, data);
+    const response = await api.patch<ApiResponse<RequisicionConAdvertencias>>(`/requisiciones/${id}/estado`, data);
     return response.data;
   },
 
@@ -72,6 +76,33 @@ export const requisicionService = {
 
   reasignarAprobadores: async (id: string, data: ReasignarAprobadoresDto) => {
     const response = await api.post<ApiResponse<Requisicion>>(`/requisiciones/${id}/aprobacion/reasignar`, data);
+    return response.data;
+  },
+
+  /** Multipart: scalar fields, `items` as a JSON string and the evidence files under `evidencias`. */
+  registrarRecepcion: async (id: string, data: RegistrarRecepcionDto) => {
+    const form = new FormData();
+    if (data.fecha) form.append('fecha', data.fecha);
+    if (data.documento) form.append('documento', data.documento);
+    if (data.observacion) form.append('observacion', data.observacion);
+    form.append('items', JSON.stringify(data.items));
+    (data.evidencias ?? []).forEach((file) => form.append('evidencias', file));
+    const response = await api.post<ApiResponse<Requisicion>>(`/requisiciones/${id}/recepciones`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  confirmarEntrega: async (id: string, recepcionId: string, data: ConfirmarEntregaDto) => {
+    const response = await api.post<ApiResponse<Requisicion>>(
+      `/requisiciones/${id}/recepciones/${recepcionId}/confirmar`,
+      data
+    );
+    return response.data;
+  },
+
+  cerrarLinea: async (id: string, lineaId: string, data: CerrarLineaDto) => {
+    const response = await api.post<ApiResponse<Requisicion>>(`/requisiciones/${id}/lineas/${lineaId}/cerrar`, data);
     return response.data;
   },
 };

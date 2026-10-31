@@ -394,7 +394,7 @@ const HELP = {
   },
   'estado.Aprobada': {
     title: 'Aprobada',
-    body: 'Todos los niveles aprobaron. En esta fase es el último estado del flujo; el resto del proceso de compra llega en fases posteriores.',
+    body: 'Todos los niveles aprobaron. Ahora se espera que llegue lo pedido para registrar la recepción; el resto del proceso de compra llega en fases posteriores.',
   },
   'estado.Rechazada': {
     title: 'Rechazada',
@@ -403,6 +403,15 @@ const HELP = {
   'estado.Cancelada': {
     title: 'Cancelada',
     body: 'Cerrada definitivamente con un motivo. No se puede reabrir.',
+  },
+
+  'estado.En_Recepcion': {
+    title: 'En recepción',
+    body: 'Ya se registró al menos una recepción. Pasa a Cerrada cuando todas las líneas quedan confirmadas o canceladas.',
+  },
+  'estado.Cerrada': {
+    title: 'Cerrada',
+    body: 'Todo lo pedido fue confirmado o cancelado: la entrega se dio por satisfecha. Es un estado final.',
   },
 
   // ---------------------------------------------------------------- Timeline events
@@ -424,7 +433,132 @@ const HELP = {
     title: 'Aprobadores reasignados',
     body: 'Un supervisor cambió los aprobadores de un nivel pendiente.',
   },
+  'evento.RECEPCION_REGISTRADA': {
+    title: 'Recepción registrada',
+    body: 'Alguien registró que llegó material de la requisición, con su documento y evidencias. Los solicitantes deben confirmarlo.',
+  },
+  'evento.ENTREGA_CONFIRMADA': {
+    title: 'Entrega confirmada',
+    body: 'El responsable de la solicitud confirmó que recibió lo registrado; el repuesto queda disponible.',
+  },
+  'evento.ENTREGA_DISPUTADA': {
+    title: 'Entrega en disputa',
+    body: 'El responsable indicó que no llegó o llegó incompleto. Se resuelve con una nueva recepción o cerrando la línea con faltante.',
+  },
+  'evento.LINEA_CERRADA': {
+    title: 'Línea cerrada con faltante',
+    body: 'Se dio por terminada una línea sin recibirla completa, con un motivo.',
+  },
+  'evento.LINEA_CANCELADA': {
+    title: 'Línea cancelada',
+    body: 'Se cerró una línea sin cantidad confirmada: queda cancelada y su solicitud vuelve a estar libre.',
+  },
+  'evento.CERRADA': {
+    title: 'Requisición cerrada',
+    body: 'Todas las líneas activas quedaron confirmadas o canceladas: la entrega se dio por satisfecha.',
+  },
   'evento.ELIMINADA': { title: 'Requisición eliminada', body: 'El borrador fue eliminado.' },
+
+  // ---------------------------------------------------------------- E2: solicitudes de repuestos
+  'solicitudes.hacerRequisicion': {
+    title: 'Hacer requisición',
+    body: 'Convierte las solicitudes de repuesto seleccionadas (en estado Solicitado y sin requisición) en una requisición, con una línea por solicitud.',
+    relation:
+      'Puedes crearla como borrador o enviarla a aprobación de una vez. Mientras la requisición avanza, cada solicitud muestra su avance en la columna «Requisición» sin cambiar su estado.',
+  },
+  'solicitudes.columna': {
+    title: 'Columna Requisición',
+    body: 'Muestra la requisición a la que pertenece cada solicitud (con enlace) y su avance: en requisición, en aprobación, en abastecimiento, recibida, disponible o en disputa.',
+    relation: 'Solo cuando está «Disponible» (el solicitante confirmó que lo recibió) se puede instalar el repuesto o crear la OT.',
+  },
+  'solicitudes.filtro': {
+    title: 'Filtrar por requisición',
+    body: 'Muestra las solicitudes sin requisición, con requisición, o en un avance concreto (por ejemplo, solo las disponibles).',
+    relation: 'Se combina con la búsqueda, el cliente y el estado de la solicitud.',
+  },
+  'solicitudes.crearOt': {
+    title: 'Crear OT desde solicitudes',
+    body: 'Con el módulo de requisiciones, la OT solo se crea con solicitudes «Disponibles». Si alguna no lo está, el botón se deshabilita y se explica por qué.',
+    relation: 'Así se garantiza que el repuesto ya llegó y fue confirmado antes de programar el trabajo.',
+  },
+  'solicitudes.omitir': {
+    title: 'Crear OT sin requisición',
+    body: 'Excepción para quien puede gestionar todas las requisiciones: permite crear la OT con solicitudes que no están disponibles, indicando un motivo obligatorio.',
+    relation: 'El motivo queda registrado en la trazabilidad de cada solicitud.',
+  },
+  'hacerReq.lineas': {
+    title: 'Líneas precargadas',
+    body: 'Cada solicitud seleccionada se convierte en una línea con su cantidad y precio. Puedes ajustar la cantidad, el precio estimado y la descripción antes de crear.',
+    relation: 'Si la cantidad de la solicitud no era un número, se propone 1 y debes corregirla.',
+  },
+  'hacerReq.crear': {
+    title: 'Crear borrador o enviar',
+    body: '«Crear borrador» guarda la requisición para seguir editándola. «Crear y enviar a aprobación» la envía de inmediato y exige justificación.',
+    relation: 'Al crearla, las solicitudes quedan vinculadas y no pueden agregarse a otra requisición.',
+  },
+  'bloqueo.requisicion': {
+    title: 'Solicitud en requisición',
+    body: 'Esta solicitud pertenece a una requisición que aún no la ha dejado disponible, por eso no se puede instalar, editar ni eliminar.',
+    relation: 'Cuando la entrega se confirme, quedará «Disponible» y podrás instalarla con el flujo habitual.',
+  },
+
+  // ---------------------------------------------------------------- E2: recepción
+  'pagina.porRecibir': {
+    title: 'Por recibir',
+    body: 'Requisiciones aprobadas o en recepción que todavía tienen líneas pendientes de recibir.',
+    relation: 'Solo la ven quienes pueden registrar recepciones. Desde el detalle se registra lo que llegó.',
+  },
+  'pagina.porConfirmar': {
+    title: 'Por confirmar',
+    body: 'Requisiciones con entregas registradas que esperan tu confirmación de que lo recibiste.',
+    relation: 'Confirmar deja la solicitud disponible; si algo no llegó o llegó incompleto, queda en disputa.',
+  },
+  'recepcion.panel': {
+    title: 'Panel de recepción',
+    body: 'Muestra lo pedido, lo recibido y lo confirmado por línea, y el historial de recepciones con sus evidencias.',
+    relation: 'Registrar la recepción y confirmarla son pasos distintos y los hacen personas distintas (separación de funciones).',
+  },
+  'recepcion.lineas': {
+    title: 'Estado por línea',
+    body: 'Pendiente: nada recibido. Recibida parcial o Recibida: ya llegó algo. Confirmada: el solicitante lo confirmó. En disputa: no llegó o llegó incompleto. Cancelada: se cerró sin entrega.',
+    relation: 'El avance de cada línea se refleja en la solicitud de repuesto vinculada.',
+  },
+  'recepcion.historial': {
+    title: 'Historial de recepciones',
+    body: 'Cada recepción registra fecha, quién la recibió, documento (remisión o factura), observaciones, evidencias y la confirmación de cada ítem.',
+    relation: 'Es inmutable: solo se agregan recepciones y cada ítem se confirma una sola vez.',
+  },
+  'recepcion.cantidad': {
+    title: 'Cantidad recibida',
+    body: 'Unidades que llegaron en esta recepción por línea. No puede superar lo que aún falta por recibir.',
+    relation: 'Deja en 0 las líneas que no llegaron; solo se registran las que tienen cantidad.',
+  },
+  'recepcion.evidencias': {
+    title: 'Evidencias',
+    body: 'Fotos o PDF de la remisión o de lo recibido: hasta 5 archivos de 5 MB cada uno. Son opcionales.',
+  },
+  'recepcion.resultado': {
+    title: 'Resultado de la confirmación',
+    body: 'Recibí: llegó lo registrado. No llegó o Llegó incompleto: la línea queda en disputa y se avisa a quien recibió; en esos casos la observación es obligatoria.',
+    relation: 'La disputa se resuelve con una nueva recepción o cerrando la línea con faltante.',
+  },
+  'accion.registrarRecepcion': {
+    title: 'Registrar recepción',
+    body: 'Anota lo que llegó (cantidades por línea, documento, observaciones y evidencias) en una requisición aprobada o en recepción.',
+    relation:
+      'La ve quien tiene el permiso de recibir. La primera recepción pasa la requisición a «En recepción» y avisa a los solicitantes para que confirmen.',
+  },
+  'accion.confirmarEntrega': {
+    title: 'Confirmar entrega',
+    body: 'El responsable de la solicitud confirma si recibió, si no llegó o si llegó incompleto lo que se registró.',
+    relation:
+      'Quien registró la recepción no puede confirmarla. Al confirmar todo, la solicitud queda disponible y, si ya no queda nada pendiente, la requisición se cierra.',
+  },
+  'accion.cerrarLinea': {
+    title: 'Cerrar con faltante',
+    body: 'Cierra una línea que no se completará, indicando el motivo. Si ya hay cantidad confirmada, la solicitud queda disponible con esa cantidad; si no, la línea se cancela y la solicitud se libera.',
+    relation: 'La ve quien puede registrar recepciones. Queda en el historial de la requisición.',
+  },
 
   // ---------------------------------------------------------------- Guide / key concepts
   'guia.creacion': {
@@ -432,29 +566,49 @@ const HELP = {
     body: 'Creas la requisición como borrador: eliges tipo y área, escribes la justificación y agregas líneas (del inventario o en texto libre) con su precio estimado.',
     relation: 'El tipo y el área vienen de Configuración. El monto estimado sale de la suma de las líneas.',
   },
+  'guia.solicitudes': {
+    title: '2. Desde solicitudes de repuesto',
+    body: 'En «Repuestos solicitados» seleccionas solicitudes y pulsas «Hacer requisición»: cada una se vuelve una línea y su avance se ve en la columna «Requisición».',
+    relation: 'Sin requisición no se puede crear la OT ni instalar la solicitud: antes debe quedar «Disponible».',
+  },
   'guia.envio': {
-    title: '2. Envío',
+    title: '3. Envío',
     body: 'Al enviarla, el sistema calcula los niveles de aprobación según el monto, los congela y avisa a los aprobadores del primer nivel.',
     relation: 'Los niveles salen de las reglas de aprobación; si no hay reglas aplicables o un nivel no tiene aprobador elegible, el envío se rechaza.',
   },
   'guia.niveles': {
-    title: '3. Niveles de aprobación',
+    title: '4. Niveles de aprobación',
     body: 'Los niveles se aprueban en orden. Los montos altos acumulan más niveles (por ejemplo jefe de área y luego dirección).',
     relation: 'Quien aprueba ve también el presupuesto del área, que es informativo.',
   },
   'guia.decision': {
-    title: '4. Aprobación o rechazo',
-    body: 'Si todos los niveles aprueban, queda Aprobada. Si uno rechaza, queda Rechazada con su observación y el creador puede reabrirla y reenviarla.',
+    title: '5. Aprobación o rechazo',
+    body: 'Si todos los niveles aprueban, queda Aprobada y puede recibirse. Si uno rechaza, queda Rechazada con su observación y el creador puede reabrirla y reenviarla.',
     relation: 'Mientras está en aprobación, el creador puede retirarla para corregirla y cualquier requisición no terminal puede cancelarse.',
   },
+  'guia.recepcion': {
+    title: '6. Recepción',
+    body: 'Cuando la requisición está aprobada y llega el material, quien tiene permiso de recibir registra la recepción: cantidades por línea, documento y evidencias. Puede ser parcial.',
+    relation: 'La primera recepción pasa la requisición a «En recepción» y avisa a los solicitantes.',
+  },
+  'guia.confirmacion': {
+    title: '7. Confirmación del solicitante',
+    body: 'El responsable de cada solicitud confirma que lo recibió. Solo entonces el repuesto queda «Disponible» para instalarlo o crear la OT.',
+    relation: 'Quien registró la recepción no puede confirmarla. Cuando todo está confirmado la requisición se cierra.',
+  },
+  'guia.disputa': {
+    title: '8. Disputa y cierre con faltante',
+    body: 'Si no llegó o llegó incompleto, la línea queda en disputa. Se resuelve con una nueva recepción o cerrando la línea con faltante y un motivo.',
+    relation: 'Si algo ya estaba confirmado, esa cantidad queda disponible; si no, la solicitud se libera para hacer otra requisición.',
+  },
   'guia.fases': {
-    title: '5. Próximas fases',
-    body: 'En esta fase el flujo termina en Aprobada. Después vendrán almacén y vales de salida, compras y licitación, orden de compra y recepción, y reportes.',
-    relation: 'Almacén, compras, órdenes de compra y recepción aún no están disponibles.',
+    title: '9. Próximas fases',
+    body: 'Después de la recepción y la confirmación vendrán almacén y vales de salida, compras y licitación, orden de compra y reportes.',
+    relation: 'Almacén, compras y órdenes de compra aún no están disponibles.',
   },
   'modulo.permisos': {
     title: 'Quién puede hacer qué',
-    body: 'El creador y el solicitante envían, editan, retiran y reabren su requisición; quien tiene permiso de gestionar todo puede hacerlo sobre cualquiera y reasignar aprobadores.',
+    body: 'El creador y el solicitante envían, editan, retiran y reabren su requisición; quien gestiona todo puede hacerlo sobre cualquiera. Registrar recepciones requiere el permiso de recibir; confirmar, ser el responsable de la solicitud.',
     relation: 'Aprobar requiere el permiso de aprobar y ser elegible en el nivel actual según la regla.',
   },
   'modulo.separacion': {
@@ -483,7 +637,15 @@ export const REQUISICION_HELP: Record<HelpId, HelpEntry> = HELP;
 export const getHelp = (id: HelpId): HelpEntry => REQUISICION_HELP[id];
 
 /** Order and ids of the end-to-end flow shown in the "Guía del módulo". */
-export const GUIA_PASOS: HelpId[] = ['guia.creacion', 'guia.envio', 'guia.niveles', 'guia.decision', 'guia.fases'];
+export const GUIA_PASOS: HelpId[] = ['guia.creacion',
+  'guia.solicitudes',
+  'guia.envio',
+  'guia.niveles',
+  'guia.decision',
+  'guia.recepcion',
+  'guia.confirmacion',
+  'guia.disputa',
+  'guia.fases'];
 
 /** Cross-cutting concepts listed at the end of the guide. */
 export const GUIA_CONCEPTOS: HelpId[] = [
@@ -500,6 +662,8 @@ export const ESTADO_HELP_IDS: HelpId[] = [
   'estado.Enviada',
   'estado.En_Aprobacion',
   'estado.Aprobada',
+  'estado.En_Recepcion',
+  'estado.Cerrada',
   'estado.Rechazada',
   'estado.Cancelada',
 ];

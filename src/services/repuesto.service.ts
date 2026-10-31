@@ -1,5 +1,13 @@
 import { api } from './api';
-import { Repuesto, CreateRepuestoSolicitudDto, InstalarRepuestoDto } from '@/types/repuesto.types';
+import {
+  Repuesto,
+  CreateRepuestoSolicitudDto,
+  InstalarRepuestoDto,
+  CreateRequisicionFromSolicitudesDto,
+  OmitirRequisicionDto,
+  RequisicionAdvertencia,
+} from '@/types/repuesto.types';
+import type { Requisicion } from '@/types/requisicion.types';
 import { ApiResponse } from '@/types/api.types';
 
 const compactParams = (params: Record<string, any>) =>
@@ -95,12 +103,21 @@ export const repuestoService = {
       fechaFin: string;
       nota?: string;
       OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente';
-    }
+    } & Partial<OmitirRequisicionDto>
   ) => {
     const response = await api.post<ApiResponse<any>>('/repuestos/ot-from-solicitudes', {
       repuestoIds,
       ...payload,
     });
+    return response.data;
+  },
+
+  // Crear una requisición a partir de solicitudes (módulo Requisiciones)
+  createRequisicionFromSolicitudes: async (data: CreateRequisicionFromSolicitudesDto) => {
+    const response = await api.post<ApiResponse<{ requisicion: Requisicion; advertencias?: RequisicionAdvertencia[] }>>(
+      '/repuestos/requisicion',
+      data
+    );
     return response.data;
   },
 

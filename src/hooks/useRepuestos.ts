@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { repuestoService } from '@/services/repuesto.service';
-import { CreateRepuestoSolicitudDto, InstalarRepuestoDto } from '@/types/repuesto.types';
+import { CreateRepuestoSolicitudDto, CreateRequisicionFromSolicitudesDto, InstalarRepuestoDto, OmitirRequisicionDto } from '@/types/repuesto.types';
 
 export const useRepuestosList = (params: Record<string, any> = {}) => {
   return useQuery({
@@ -123,12 +123,25 @@ export const useCreateOtFromRepuestos = () => {
         fechaFin: string;
         nota?: string;
         OtPrioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente';
-      };
+      } & Partial<OmitirRequisicionDto>;
     }) => repuestoService.createOtFromSolicitudes(repuestoIds, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['repuestos'] });
       queryClient.invalidateQueries({ queryKey: ['ots'] });
       queryClient.invalidateQueries({ queryKey: ['maintenance-orders'] });
+    },
+  });
+};
+/** Creates a requisition from spare-part requests; both lists change (the requests now carry the link). */
+export const useCreateRequisicionFromSolicitudes = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateRequisicionFromSolicitudesDto) => repuestoService.createRequisicionFromSolicitudes(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['repuestos'] });
+      queryClient.invalidateQueries({ queryKey: ['requisiciones'] });
+      queryClient.invalidateQueries({ queryKey: ['presupuestos-area'] });
     },
   });
 };

@@ -3,6 +3,10 @@ import {
   FaBan,
   FaCheck,
   FaCheckCircle,
+  FaBoxOpen,
+  FaClipboardCheck,
+  FaExclamationTriangle,
+  FaLock,
   FaEdit,
   FaTrash,
   FaUserEdit,
@@ -17,7 +21,10 @@ import {
 import type { User } from '@/types/user.types';
 import type {
   NivelAprobacion,
+  Recepcion,
+  RecepcionItem,
   Requisicion,
+  RequisicionLinea,
   RequisicionEstado,
   RequisicionLineaInput,
   ReglaConflictoTipo,
@@ -33,6 +40,8 @@ export const ESTADO_VARIANT: Record<RequisicionEstado, BadgeVariant> = {
   Enviada: 'info',
   En_Aprobacion: 'warning',
   Aprobada: 'success',
+  En_Recepcion: 'primary',
+  Cerrada: 'dark',
   Rechazada: 'danger',
   Cancelada: 'dark',
 };
@@ -64,6 +73,12 @@ export const EVENT_META: Record<string, EventMeta> = {
   REABIERTA: { label: 'Requisición reabierta', icon: FaRedo, variant: 'info' },
   CANCELADA: { label: 'Requisición cancelada', icon: FaBan, variant: 'dark' },
   APROBADORES_REASIGNADOS: { label: 'Aprobadores reasignados', icon: FaUserEdit, variant: 'info' },
+  RECEPCION_REGISTRADA: { label: 'Recepción registrada', icon: FaBoxOpen, variant: 'primary' },
+  ENTREGA_CONFIRMADA: { label: 'Entrega confirmada', icon: FaClipboardCheck, variant: 'success' },
+  ENTREGA_DISPUTADA: { label: 'Entrega en disputa', icon: FaExclamationTriangle, variant: 'danger' },
+  LINEA_CERRADA: { label: 'Línea cerrada con faltante', icon: FaLock, variant: 'warning' },
+  LINEA_CANCELADA: { label: 'Línea cancelada', icon: FaBan, variant: 'dark' },
+  CERRADA: { label: 'Requisición cerrada', icon: FaCheckCircle, variant: 'success' },
   ELIMINADA: { label: 'Requisición eliminada', icon: FaTrash, variant: 'dark' },
 };
 
@@ -217,4 +232,91 @@ export const findReglaConflicts = (candidate: ReglaRange, others: ReglaRange[]):
     }
   }
   return conflicts;
+};
+
+// ---------------------------------------------------------------------------
+// Reception (E2)
+// ---------------------------------------------------------------------------
+
+export const LINEA_ESTADO_VARIANT: Record<string, BadgeVariant> = {
+  Pendiente: 'secondary',
+  Recibida_Parcial: 'info',
+  Recibida: 'primary',
+  Confirmada: 'success',
+  En_Disputa: 'danger',
+  Cancelada: 'dark',
+};
+
+/** States of a requisicion that show the reception panel. */
+export const RECEPTION_PANEL_ESTADOS: RequisicionEstado[] = ['Aprobada', 'En_Recepcion', 'Cerrada'];
+
+/** States in which a reception can still be registered. */
+export const RECEIVABLE_ESTADOS: RequisicionEstado[] = ['Aprobada', 'En_Recepcion'];
+
+export const lineaEstadoOf = (l: Pick<RequisicionLinea, 'estadoLinea'>): string => l.estadoLinea || 'Pendiente';
+
+const num = (v?: number | null): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+/**
+ * Quantity that can still be registered for a line. A disputed line is re-received up to what is not yet
+ * confirmed; any other line up to what has not been received. Final states (Confirmada / Cancelada) admit nothing.
+ * The server is the authority (CANTIDAD_EXCEDE).
+ */
+export const cantidadPendienteRecepcion = (l: RequisicionLinea): number => {
+  const estado = lineaEstadoOf(l);
+  if (estado === 'Confirmada' || estado === 'Cancelada') return 0;
+  const base = estado === 'En_Disputa' ? num(l.cantidadConfirmada) : num(l.cantidadRecibida);
+  return Math.max(0, Math.round((num(l.cantidadSolicitada) - base) * 1000) / 1000);
+};
+
+/** Whether a line still allows "Cerrar con faltante" (not in a final state). */
+export const canCerrarLinea = (l: RequisicionLinea): boolean => {
+  const estado = lineaEstadoOf(l);
+  return estado === 'Pendiente' || estado === 'Recibida_Parcial' || estado === 'En_Disputa';
+};
+
+/** Responsible user id of a line: the request's `ResponsableSolicitud` when populated, else the requisicion's requester. */
+export const lineaResponsableId = (
+  linea: RequisicionLinea | undefined,
+  req: Pick<Requisicion, 'solicitanteId' | 'creadaPor'>
+): string => {
+  const origen = linea?.origenSolicitudRepuestoId;
+  if (origen && typeof origen === 'object' && origen.ResponsableSolicitud) {
+    return refId(origen.ResponsableSolicitud as string | { _id: string });
+  }
+  return refId(req.solicitanteId ?? req.creadaPor);
+};
+
+/** Whether the user registered this reception and therefore cannot confirm it (without `manage-all`). */
+export const registeredBy = (recepcion: Recepcion, user: User | null | undefined): boolean =>
+  !!user?._id && refId(recepcion.recibidaPor as string | { _id: string } | null | undefined) === user._id;
+
+/**
+ * Items of a reception the user may confirm. Generous on purpose (the backend answers 403): the line's responsible
+ * person or `manage-all`; the person who registered the reception only with `manage-all` (separation of duties).
+ */
+export const itemsConfirmables = (
+  req: Requisicion,
+  recepcion: Recepcion,
+  user: User | null | undefined,
+  hasManageAll: boolean
+): RecepcionItem[] => {
+  if (!user?._id) return [];
+  if (registeredBy(recepcion, user) && !hasManageAll) return [];
+  return recepcion.items.filter((item) => {
+    if (item.confirmacion) return false;
+    if (hasManageAll) return true;
+    const linea = req.lineas.find((l) => l._id === item.lineaId);
+    return lineaResponsableId(linea, req) === user._id;
+  });
+};
+
+/** True only for absolute https URLs; blocks javascript:, data:, http: and malformed values. */
+export const isHttpsUrl = (url?: string | null): boolean => {
+  if (!url) return false;
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
 };

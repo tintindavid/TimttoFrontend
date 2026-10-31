@@ -72,6 +72,7 @@ export const ACTION_LABELS: Record<string, string> = {
   approve: 'Aprobar',
   cancel: 'Cancelar',
   'manage-all': 'Gestionar todas',
+  receive: 'Registrar recepciones',
   warehouse: 'Gestionar almacén',
   'manage-suppliers': 'Gestionar proveedores',
   'select-winner': 'Seleccionar ganador',

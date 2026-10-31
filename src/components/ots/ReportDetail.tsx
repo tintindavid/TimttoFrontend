@@ -11,6 +11,10 @@ import { useProtocol } from '@/hooks/useProtocols';
 import { useRepuestosByEquipo, useRepuestosByReporte, useUpdateRepuesto, useDeleteRepuesto } from '@/hooks/useRepuestos';
 import { useRemoveActividadExtra } from '@/hooks/useReportes';
 import { useAuth } from '@/context/AuthContext';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
+import RepuestoRequisicionBadge from '@/components/repuestos/RepuestoRequisicionBadge';
+import RepuestoBloqueoRequisicion, { bloqueoRequisicionReason } from '@/components/repuestos/RepuestoBloqueoRequisicion';
+import { isBlockedByRequisicion } from '@/utils/repuestoRequisicion';
 import AddExtraActivitiesModal from './AddExtraActivitiesModal';
 import { SolicitarRepuestoModal } from '@/components/repuestos/SolicitarRepuestoModal';
 import { InstalarRepuestoModal } from '@/components/repuestos/InstalarRepuestoModal';
@@ -61,6 +65,9 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
   const [autoOpenEvidencePicker, setAutoOpenEvidencePicker] = useState(false);
   const [observacionEstadoFinal, setObservacionEstadoFinal] = useState<string>(editedReporte.observacionEstadoFinal || '');
   
+  // Requisiciones (premium): the link / locks below only exist when the module is on.
+  const { can: canCapability } = useTenantCapabilities();
+  const usesRequisiciones = canCapability('usesRequisiciones');
   // Estados para modales de repuestos
   const [showSolicitarModal, setShowSolicitarModal] = useState(false);
   const [showInstalarModal, setShowInstalarModal] = useState(false);
@@ -1769,6 +1776,7 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                               </Badge>
                             )}
                           </div>
+                          {usesRequisiciones && <RepuestoRequisicionBadge repuesto={repuesto} emptyText="" />}
                           {!isReportLocked && (
                             <div className="d-flex gap-1">
                               {/* Botón Instalar - solo para repuestos solicitados */}
@@ -1776,6 +1784,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                 <Button
                                   variant="success"
                                   size="sm"
+                                  disabled={usesRequisiciones && isBlockedByRequisicion(repuesto)}
+                                  title={usesRequisiciones && isBlockedByRequisicion(repuesto) ? bloqueoRequisicionReason(repuesto) : undefined}
                                   onClick={() => handleInstalarRepuesto(repuesto)}
                                 >
                                   <FaWrench className="me-1" />
@@ -1787,6 +1797,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                 <Button
                                   variant="outline-primary"
                                   size="sm"
+                                  disabled={usesRequisiciones && isBlockedByRequisicion(repuesto)}
+                                  title={usesRequisiciones && isBlockedByRequisicion(repuesto) ? bloqueoRequisicionReason(repuesto) : undefined}
                                   onClick={() => handleEditarRepuesto(repuesto)}
                                 >
                                   <FaEdit className="me-1" />
@@ -1798,12 +1810,19 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
                                 <Button
                                   variant="outline-danger"
                                   size="sm"
+                                  disabled={usesRequisiciones && isBlockedByRequisicion(repuesto)}
+                                  title={usesRequisiciones && isBlockedByRequisicion(repuesto) ? bloqueoRequisicionReason(repuesto) : undefined}
                                   onClick={() => handleEliminarRepuesto(repuesto)}
                                 >
                                   <FaTimes className="me-1" />
                                   Eliminar
                                 </Button>
                               )}
+                            </div>
+                          )}
+                          {usesRequisiciones && isBlockedByRequisicion(repuesto) && (
+                            <div className="text-end">
+                              <RepuestoBloqueoRequisicion repuesto={repuesto} />
                             </div>
                           )}
                         </div>

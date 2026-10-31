@@ -23,14 +23,24 @@ import {
   formatDate,
   formatDateTime,
   formatMoney,
+  RECEPTION_PANEL_ESTADOS,
   userRefName,
 } from '@/utils/requisicion.utils';
+import type { RequisicionAdvertenciaItem } from '@/types/requisicion.types';
 import ApprovalPanel from './components/ApprovalPanel';
 import ReasonModal from './components/ReasonModal';
+import RecepcionPanel from './components/RecepcionPanel';
 import RequisicionEstadoBadge from './components/RequisicionEstadoBadge';
 import RequisicionTimeline from './components/RequisicionTimeline';
 import ReqHelp from './help/ReqHelp';
 import type { HelpId } from './help/requisicionHelp';
+
+const advertenciaMessage = (item: RequisicionAdvertenciaItem): string => {
+  if (typeof item === 'string') return item;
+  if (item.mensaje) return item.mensaje;
+  if (item.descripcion) return `Línea «${item.descripcion}» retirada${item.motivo ? `: ${item.motivo}` : '.'}`;
+  return '';
+};
 
 type ReasonAction = 'rechazar' | 'retirar' | 'reabrir' | 'cancelar';
 
@@ -96,7 +106,7 @@ const RequisicionDetailPage: React.FC = () => {
   const canDelete = estado === 'Borrador' && owner && has(PERMISSIONS.REQUISICIONES_DELETE);
   const canWithdraw = (estado === 'Enviada' || estado === 'En_Aprobacion') && owner;
   const canReopen = estado === 'Rechazada' && owner;
-  const canCancel = estado !== 'Cancelada' && has(PERMISSIONS.REQUISICIONES_CANCEL);
+  const canCancel = estado !== 'Cancelada' && estado !== 'Cerrada' && has(PERMISSIONS.REQUISICIONES_CANCEL);
   const canDecide = has(PERMISSIONS.REQUISICIONES_APPROVE) && canDecideCurrentLevel(requisicion, user);
   const hasActions = canEdit || canSend || canDelete || canWithdraw || canReopen || canCancel || canDecide;
 
@@ -148,7 +158,14 @@ const RequisicionDetailPage: React.FC = () => {
     } else {
       const done = reasonAction === 'retirar' ? 'Requisición retirada.' : 'Requisición reabierta.';
       ok = await run(
-        () => cambiarEstadoMutation.mutateAsync({ id: idValue, data: { estado: 'Borrador', observacion: text } }),
+        async () => {
+          const result = await cambiarEstadoMutation.mutateAsync({ id: idValue, data: { estado: 'Borrador', observacion: text } });
+          // Reopen may drop lines whose solicitud now belongs to another requisition.
+          (result?.data?.advertencias ?? []).forEach((item) => {
+            const message = advertenciaMessage(item);
+            if (message) toast.warning(message);
+          });
+        },
         done,
         'No fue posible cambiar el estado de la requisición.'
       );
@@ -348,6 +365,8 @@ const RequisicionDetailPage: React.FC = () => {
               )}
             </Card.Body>
           </Card>
+
+          {RECEPTION_PANEL_ESTADOS.includes(estado) && <RecepcionPanel requisicion={requisicion} />}
 
           <Card className="tt-card mb-3">
             <Card.Header as="h6" className="mb-0">
