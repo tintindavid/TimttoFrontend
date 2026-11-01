@@ -350,6 +350,8 @@ export interface Area {
   descripcion?: string;
   jefesIds: Array<string | UserRef>;
   activa: boolean;
+  /** Default (system) record: cannot be deleted, deactivated or renamed. */
+  esSistema?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -376,6 +378,8 @@ export interface TipoRequisicion {
   codigo: string;
   descripcion?: string;
   activo: boolean;
+  /** Default (system) record: cannot be deleted, deactivated or renamed. */
+  esSistema?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -409,6 +413,8 @@ export interface ReglaAprobacion {
   rolId?: string | null;
   usuariosIds?: Array<string | UserRef>;
   activo: boolean;
+  /** Default (system) record: cannot be deleted, deactivated or renamed. */
+  esSistema?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -452,6 +458,8 @@ export interface PresupuestoArea {
   moneda?: string;
   /** Alert threshold in percent (1-100). */
   umbralAlerta?: number;
+  /** Default (system) record: cannot be deleted; area and period cannot change. */
+  esSistema?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -535,6 +543,8 @@ export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   APROBADOR_NO_ELEGIBLE: 'No eres aprobador del nivel que está pendiente.',
   SIN_REGLAS_APROBACION: 'No hay reglas de aprobación configuradas para esta requisición.',
   NIVEL_SIN_APROBADOR_ELEGIBLE: 'Un nivel de aprobación no tiene ningún aprobador elegible.',
+  REGISTRO_SISTEMA:
+    'Los datos por defecto no se pueden eliminar, desactivar ni renombrar; sí puedes ajustar sus valores.',
   TIPO_EN_USO: 'El tipo está en uso; solo puede desactivarse.',
   AREA_EN_USO: 'El área está en uso; solo puede desactivarse.',
   DUPLICATE_AREA: 'Ya existe un área con ese nombre.',

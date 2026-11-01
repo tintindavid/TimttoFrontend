@@ -22,6 +22,7 @@ import { getRequisicionErrorMessage } from '@/utils/requisicionErrors';
 import { refId, userRefName } from '@/utils/requisicion.utils';
 import ConfigNav from './ConfigNav';
 import ReqHelp from '../help/ReqHelp';
+import { SISTEMA_HINT, SistemaBadge, SistemaNote } from './SistemaBadge';
 
 const PAGE_SIZE = 20;
 const MAX_JEFES_BADGES = 3;
@@ -149,7 +150,8 @@ export const AreaFormModal: React.FC<AreaModalProps> = ({ show, area, users, onH
           <Row className="g-3">
             <Col md={8}>
               <Form.Label htmlFor="area-nombre">Nombre *</Form.Label>
-              <Form.Control id="area-nombre" maxLength={120} isInvalid={!!errors.nombre} {...register('nombre')} />
+              <Form.Control id="area-nombre" maxLength={120} disabled={!!area?.esSistema} isInvalid={!!errors.nombre} {...register('nombre')} />
+              {area?.esSistema && <SistemaNote />}
               <Form.Control.Feedback type="invalid">{errors.nombre?.message}</Form.Control.Feedback>
             </Col>
             <Col md={4}>
@@ -192,7 +194,7 @@ export const AreaFormModal: React.FC<AreaModalProps> = ({ show, area, users, onH
             </Col>
             <Col xs={12}>
               <div className="d-flex align-items-center gap-1">
-                <Form.Check type="switch" id="area-activa" label="Área activa" {...register('activa')} />
+                <Form.Check type="switch" id="area-activa" label="Área activa" disabled={!!area?.esSistema} {...register('activa')} />
                 <ReqHelp id="area.activa" className="ms-0" />
               </div>
             </Col>
@@ -266,7 +268,16 @@ const AreasPage: React.FC = () => {
 
   const columns = [
     { key: 'codigo', label: 'Código', render: (a: Area) => <span className="fw-semibold">{a.codigo}</span> },
-    { key: 'nombre', label: 'Nombre' },
+    {
+      key: 'nombre',
+      label: 'Nombre',
+      render: (a: Area) => (
+        <>
+          {a.nombre}
+          <SistemaBadge esSistema={a.esSistema} />
+        </>
+      ),
+    },
     {
       key: 'jefes',
       label: 'Jefes',
@@ -366,7 +377,14 @@ const AreasPage: React.FC = () => {
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="outline-danger" title="Eliminar" aria-label={`Eliminar ${row.nombre}`} onClick={() => setToDelete(row)}>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          title={row.esSistema ? SISTEMA_HINT : 'Eliminar'}
+                          aria-label={`Eliminar ${row.nombre}`}
+                          disabled={!!row.esSistema}
+                          onClick={() => setToDelete(row)}
+                        >
                           <FaTrash />
                         </Button>
                       )}

@@ -1,5 +1,5 @@
 import type { PaginationInfo } from './api.types';
-import type { TenantType } from './tenantCapabilities.types';
+import type { TenantCapabilities, TenantType } from './tenantCapabilities.types';
 
 // Status values for a platform-managed tenant
 export type TenantStatus = 'active' | 'suspended' | 'closed';
@@ -82,6 +82,11 @@ export interface CreatedAdminInfo {
   tenantId: string;
 }
 
+/** Seeding summary returned when the requisitions module was just activated (counts of created records). */
+export type RequisicionesDefaultsResult =
+  | { tipos: number; areas: number; regla: number; presupuesto: number; error?: undefined }
+  | { error: true };
+
 // One-time create response — temporaryPassword never returned again
 export interface CreateTenantWithAdminResponse {
   tenant: PlatformTenant;
@@ -89,6 +94,7 @@ export interface CreateTenantWithAdminResponse {
   temporaryPassword: string;
   /** True when the backend successfully dispatched the credentials email (E3) */
   emailSent?: boolean;
+  requisicionesDefaults?: RequisicionesDefaultsResult;
 }
 
 // Payload for the suspend endpoint
@@ -133,3 +139,8 @@ export interface WizardFormData {
   admin: CreateTenantWithAdminInput['admin'];
   logoFile?: File;
 }
+
+/** PATCH /platform/tenants/:id/capabilities response: capabilities plus the seeding summary when attempted. */
+export type UpdateTenantCapabilitiesResponse = TenantCapabilities & {
+  requisicionesDefaults?: RequisicionesDefaultsResult;
+};
