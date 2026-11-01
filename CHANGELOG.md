@@ -1,3 +1,10 @@
+# [1.31.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.30.0...v1.31.0) (2026-11-01)
+
+
+### Features
+
+* **requisiciones:** seed protected default data when the module is enabled for a tenant ([e1e4d63](https://github.com/tintindavid/TimttoFrontend/commit/e1e4d6325b9b5d47c91a2af7d002b46806961f42))
+
 # [1.30.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.29.1...v1.30.0) (2026-10-31)
 
 
