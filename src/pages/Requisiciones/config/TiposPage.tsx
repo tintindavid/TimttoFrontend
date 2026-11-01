@@ -22,6 +22,7 @@ import type { TipoRequisicion } from '@/types/requisicion.types';
 import { getRequisicionErrorMessage } from '@/utils/requisicionErrors';
 import ConfigNav from './ConfigNav';
 import ReqHelp from '../help/ReqHelp';
+import { SISTEMA_HINT, SistemaBadge, SistemaNote } from './SistemaBadge';
 
 const PAGE_SIZE = 20;
 
@@ -112,7 +113,8 @@ export const TipoFormModal: React.FC<ModalProps> = ({ show, tipo, onHide }) => {
           <Row className="g-3">
             <Col md={8}>
               <Form.Label htmlFor="tipo-nombre">Nombre *</Form.Label>
-              <Form.Control id="tipo-nombre" maxLength={120} isInvalid={!!errors.nombre} {...register('nombre')} />
+              <Form.Control id="tipo-nombre" maxLength={120} disabled={!!tipo?.esSistema} isInvalid={!!errors.nombre} {...register('nombre')} />
+              {tipo?.esSistema && <SistemaNote />}
               <Form.Control.Feedback type="invalid">{errors.nombre?.message}</Form.Control.Feedback>
             </Col>
             <Col md={4}>
@@ -129,7 +131,7 @@ export const TipoFormModal: React.FC<ModalProps> = ({ show, tipo, onHide }) => {
             </Col>
             <Col xs={12}>
               <div className="d-flex align-items-center gap-1">
-                <Form.Check type="switch" id="tipo-activo" label="Tipo activo" {...register('activo')} />
+                <Form.Check type="switch" id="tipo-activo" label="Tipo activo" disabled={!!tipo?.esSistema} {...register('activo')} />
                 <ReqHelp id="tipo.activo" className="ms-0" />
               </div>
             </Col>
@@ -192,7 +194,16 @@ const TiposPage: React.FC = () => {
 
   const columns = [
     { key: 'codigo', label: 'Código', render: (t: TipoRequisicion) => <span className="fw-semibold">{t.codigo}</span> },
-    { key: 'nombre', label: 'Nombre' },
+    {
+      key: 'nombre',
+      label: 'Nombre',
+      render: (t: TipoRequisicion) => (
+        <>
+          {t.nombre}
+          <SistemaBadge esSistema={t.esSistema} />
+        </>
+      ),
+    },
     { key: 'descripcion', label: 'Descripción', render: (t: TipoRequisicion) => t.descripcion || '—' },
     {
       key: 'activo',
@@ -289,7 +300,14 @@ const TiposPage: React.FC = () => {
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="outline-danger" title="Eliminar" aria-label={`Eliminar ${row.nombre}`} onClick={() => setToDelete(row)}>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          title={row.esSistema ? SISTEMA_HINT : 'Eliminar'}
+                          aria-label={`Eliminar ${row.nombre}`}
+                          disabled={!!row.esSistema}
+                          onClick={() => setToDelete(row)}
+                        >
                           <FaTrash />
                         </Button>
                       )}

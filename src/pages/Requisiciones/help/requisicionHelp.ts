@@ -47,24 +47,25 @@ const HELP = {
     title: 'Áreas',
     body: 'Las áreas representan departamentos de la organización. Cada requisición pertenece a un área y esta aporta sus jefes como aprobadores.',
     relation:
-      'Un área puede tener varios jefes (nivel «Jefe de área» de las reglas) y presupuestos propios. Se puede asignar un área a cada usuario para que se proponga al crear una requisición.',
+      'Un área puede tener varios jefes (nivel «Jefe de área» de las reglas) y presupuestos propios. Se puede asignar un área a cada usuario para que se proponga al crear una requisición. Las áreas «Por defecto» no se eliminan, desactivan ni renombran; asígnales jefes, pues sin jefes no se puede aprobar.',
   },
   'pagina.tipos': {
     title: 'Tipos de requisición',
     body: 'Clasifican las requisiciones (por ejemplo repuestos, papelería o servicios). Se elige al crearla.',
-    relation: 'El tipo no se puede cambiar después de crear la requisición. Aparece como filtro del listado y en el detalle.',
+    relation:
+      'El tipo no se puede cambiar después de crear la requisición. Aparece como filtro del listado y en el detalle. Los tipos «Por defecto» no se eliminan, desactivan ni renombran.',
   },
   'pagina.reglas': {
     title: 'Reglas de aprobación',
     body: 'Cada regla es un nivel de aprobación. Al enviar una requisición se suman todos los niveles activos cuyo «monto desde» sea menor o igual a su monto estimado.',
     relation:
-      'Ejemplo: Jefe de área desde 0 y Dirección desde 5.000.000; una requisición de 7.000.000 pasa por ambos, una de 1.000.000 solo por el primero. Los niveles se congelan al enviar: cambiar la regla después no afecta las que ya están en aprobación.',
+      'Ejemplo: Jefe de área desde 0 y Dirección desde 5.000.000; una requisición de 7.000.000 pasa por ambos, una de 1.000.000 solo por el primero. Los niveles se congelan al enviar: cambiar la regla después no afecta las que ya están en aprobación. Atención: la regla «Jefe de área» por defecto no tiene límite superior (aplica a cualquier monto); añade niveles superiores si los necesitas.',
   },
   'pagina.presupuestos': {
     title: 'Presupuestos por área',
     body: 'Define cuánto puede gastar un área en un período (año o mes). Es solo informativo.',
     relation:
-      'El aprobador ve consumido, comprometido y disponible del área dentro del detalle de la requisición, pero el presupuesto nunca bloquea enviar ni aprobar.',
+      'El aprobador ve consumido, comprometido y disponible del área dentro del detalle de la requisición, pero el presupuesto nunca bloquea enviar ni aprobar. El presupuesto de ejemplo (Administración) es del año en curso y solo se ajusta su monto; el próximo año crea uno nuevo.',
   },
   'config.nav': {
     title: 'Secciones de configuración',

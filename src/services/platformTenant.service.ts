@@ -9,7 +9,7 @@ import type {
   UpdateTenantMetadataInput,
   PlatformTenant,
   UpdateTenantCapabilitiesInput,
-  TenantCapabilities,
+  UpdateTenantCapabilitiesResponse,
 } from '@/types';
 
 /**
@@ -86,7 +86,7 @@ export class PlatformTenantService {
   static async updateCapabilities(
     id: string,
     input: UpdateTenantCapabilitiesInput
-  ): Promise<TenantCapabilities> {
+  ): Promise<UpdateTenantCapabilitiesResponse> {
     const response = await api.patch(`/platform/tenants/${id}/capabilities`, input);
     return response.data.data;
   }

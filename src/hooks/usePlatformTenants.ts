@@ -8,6 +8,7 @@ import type {
   SuspendTenantInput,
   UpdateTenantCapabilitiesInput,
 } from '@/types';
+import { notifyRequisicionesDefaults } from '@/utils/requisicionDefaultsToast';
 
 /**
  * SuperAdmin queries don't filter by tenantId (cross-tenant scope).
@@ -48,8 +49,9 @@ export const useCreateTenantWithAdmin = () => {
   return useMutation(
     (input: CreateTenantWithAdminInput) => PlatformTenantService.createWithAdmin(input),
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         qc.invalidateQueries(['platform-tenants']);
+        notifyRequisicionesDefaults(data.requisicionesDefaults);
       },
       onError: (err: unknown) => {
         // reason: axios error shape not exposed by tanstack-query generics
@@ -100,11 +102,12 @@ export const useUpdateTenantCapabilities = () => {
     ({ id, input }: { id: string; input: UpdateTenantCapabilitiesInput }) =>
       PlatformTenantService.updateCapabilities(id, input),
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
         qc.invalidateQueries(['platform-tenants']);
         // View-as sessions of that tenant must refetch their menu flags.
         qc.invalidateQueries(['tenant-capabilities']);
         toast.success('Capacidades actualizadas');
+        notifyRequisicionesDefaults(data.requisicionesDefaults);
       },
     }
   );

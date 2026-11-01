@@ -30,6 +30,7 @@ import { getApiErrorCode, getReglaConflictMessages, getRequisicionErrorMessage }
 import { findReglaConflicts, formatMoney, refId, userRefName, warningText } from '@/utils/requisicion.utils';
 import ConfigNav from './ConfigNav';
 import ReqHelp from '../help/ReqHelp';
+import { SISTEMA_HINT, SistemaBadge, SistemaNote } from './SistemaBadge';
 
 const APROBADOR_TIPO_OPTIONS: Array<{ value: AprobadorTipo; label: string }> = [
   { value: 'jefe_area', label: 'Jefe del área de la requisición' },
@@ -252,7 +253,8 @@ export const ReglaFormModal: React.FC<ModalProps> = ({ show, regla, allReglas, u
             </Col>
             <Col md={10}>
               <Form.Label htmlFor="regla-nombre">Nombre *</Form.Label>
-              <Form.Control id="regla-nombre" maxLength={120} isInvalid={!!errors.nombre} {...register('nombre')} />
+              <Form.Control id="regla-nombre" maxLength={120} disabled={!!regla?.esSistema} isInvalid={!!errors.nombre} {...register('nombre')} />
+              {regla?.esSistema && <SistemaNote />}
               <Form.Control.Feedback type="invalid">{errors.nombre?.message}</Form.Control.Feedback>
             </Col>
             <Col md={6}>
@@ -328,7 +330,7 @@ export const ReglaFormModal: React.FC<ModalProps> = ({ show, regla, allReglas, u
             )}
             <Col xs={12}>
               <div className="d-flex align-items-center gap-1">
-                <Form.Check type="switch" id="regla-activo" label="Nivel activo" {...register('activo')} />
+                <Form.Check type="switch" id="regla-activo" label="Nivel activo" disabled={!!regla?.esSistema} {...register('activo')} />
                 <ReqHelp id="regla.activa" className="ms-0" />
               </div>
             </Col>
@@ -401,7 +403,16 @@ const ReglasPage: React.FC = () => {
 
   const columns = [
     { key: 'orden', label: 'Orden', render: (r: ReglaAprobacion) => <span className="fw-semibold">{r.orden}</span> },
-    { key: 'nombre', label: 'Nombre' },
+    {
+      key: 'nombre',
+      label: 'Nombre',
+      render: (r: ReglaAprobacion) => (
+        <>
+          {r.nombre}
+          <SistemaBadge esSistema={r.esSistema} />
+        </>
+      ),
+    },
     {
       key: 'rango',
       label: 'Rango de monto',
@@ -517,7 +528,14 @@ const ReglasPage: React.FC = () => {
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="outline-danger" title="Eliminar" aria-label={`Eliminar ${row.nombre}`} onClick={() => setToDelete(row)}>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          title={row.esSistema ? SISTEMA_HINT : 'Eliminar'}
+                          aria-label={`Eliminar ${row.nombre}`}
+                          disabled={!!row.esSistema}
+                          onClick={() => setToDelete(row)}
+                        >
                           <FaTrash />
                         </Button>
                       )}

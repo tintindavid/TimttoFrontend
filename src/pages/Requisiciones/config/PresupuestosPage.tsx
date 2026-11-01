@@ -25,6 +25,7 @@ import { getRequisicionErrorMessage } from '@/utils/requisicionErrors';
 import { catalogName, formatMoney, refId } from '@/utils/requisicion.utils';
 import ConfigNav from './ConfigNav';
 import ReqHelp from '../help/ReqHelp';
+import { SISTEMA_HINT, SistemaBadge, SistemaNote } from './SistemaBadge';
 
 const PAGE_SIZE = 20;
 const DEFAULT_THRESHOLD = 80;
@@ -166,6 +167,7 @@ export const PresupuestoFormModal: React.FC<ModalProps> = ({ show, presupuesto, 
                   </option>
                 ))}
               </Form.Select>
+              {presupuesto?.esSistema && <SistemaNote text="Presupuesto por defecto: el área y el período no se pueden cambiar." />}
               <Form.Control.Feedback type="invalid">{errors.areaId?.message}</Form.Control.Feedback>
             </Col>
             <Col md={4}>
@@ -260,7 +262,16 @@ const PresupuestosPage: React.FC = () => {
   };
 
   const columns = [
-    { key: 'area', label: 'Área', render: (p: PresupuestoArea) => areaName(p) },
+    {
+      key: 'area',
+      label: 'Área',
+      render: (p: PresupuestoArea) => (
+        <>
+          {areaName(p)}
+          <SistemaBadge esSistema={p.esSistema} />
+        </>
+      ),
+    },
     { key: 'periodo', label: 'Período', render: (p: PresupuestoArea) => <span className="fw-semibold">{p.periodo}</span> },
     { key: 'monto', label: 'Monto', render: (p: PresupuestoArea) => <span className="text-nowrap">{formatMoney(p.monto, p.moneda)}</span> },
     { key: 'umbral', label: 'Alerta', render: (p: PresupuestoArea) => `${p.umbralAlerta ?? DEFAULT_THRESHOLD}%` },
@@ -362,7 +373,14 @@ const PresupuestosPage: React.FC = () => {
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="outline-danger" title="Eliminar" aria-label={`Eliminar presupuesto ${row.periodo}`} onClick={() => setToDelete(row)}>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          title={row.esSistema ? SISTEMA_HINT : 'Eliminar'}
+                          aria-label={`Eliminar presupuesto ${row.periodo}`}
+                          disabled={!!row.esSistema}
+                          onClick={() => setToDelete(row)}
+                        >
                           <FaTrash />
                         </Button>
                       )}
