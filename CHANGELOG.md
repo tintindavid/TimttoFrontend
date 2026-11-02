@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.31.0...v1.32.0) (2026-11-02)
+
+
+### Features
+
+* **requisiciones:** add supplier tendering, public quotation portal and winner selection (E3) ([6db053b](https://github.com/tintindavid/TimttoFrontend/commit/6db053bb4effe45b1f8561f39861fc84732d1227))
+
 # [1.31.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.30.0...v1.31.0) (2026-11-01)
 
 
