@@ -47,7 +47,7 @@ const RepuestosSolicitadosPage: React.FC = () => {
     search,
     ...(usesRequisiciones && requisicionEstado ? { requisicionEstado } : {}),
   });
-  const customersQuery = useCustomers({ page: 1, limit: 200 }, { enabled: managesCustomers });
+  const customersQuery = useCustomers({ page: 1, limit: 100 }, { enabled: managesCustomers });
   const updateMutation = useUpdateRepuesto();
   const createOtMutation = useCreateOtFromRepuestos();
 

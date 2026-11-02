@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Badge, Button, Card, ListGroup, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, ListGroup, Table } from 'react-bootstrap';
 import { useAuth } from '@/context/AuthContext';
 import { PERMISSIONS } from '@/constants/permissions';
 import { useCurrentUserPermissions } from '@/hooks/usePermission';
@@ -10,6 +10,7 @@ import {
   type RequisicionLinea,
 } from '@/types/requisicion.types';
 import {
+  LICITACION_ABIERTA_ESTADOS,
   RECEIVABLE_ESTADOS,
   canCerrarLinea,
   cantidadPendienteRecepcion,
@@ -46,6 +47,7 @@ const RecepcionPanel: React.FC<Props> = ({ requisicion }) => {
   const [recepcionAConfirmar, setRecepcionAConfirmar] = useState<Recepcion | null>(null);
 
   const receivable = RECEIVABLE_ESTADOS.includes(requisicion.estado);
+  const licitacionAbierta = LICITACION_ABIERTA_ESTADOS.includes(requisicion.estado);
   const hasPending = requisicion.lineas.some((l) => cantidadPendienteRecepcion(l) > 0);
   const canRegistrar = receivable && canReceive && hasPending;
   const recepciones = [...(requisicion.recepciones ?? [])].sort(
@@ -72,6 +74,12 @@ const RecepcionPanel: React.FC<Props> = ({ requisicion }) => {
         )}
       </Card.Header>
       <Card.Body>
+        {licitacionAbierta && (
+          <Alert variant="info" className="py-2" data-testid="recepcion-licitacion-abierta">
+            La requisición tiene una licitación en curso: no se puede registrar recepción hasta seleccionar un ganador.
+            <ReqHelp id="recepcion.licitacionAbierta" />
+          </Alert>
+        )}
         <div className="text-muted small text-uppercase mb-2">
           Estado por línea
           <ReqHelp id="recepcion.lineas" />

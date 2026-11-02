@@ -8,6 +8,15 @@ import {
   FaExclamationTriangle,
   FaLock,
   FaEdit,
+  FaEnvelope,
+  FaFileInvoiceDollar,
+  FaGavel,
+  FaHandshake,
+  FaThumbsDown,
+  FaThumbsUp,
+  FaTrophy,
+  FaUserMinus,
+  FaUserPlus,
   FaTrash,
   FaUserEdit,
   FaPaperPlane,
@@ -40,6 +49,9 @@ export const ESTADO_VARIANT: Record<RequisicionEstado, BadgeVariant> = {
   Enviada: 'info',
   En_Aprobacion: 'warning',
   Aprobada: 'success',
+  En_Licitacion: 'info',
+  Cotizacion_Recibida: 'primary',
+  Adjudicada: 'success',
   En_Recepcion: 'primary',
   Cerrada: 'dark',
   Rechazada: 'danger',
@@ -80,6 +92,18 @@ export const EVENT_META: Record<string, EventMeta> = {
   LINEA_CANCELADA: { label: 'Línea cancelada', icon: FaBan, variant: 'dark' },
   CERRADA: { label: 'Requisición cerrada', icon: FaCheckCircle, variant: 'success' },
   ELIMINADA: { label: 'Requisición eliminada', icon: FaTrash, variant: 'dark' },
+  FECHA_LIMITE_AMPLIADA: { label: 'Fecha límite ampliada', icon: FaEdit, variant: 'info' },
+  PROVEEDOR_ASIGNADO: { label: 'Proveedor asignado', icon: FaUserPlus, variant: 'secondary' },
+  PROVEEDOR_QUITADO: { label: 'Proveedor retirado', icon: FaUserMinus, variant: 'warning' },
+  LICITACION_INICIADA: { label: 'Licitación iniciada', icon: FaGavel, variant: 'info' },
+  INVITACIONES_ENVIADAS: { label: 'Invitaciones enviadas', icon: FaEnvelope, variant: 'info' },
+  INVITACION_ACEPTADA: { label: 'Invitación aceptada', icon: FaThumbsUp, variant: 'success' },
+  INVITACION_RECHAZADA: { label: 'Invitación rechazada', icon: FaThumbsDown, variant: 'danger' },
+  COTIZACION_RECIBIDA: { label: 'Cotización recibida', icon: FaFileInvoiceDollar, variant: 'primary' },
+  COTIZACIONES_CERRADAS: { label: 'Cotizaciones cerradas', icon: FaLock, variant: 'primary' },
+  PROVEEDOR_SELECCIONADO: { label: 'Proveedor seleccionado', icon: FaTrophy, variant: 'success' },
+  PROVEEDOR_DESCARTADO: { label: 'Proveedor descartado', icon: FaTimes, variant: 'dark' },
+  COMPRA_DIRECTA_JUSTIFICADA: { label: 'Compra directa justificada', icon: FaHandshake, variant: 'warning' },
 };
 
 export const getEventMeta = (tipo: string): EventMeta =>
@@ -248,10 +272,20 @@ export const LINEA_ESTADO_VARIANT: Record<string, BadgeVariant> = {
 };
 
 /** States of a requisicion that show the reception panel. */
-export const RECEPTION_PANEL_ESTADOS: RequisicionEstado[] = ['Aprobada', 'En_Recepcion', 'Cerrada'];
+export const RECEPTION_PANEL_ESTADOS: RequisicionEstado[] = [
+  'Aprobada',
+  'En_Licitacion',
+  'Cotizacion_Recibida',
+  'Adjudicada',
+  'En_Recepcion',
+  'Cerrada',
+];
+
+/** States where a licitacion is open: reception is blocked until a winner is chosen (backend 409 LICITACION_ABIERTA). */
+export const LICITACION_ABIERTA_ESTADOS: RequisicionEstado[] = ['En_Licitacion', 'Cotizacion_Recibida'];
 
 /** States in which a reception can still be registered. */
-export const RECEIVABLE_ESTADOS: RequisicionEstado[] = ['Aprobada', 'En_Recepcion'];
+export const RECEIVABLE_ESTADOS: RequisicionEstado[] = ['Aprobada', 'Adjudicada', 'En_Recepcion'];
 
 export const lineaEstadoOf = (l: Pick<RequisicionLinea, 'estadoLinea'>): string => l.estadoLinea || 'Pendiente';
 
@@ -312,6 +346,17 @@ export const itemsConfirmables = (
 };
 
 /** True only for absolute https URLs; blocks javascript:, data:, http: and malformed values. */
+/** https only and without embedded credentials (`https://trusted@evil`): safe to render as a clickable link. */
+export const isSafeHttpsUrl = (url?: string | null): boolean => {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && !parsed.username && !parsed.password;
+  } catch {
+    return false;
+  }
+};
+
 export const isHttpsUrl = (url?: string | null): boolean => {
   if (!url) return false;
   try {

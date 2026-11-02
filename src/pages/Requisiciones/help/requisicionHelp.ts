@@ -410,6 +410,18 @@ const HELP = {
     title: 'En recepción',
     body: 'Ya se registró al menos una recepción. Pasa a Cerrada cuando todas las líneas quedan confirmadas o canceladas.',
   },
+  'estado.En_Licitacion': {
+    title: 'En licitación',
+    body: 'Se invitó a los proveedores a cotizar y la fecha límite sigue abierta. Mientras tanto no se puede registrar recepción.',
+  },
+  'estado.Cotizacion_Recibida': {
+    title: 'Cotización recibida',
+    body: 'Se cerraron las cotizaciones. Falta que un comprador compare las ofertas y seleccione al proveedor ganador.',
+  },
+  'estado.Adjudicada': {
+    title: 'Adjudicada',
+    body: 'Ya hay un proveedor ganador (por licitación o compra directa). Desde aquí se registra la recepción.',
+  },
   'estado.Cerrada': {
     title: 'Cerrada',
     body: 'Todo lo pedido fue confirmado o cancelado: la entrega se dio por satisfecha. Es un estado final.',
@@ -459,6 +471,18 @@ const HELP = {
     body: 'Todas las líneas activas quedaron confirmadas o canceladas: la entrega se dio por satisfecha.',
   },
   'evento.ELIMINADA': { title: 'Requisición eliminada', body: 'El borrador fue eliminado.' },
+  'evento.FECHA_LIMITE_AMPLIADA': { title: 'Fecha límite ampliada', body: 'Un comprador cambió la fecha límite para cotizar mientras la licitación seguía abierta.' },
+  'evento.PROVEEDOR_ASIGNADO': { title: 'Proveedor asignado', body: 'Un comprador agregó un proveedor del catálogo para que cotice.' },
+  'evento.PROVEEDOR_QUITADO': { title: 'Proveedor retirado', body: 'Se quitó un proveedor de la licitación; su enlace deja de funcionar.' },
+  'evento.LICITACION_INICIADA': { title: 'Licitación iniciada', body: 'Se abrió la licitación con su fecha límite de cotización.' },
+  'evento.INVITACIONES_ENVIADAS': { title: 'Invitaciones enviadas', body: 'Se enviaron (o reenviaron) correos con el enlace del portal a los proveedores.' },
+  'evento.INVITACION_ACEPTADA': { title: 'Invitación aceptada', body: 'Un proveedor confirmó que participará en la licitación.' },
+  'evento.INVITACION_RECHAZADA': { title: 'Invitación rechazada', body: 'Un proveedor indicó que no participará.' },
+  'evento.COTIZACION_RECIBIDA': { title: 'Cotización recibida', body: 'Un proveedor envió su cotización por el portal o un comprador la registró.' },
+  'evento.COTIZACIONES_CERRADAS': { title: 'Cotizaciones cerradas', body: 'Se dejó de recibir ofertas y la requisición pasó a comparación.' },
+  'evento.PROVEEDOR_SELECCIONADO': { title: 'Proveedor seleccionado', body: 'Se eligió al ganador de la licitación. La decisión es irreversible.' },
+  'evento.PROVEEDOR_DESCARTADO': { title: 'Proveedor descartado', body: 'Al elegir ganador, los demás proveedores quedaron descartados.' },
+  'evento.COMPRA_DIRECTA_JUSTIFICADA': { title: 'Compra directa justificada', body: 'Se adjudicó a un proveedor sin licitar, con una justificación registrada.' },
 
   // ---------------------------------------------------------------- E2: solicitudes de repuestos
   'solicitudes.hacerRequisicion': {
@@ -604,8 +628,52 @@ const HELP = {
   },
   'guia.fases': {
     title: '9. Próximas fases',
-    body: 'Después de la recepción y la confirmación vendrán almacén y vales de salida, compras y licitación, orden de compra y reportes.',
-    relation: 'Almacén, compras y órdenes de compra aún no están disponibles.',
+    body: 'La licitación con proveedores ya está disponible. Después vendrán almacén y vales de salida, orden de compra y reportes.',
+    relation: 'Almacén y órdenes de compra aún no están disponibles.',
+  },
+  'licitacion.panel': {
+    title: 'Compras y licitación',
+    body: 'Aquí el comprador asigna proveedores, los invita a cotizar por correo, compara ofertas y elige al ganador.',
+    relation: 'Es opcional: una requisición aprobada también puede ir directo a recepción o a compra directa. La adjudicación habilita la recepción.',
+  },
+  'licitacion.proveedores': {
+    title: 'Proveedores de la licitación',
+    body: 'Lista de proveedores del catálogo de terceros invitados, con el correo de envío y su estado. Se necesitan al menos dos para abrir.',
+    relation: 'Cada proveedor recibe un enlace único. Reenviar genera un enlace nuevo y el anterior deja de servir.',
+  },
+  'licitacion.comparativo': {
+    title: 'Comparativo de cotizaciones',
+    body: 'Muestra lado a lado las ofertas. Resalta la más económica solo si todas traen valor y están en la misma moneda.',
+    relation: 'Es informativo: la decisión es humana. Los proveedores nunca ven las ofertas de los demás.',
+  },
+  'accion.abrirLicitacion': {
+    title: 'Abrir licitación',
+    body: 'Envía la invitación por correo a cada proveedor con un enlace al portal y fija la fecha límite para cotizar.',
+    relation: 'Pasa la requisición a En licitación. Si algún correo falla, ese proveedor queda pendiente y puedes reenviarlo.',
+  },
+  'accion.cerrarCotizaciones': {
+    title: 'Cerrar cotizaciones',
+    body: 'Deja de recibir ofertas y pasa a la comparación. Requiere al menos una cotización.',
+    relation: 'También se cierra sola cuando todos los proveedores activos respondieron o rechazaron.',
+  },
+  'accion.ampliarFecha': {
+    title: 'Ampliar fecha límite',
+    body: 'Cambia el plazo para cotizar mientras la licitación está abierta; debe ser una fecha futura de máximo 90 días.',
+    relation: 'Útil si el plazo venció sin cotizaciones o los proveedores piden más tiempo.',
+  },
+  'accion.seleccionarGanador': {
+    title: 'Seleccionar ganador',
+    body: 'Adjudica la requisición al proveedor elegido y descarta a los demás. No se puede deshacer.',
+    relation: 'Requiere el permiso de seleccionar ganador. Después se puede registrar la recepción.',
+  },
+  'accion.compraDirecta': {
+    title: 'Compra directa',
+    body: 'Adjudica a un proveedor sin licitar, con una justificación de al menos 20 caracteres que queda en el historial.',
+    relation: 'No puedes registrarla sobre tu propia requisición (separación de funciones).',
+  },
+  'recepcion.licitacionAbierta': {
+    title: 'Recepción bloqueada',
+    body: 'Mientras la licitación esté abierta no se puede registrar recepción; primero hay que seleccionar un ganador.',
   },
   'modulo.permisos': {
     title: 'Quién puede hacer qué',
@@ -663,6 +731,9 @@ export const ESTADO_HELP_IDS: HelpId[] = [
   'estado.Enviada',
   'estado.En_Aprobacion',
   'estado.Aprobada',
+  'estado.En_Licitacion',
+  'estado.Cotizacion_Recibida',
+  'estado.Adjudicada',
   'estado.En_Recepcion',
   'estado.Cerrada',
   'estado.Rechazada',

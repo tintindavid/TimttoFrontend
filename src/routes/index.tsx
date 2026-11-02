@@ -76,6 +76,7 @@ import PortalLayout from '@/pages/Portal/PortalLayout';
 import PortalHome from '@/pages/Portal/PortalHome';
 import PortalSheetsHistory from '@/pages/Portal/PortalSheetsHistory';
 import RemoteSignPage from '@/pages/RemoteSign/RemoteSignPage';
+import PublicRequisicionPage from '@/pages/PublicRequisicion/PublicRequisicionPage';
 import SheetDownloadPage from '@/pages/SheetDownload/SheetDownloadPage';
 import NotificationsPage from '@/pages/Notifications/NotificationsPage';
 import NotificationsSettingsPage from '@/pages/Settings/NotificationsSettingsPage';
@@ -120,6 +121,9 @@ const AppRoutes: React.FC = () => {
       {/* Remote sheet-sign — public opaque-token-gated single-sheet signing.
           Own minimal layout inside the page component; no PortalLayout. */}
       <Route path="/firma/:token" element={<RemoteSignPage />} />
+
+      {/* Supplier portal (E3): public opaque-token-gated quotation page. No menus, no session, no tenant branding. */}
+      <Route path="/public/requisicion/:token" element={<PublicRequisicionPage />} />
 
       {/* Sheet-download share link — public opaque-token-gated download of a
           signed HT (and optionally its reports ZIP). Minimal layout. */}
