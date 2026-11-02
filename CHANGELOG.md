@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.32.0...v1.33.0) (2026-11-02)
+
+
+### Features
+
+* **requisiciones:** add "Mi historial" tab and self-scoped read access for participants ([0e01f08](https://github.com/tintindavid/TimttoFrontend/commit/0e01f08eeddfbee158baff00b591f338faf5e4a4))
+
 # [1.32.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.31.0...v1.32.0) (2026-11-02)
 
 
