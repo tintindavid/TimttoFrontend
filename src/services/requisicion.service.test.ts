@@ -16,7 +16,8 @@ describe('requisicionService contract with the backend', () => {
     await requisicionService.list({
       page: 1,
       limit: 20,
-      vista: 'mias',
+      vista: 'mi-historial',
+      accion: 'aprobe',
       search: 'x',
       estado: 'Aprobada',
       areaId: 'a1',

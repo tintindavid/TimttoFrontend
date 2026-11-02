@@ -538,6 +538,16 @@ const HELP = {
     body: 'Requisiciones con entregas registradas que esperan tu confirmación de que lo recibiste.',
     relation: 'Confirmar deja la solicitud disponible; si algo no llegó o llegó incompleto, queda en disputa.',
   },
+  'pagina.miHistorial': {
+    title: 'Mi historial',
+    body: 'Requisiciones en las que ya actuaste (aprobaste, rechazaste, recibiste, confirmaste, creaste o adjudicaste), incluso si ya están cerradas o canceladas.',
+    relation: 'La ven todos y se ordena por tu última acción, la más reciente primero. Abre una fila para ver el detalle.',
+  },
+  'filtro.miHistorial': {
+    title: 'Filtrar por tu acción',
+    body: 'Muestra solo las requisiciones donde hiciste esa acción: Aprobé, Rechacé, Recibí, Confirmé, Creé o Adjudiqué. «Todo» las incluye todas.',
+    relation: 'Se combina con la búsqueda y los filtros de estado, área, tipo y fechas. Al cambiarlo vuelves a la primera página.',
+  },
   'recepcion.panel': {
     title: 'Panel de recepción',
     body: 'Muestra lo pedido, lo recibido y lo confirmado por línea, y el historial de recepciones con sus evidencias.',
