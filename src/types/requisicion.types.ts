@@ -20,7 +20,58 @@ export type RequisicionEstado =
   | 'Rechazada'
   | 'Cancelada';
 
-export type RequisicionVista = 'mias' | 'por-aprobar' | 'por-recibir' | 'por-confirmar';
+export type RequisicionVista = 'mias' | 'por-aprobar' | 'por-recibir' | 'por-confirmar' | 'mi-historial';
+
+/** Filter of the "Mi historial" view: which kind of own action to look for. */
+export type RequisicionAccionHistorial =
+  | 'todo'
+  | 'aprobe'
+  | 'rechace'
+  | 'recibi'
+  | 'confirme'
+  | 'cree'
+  | 'adjudique';
+
+export const REQUISICION_ACCIONES_HISTORIAL: RequisicionAccionHistorial[] = [
+  'todo',
+  'aprobe',
+  'rechace',
+  'recibi',
+  'confirme',
+  'cree',
+  'adjudique',
+];
+
+export const REQUISICION_ACCION_HISTORIAL_LABELS: Record<RequisicionAccionHistorial, string> = {
+  todo: 'Todo',
+  aprobe: 'Aprobé',
+  rechace: 'Rechacé',
+  recibi: 'Recibí',
+  confirme: 'Confirmé',
+  cree: 'Creé',
+  adjudique: 'Adjudiqué',
+};
+
+/** One of the caller's own timeline events, as returned by the "Mi historial" view (newest first, max 5). */
+export interface RequisicionMiActividad {
+  tipo: string;
+  fecha: string;
+  estadoNuevo?: RequisicionEstado | null;
+  nivel?: number | null;
+}
+
+/** Spanish phrase for each own-action event type. */
+export const MI_ACTIVIDAD_LABELS: Record<string, string> = {
+  NIVEL_APROBADO: 'Aprobaste',
+  NIVEL_RECHAZADO: 'Rechazaste',
+  RECHAZADA: 'Rechazaste',
+  RECEPCION_REGISTRADA: 'Registraste una recepción',
+  ENTREGA_CONFIRMADA: 'Confirmaste la entrega',
+  ENTREGA_DISPUTADA: 'Reportaste un problema con la entrega',
+  CREADA: 'Creaste',
+  PROVEEDOR_SELECCIONADO: 'Elegiste al ganador',
+  COMPRA_DIRECTA_JUSTIFICADA: 'Adjudicaste por compra directa',
+};
 
 export type AprobadorTipo = 'jefe_area' | 'rol' | 'usuarios';
 
@@ -264,6 +315,8 @@ export interface Requisicion {
   moneda?: string;
   aprobacion?: RequisicionAprobacion;
   timeline?: RequisicionTimelineEvent[];
+  /** Only in the "Mi historial" view: the caller's own latest events (newest first, max 5). */
+  miActividad?: RequisicionMiActividad[];
   /** Reception history (E2); immutable except for the one-time confirmation of each item. */
   recepciones?: Recepcion[];
   /** Purchasing block (E3): suppliers, deadline and winner. Absent when the requisicion never went to purchasing. */
@@ -303,6 +356,7 @@ export const REQUISICION_QUERY_KEYS = [
   'fechaHasta',
   'search',
   'vista',
+  'accion',
   'sortBy',
   'order',
 ] as const;
@@ -320,6 +374,8 @@ export interface RequisicionQueryParams {
   fechaHasta?: string;
   creadaPor?: string;
   vista?: RequisicionVista;
+  /** Only meaningful with `vista='mi-historial'`. */
+  accion?: RequisicionAccionHistorial;
 }
 
 export interface CancelarRequisicionDto {

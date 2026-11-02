@@ -23,13 +23,17 @@ import { useGetAreas } from '@/hooks/useAreas';
 import { useGetTiposRequisicion } from '@/hooks/useTiposRequisicion';
 import { PERMISSIONS } from '@/constants/permissions';
 import {
+  REQUISICION_ACCIONES_HISTORIAL,
+  REQUISICION_ACCION_HISTORIAL_LABELS,
   REQUISICION_ESTADOS,
   REQUISICION_ESTADO_LABELS,
   type Requisicion,
+  type RequisicionAccionHistorial,
   type RequisicionEstado,
   type RequisicionVista,
 } from '@/types/requisicion.types';
 import { catalogName, formatDate, formatMoney, userRefName } from '@/utils/requisicion.utils';
+import { miActividadLabel } from '@/utils/requisicionHistorial.utils';
 import RequisicionEstadoBadge from './components/RequisicionEstadoBadge';
 import ReqHelp from './help/ReqHelp';
 import GuiaModal from './help/GuiaModal';
@@ -58,7 +62,9 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [accion, setAccion] = useState<RequisicionAccionHistorial>('todo');
   const [showGuia, setShowGuia] = useState(false);
+  const isHistorial = vista === 'mi-historial';
 
   // Debounce the free-text input so the API isn't hit on every keystroke.
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -66,13 +72,14 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
   // Any change that produces a different result set resets the page.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, estado, areaId, tipoId, fechaDesde, fechaHasta, sortDirection, vista]);
+  }, [debouncedSearch, estado, areaId, tipoId, fechaDesde, fechaHasta, sortDirection, vista, accion]);
 
   const queryParams = useMemo(
     () => ({
       page,
       limit: PAGE_SIZE,
       vista,
+      accion: isHistorial ? accion : undefined,
       search: debouncedSearch.trim() || undefined,
       estado: estado || undefined,
       areaId: areaId || undefined,
@@ -82,7 +89,7 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
       sortBy: 'createdAt' as const,
       order: sortDirection,
     }),
-    [page, vista, debouncedSearch, estado, areaId, tipoId, fechaDesde, fechaHasta, sortDirection]
+    [page, vista, isHistorial, accion, debouncedSearch, estado, areaId, tipoId, fechaDesde, fechaHasta, sortDirection]
   );
 
   const { data, isLoading, isFetching, isError } = useGetRequisiciones(queryParams);
@@ -115,11 +122,36 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
     },
     { key: 'estado', label: 'Estado', render: (r: Requisicion) => <RequisicionEstadoBadge estado={r.estado} /> },
     { key: 'createdAt', label: 'Creada', render: (r: Requisicion) => formatDate(r.createdAt) },
+    ...(isHistorial
+      ? [
+          {
+            key: 'miActividad',
+            label: 'Tu acción',
+            render: (r: Requisicion) => {
+              const actividad = r.miActividad ?? [];
+              if (actividad.length === 0) return '—';
+              const extra = actividad.length - 1;
+              return (
+                <span className="text-nowrap">
+                  {miActividadLabel(actividad[0])} · {formatDate(actividad[0].fecha)}
+                  {extra > 0 && (
+                    <span className="badge bg-secondary ms-2" title="Tienes otras acciones recientes en esta requisición">
+                      +{extra}
+                    </span>
+                  )}
+                </span>
+              );
+            },
+          },
+        ]
+      : []),
   ];
 
-  const emptyMessage = hasActiveFilter
+  const emptyMessage = hasActiveFilter || (isHistorial && accion !== 'todo')
     ? 'Ninguna requisición coincide con los filtros.'
-    : vista === 'por-aprobar'
+    : isHistorial
+      ? 'Aún no hay requisiciones en las que hayas actuado.'
+      : vista === 'por-aprobar'
       ? 'No tienes requisiciones pendientes por aprobar.'
       : vista === 'por-recibir'
         ? 'No hay requisiciones pendientes de recibir.'
@@ -141,7 +173,9 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
                     ? 'pagina.porRecibir'
                     : vista === 'por-confirmar'
                       ? 'pagina.porConfirmar'
-                      : 'pagina.listado'
+                      : isHistorial
+                        ? 'pagina.miHistorial'
+                        : 'pagina.listado'
               }
               placement="bottom"
             />
@@ -170,6 +204,12 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
           </Nav.Link>
           <ReqHelp id="pagina.mias" className="ms-0 me-2" />
         </Nav.Item>
+        <Nav.Item className="d-flex align-items-center">
+          <Nav.Link eventKey="mi-historial" onClick={() => navigate('/requisiciones/mi-historial')}>
+            Mi historial
+          </Nav.Link>
+          <ReqHelp id="pagina.miHistorial" className="ms-0 me-2" />
+        </Nav.Item>
         {canApprove && (
           <Nav.Item className="d-flex align-items-center">
             <Nav.Link eventKey="por-aprobar" onClick={() => navigate('/requisiciones/por-aprobar')}>
@@ -193,6 +233,25 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
           <ReqHelp id="pagina.porConfirmar" className="ms-0 me-2" />
         </Nav.Item>
       </Nav>
+
+      {isHistorial && (
+        <div className="d-flex align-items-center gap-1 mb-3">
+          <div className="btn-group flex-wrap" role="group" aria-label="Filtrar por tu acción">
+            {REQUISICION_ACCIONES_HISTORIAL.map((value) => (
+              <Button
+                key={value}
+                size="sm"
+                variant={accion === value ? 'primary' : 'outline-primary'}
+                aria-pressed={accion === value}
+                onClick={() => setAccion(value)}
+              >
+                {REQUISICION_ACCION_HISTORIAL_LABELS[value]}
+              </Button>
+            ))}
+          </div>
+          <ReqHelp id="filtro.miHistorial" className="ms-0" />
+        </div>
+      )}
 
       <Row className="g-2 mb-3">
         <Col md={4} className="d-flex align-items-center gap-1">
@@ -258,11 +317,15 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
         </Col>
         <Col md={6} className="text-md-end d-flex align-items-center justify-content-md-end gap-1">
           <ReqHelp id="filtro.fechas" className="ms-0 me-2" />
-          <Button variant="outline-secondary" onClick={() => setSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}>
-            {sortDirection === 'desc' ? 'Más recientes primero' : 'Más antiguas primero'}
-            {sortDirection === 'desc' ? <FaArrowDown className="ms-2" aria-hidden="true" /> : <FaArrowUp className="ms-2" aria-hidden="true" />}
-          </Button>
-          <ReqHelp id="filtro.orden" className="ms-0" />
+          {!isHistorial && (
+            <>
+              <Button variant="outline-secondary" onClick={() => setSortDirection((p) => (p === 'asc' ? 'desc' : 'asc'))}>
+                {sortDirection === 'desc' ? 'Más recientes primero' : 'Más antiguas primero'}
+                {sortDirection === 'desc' ? <FaArrowDown className="ms-2" aria-hidden="true" /> : <FaArrowUp className="ms-2" aria-hidden="true" />}
+              </Button>
+              <ReqHelp id="filtro.orden" className="ms-0" />
+            </>
+          )}
         </Col>
       </Row>
 

@@ -268,6 +268,7 @@ const AppRoutes: React.FC = () => {
           <Route path="requisiciones/por-aprobar" element={<RequisicionesListPage vista="por-aprobar" />} />
           <Route path="requisiciones/por-recibir" element={<RequisicionesListPage vista="por-recibir" />} />
           <Route path="requisiciones/por-confirmar" element={<RequisicionesListPage vista="por-confirmar" />} />
+          <Route path="requisiciones/mi-historial" element={<RequisicionesListPage vista="mi-historial" />} />
           <Route path="requisiciones/new" element={<RequisicionFormPage />} />
           <Route path="requisiciones/configuracion/areas" element={<AreasPage />} />
           <Route path="requisiciones/configuracion/tipos" element={<TiposRequisicionPage />} />
