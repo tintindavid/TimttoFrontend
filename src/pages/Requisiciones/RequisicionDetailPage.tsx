@@ -29,6 +29,7 @@ import {
 import type { RequisicionAdvertenciaItem } from '@/types/requisicion.types';
 import ApprovalPanel from './components/ApprovalPanel';
 import ReasonModal from './components/ReasonModal';
+import LicitacionPanel from './components/LicitacionPanel';
 import RecepcionPanel from './components/RecepcionPanel';
 import RequisicionEstadoBadge from './components/RequisicionEstadoBadge';
 import RequisicionTimeline from './components/RequisicionTimeline';
@@ -108,6 +109,12 @@ const RequisicionDetailPage: React.FC = () => {
   const canReopen = estado === 'Rechazada' && owner;
   const canCancel = estado !== 'Cancelada' && estado !== 'Cerrada' && has(PERMISSIONS.REQUISICIONES_CANCEL);
   const canDecide = has(PERMISSIONS.REQUISICIONES_APPROVE) && canDecideCurrentLevel(requisicion, user);
+  // Purchasing panel (E3): buyers see it once approved; everyone sees it while a licitacion exists or ran.
+  const canBuy = has(PERMISSIONS.REQUISICIONES_MANAGE_SUPPLIERS) || has(PERMISSIONS.REQUISICIONES_SELECT_WINNER);
+  const showLicitacion =
+    ['En_Licitacion', 'Cotizacion_Recibida', 'Adjudicada'].includes(estado) ||
+    (estado === 'Aprobada' && canBuy) ||
+    (requisicion.licitacion?.proveedores?.length ?? 0) > 0;
   const hasActions = canEdit || canSend || canDelete || canWithdraw || canReopen || canCancel || canDecide;
 
   const run = async (action: () => Promise<unknown>, okMessage: string, errorFallback: string) => {
@@ -365,6 +372,8 @@ const RequisicionDetailPage: React.FC = () => {
               )}
             </Card.Body>
           </Card>
+
+          {showLicitacion && <LicitacionPanel requisicion={requisicion} />}
 
           {RECEPTION_PANEL_ESTADOS.includes(estado) && <RecepcionPanel requisicion={requisicion} />}
 

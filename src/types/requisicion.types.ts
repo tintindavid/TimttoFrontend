@@ -1,4 +1,5 @@
 import type { QueryParams } from './api.types';
+import { LICITACION_ERROR_MESSAGES, type Licitacion } from './licitacion.types';
 
 // ---------------------------------------------------------------------------
 // Requisiciones (premium module `usesRequisiciones`) - epic E1
@@ -11,6 +12,9 @@ export type RequisicionEstado =
   | 'Enviada'
   | 'En_Aprobacion'
   | 'Aprobada'
+  | 'En_Licitacion'
+  | 'Cotizacion_Recibida'
+  | 'Adjudicada'
   | 'En_Recepcion'
   | 'Cerrada'
   | 'Rechazada'
@@ -41,6 +45,9 @@ export const REQUISICION_ESTADOS: RequisicionEstado[] = [
   'Enviada',
   'En_Aprobacion',
   'Aprobada',
+  'En_Licitacion',
+  'Cotizacion_Recibida',
+  'Adjudicada',
   'En_Recepcion',
   'Cerrada',
   'Rechazada',
@@ -53,6 +60,9 @@ export const REQUISICION_ESTADO_LABELS: Record<RequisicionEstado, string> = {
   Enviada: 'Enviada',
   En_Aprobacion: 'En aprobación',
   Aprobada: 'Aprobada',
+  En_Licitacion: 'En licitación',
+  Cotizacion_Recibida: 'Cotización recibida',
+  Adjudicada: 'Adjudicada',
   En_Recepcion: 'En recepción',
   Cerrada: 'Cerrada',
   Rechazada: 'Rechazada',
@@ -256,6 +266,8 @@ export interface Requisicion {
   timeline?: RequisicionTimelineEvent[];
   /** Reception history (E2); immutable except for the one-time confirmation of each item. */
   recepciones?: Recepcion[];
+  /** Purchasing block (E3): suppliers, deadline and winner. Absent when the requisicion never went to purchasing. */
+  licitacion?: Licitacion | null;
   createdAt?: string;
   updatedAt?: string;
   /** Optimistic-concurrency token: approve / reject must send the version of the requisicion that was shown. */
@@ -516,7 +528,7 @@ export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   TRANSICION_INVALIDA: 'La requisición no admite esa acción en su estado actual.',
   ESTADO_NO_EDITABLE: 'La requisición solo puede editarse en estado Borrador.',
   SEPARACION_FUNCIONES:
-    'No puedes aprobar tu propia requisición ni más de un nivel de la misma, ni confirmar una recepción que registraste tú (separación de funciones).',
+    'No puedes aprobar tu propia requisición ni más de un nivel de la misma, ni confirmar una recepción que registraste tú, ni registrar una compra directa de tu propia requisición (separación de funciones).',
   CANTIDAD_EXCEDE: 'La cantidad recibida supera lo solicitado para alguna línea.',
   CANTIDAD_INVALIDA: 'La cantidad indicada no es válida para esta confirmación.',
   NO_ES_RESPONSABLE: 'Solo el responsable de la solicitud puede confirmar esta entrega.',
@@ -577,6 +589,7 @@ export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   INVALID_STATE: 'La acción no se puede realizar en el estado actual.',
   INELIGIBLE_RESPONSABLES: 'Alguno de los responsables seleccionados no es elegible.',
   INVALID_RESPONSABLE_USER_IDS: 'Alguno de los responsables seleccionados no es válido.',
+  ...LICITACION_ERROR_MESSAGES,
 };
 
 /** Spanish labels for the conflicts listed by REGLAS_INCONSISTENTES. */
