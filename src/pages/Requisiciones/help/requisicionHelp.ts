@@ -124,12 +124,12 @@ const HELP = {
   },
   'form.tipo': {
     title: 'Tipo',
-    body: 'Clasifica la requisición. Se elige al crearla.',
+    body: 'Clasifica la requisición. Se elige al crearla. Al hacerla desde solicitudes de repuesto es siempre «Repuestos» y se asigna automáticamente.',
     relation: 'No se puede cambiar después de crearla. Solo aparecen los tipos activos definidos en Configuración > Tipos.',
   },
   'form.area': {
     title: 'Área',
-    body: 'Departamento que hace la solicitud. Se propone tu área si tienes una asignada.',
+    body: 'Departamento que hace la solicitud. Al hacerla desde solicitudes se usa tu área automáticamente; solo eliges el área si no tienes una activa asignada.',
     relation:
       'Determina quiénes son los jefes que aprueban el nivel «Jefe de área» y qué presupuesto se muestra al aprobador. Solo aparecen las áreas activas.',
   },
@@ -513,8 +513,9 @@ const HELP = {
   },
   'hacerReq.lineas': {
     title: 'Líneas precargadas',
-    body: 'Cada solicitud seleccionada se convierte en una línea con su cantidad y precio. Puedes ajustar la cantidad, el precio estimado y la descripción antes de crear.',
-    relation: 'Si la cantidad de la solicitud no era un número, se propone 1 y debes corregirla.',
+    body: 'Cada solicitud seleccionada se convierte en una línea con su cantidad. Puedes ajustar la cantidad y la descripción. El precio de referencia es solo informativo.',
+    relation:
+      '«Sin estimar» indica que no se conoce el precio: esa línea cuenta como 0 en las reglas de aprobación por monto hasta la orden de compra. Si la cantidad no era un número, se propone 1.',
   },
   'hacerReq.crear': {
     title: 'Crear borrador o enviar',

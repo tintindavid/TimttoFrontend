@@ -48,8 +48,8 @@ describe('reception services', () => {
   });
 
   it('createRequisicionFromSolicitudes posts to /repuestos/requisicion and createOt forwards the omission', async () => {
-    await repuestoService.createRequisicionFromSolicitudes({ repuestoIds: ['a'], tipoRequisicionId: 't', areaId: 'ar' });
-    expect(post).toHaveBeenLastCalledWith('/repuestos/requisicion', { repuestoIds: ['a'], tipoRequisicionId: 't', areaId: 'ar' });
+    await repuestoService.createRequisicionFromSolicitudes({ repuestoIds: ['a'], areaId: 'ar' });
+    expect(post).toHaveBeenLastCalledWith('/repuestos/requisicion', { repuestoIds: ['a'], areaId: 'ar' });
     await repuestoService.createOtFromSolicitudes(['a'], {
       responsableUserIds: ['u'],
       fechaInicio: 'x',

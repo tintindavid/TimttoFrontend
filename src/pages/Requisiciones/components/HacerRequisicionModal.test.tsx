@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   navigate: vi.fn(),
   permissions: new Set<string>(['requisiciones:send']),
+  user: { _id: 'u1', areaId: 'a2' } as { _id: string; areaId?: string },
   onHide: vi.fn(),
   onCreated: vi.fn(),
 }));
@@ -17,7 +18,7 @@ vi.mock('react-router-dom', async () => ({
   ...(await vi.importActual<typeof import('react-router-dom')>('react-router-dom')),
   useNavigate: () => mocks.navigate,
 }));
-vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { _id: 'u1', areaId: 'a2' } }) }));
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock('@/hooks/usePermission', () => ({
   useCurrentUserPermissions: () => ({
     has: (p: string) => mocks.permissions.has(p),
@@ -33,16 +34,6 @@ vi.mock('@/hooks/useAreas', () => ({
         { _id: 'a1', nombre: 'Operaciones', activa: true },
         { _id: 'a2', nombre: 'Mantenimiento', activa: true },
         { _id: 'a3', nombre: 'Cerrada', activa: false },
-      ],
-    },
-  }),
-}));
-vi.mock('@/hooks/useTiposRequisicion', () => ({
-  useGetTiposRequisicion: () => ({
-    data: {
-      data: [
-        { _id: 't0', nombre: 'Servicios', codigo: 'SERVICIO', activo: true },
-        { _id: 't1', nombre: 'Repuestos', codigo: 'REPUESTO', activo: true },
       ],
     },
   }),
@@ -77,22 +68,29 @@ describe('HacerRequisicionModal', () => {
     mocks.onHide.mockReset();
     mocks.onCreated.mockReset();
     mocks.permissions = new Set(['requisiciones:send']);
+    mocks.user = { _id: 'u1', areaId: 'a2' };
     vi.mocked(toast.warning).mockClear();
   });
 
-  it('prefills title, type REPUESTO, the user area, the highest priority and the editable lines', async () => {
+  it('prefills title, read-only type and area, the highest priority and the editable lines', () => {
     renderModal();
     expect(screen.getByLabelText('Título *')).toHaveValue('Requisición de 2 repuestos');
-    await waitFor(() => expect(screen.getByRole('combobox', { name: /Tipo \*/ })).toHaveValue('t1'));
-    expect(screen.getByRole('combobox', { name: /Área \*/ })).toHaveValue('a2');
+    expect(screen.getByDisplayValue('Repuestos')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Mantenimiento')).toHaveAttribute('readonly');
+    expect(screen.getByDisplayValue('Repuestos')).toHaveAttribute('readonly');
+    expect(screen.queryByRole('combobox', { name: /Área/ })).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /Prioridad/ })).toHaveValue('Urgente');
     expect(screen.getByLabelText('Cantidad de Filtro')).toHaveValue(2);
-    expect(screen.getByLabelText('Precio estimado de Filtro')).toHaveValue(50);
     expect(screen.getByLabelText('Descripción de Filtro')).toHaveValue('Filtro');
+    // Reference price is read-only; there is no price input nor estimated total.
+    expect(screen.queryByLabelText(/Precio estimado/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hr-total')).not.toBeInTheDocument();
+    expect(screen.getByTestId('hr-precio-0')).toHaveTextContent('50');
+    expect(screen.getByTestId('hr-precio-1')).toHaveTextContent('Sin estimar');
+    expect(screen.getByText(/El valor real lo definen las cotizaciones/)).toBeInTheDocument();
     // A non-numeric quantity defaults to 1 and the user is warned.
     expect(screen.getByLabelText('Cantidad de Bomba')).toHaveValue(1);
     expect(screen.getByText(/«Bomba» no es un número/)).toBeInTheDocument();
-    expect(screen.getByTestId('hr-total')).toHaveTextContent('100');
   });
 
   it('uses the request name in the title for a single request', () => {
@@ -102,22 +100,21 @@ describe('HacerRequisicionModal', () => {
 
   it('creates a draft with the edited lines and navigates to the new requisicion', async () => {
     renderModal();
-    await waitFor(() => expect(screen.getByRole('combobox', { name: /Tipo \*/ })).toHaveValue('t1'));
     const cantidad = screen.getByLabelText('Cantidad de Filtro');
     await userEvent.clear(cantidad);
     await userEvent.type(cantidad, '3');
     await userEvent.click(screen.getByRole('button', { name: 'Crear borrador' }));
 
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
-    expect(mocks.create.mock.calls[0][0]).toMatchObject({
+    // Exact payload: no tipoRequisicionId, areaId or precioEstimado.
+    expect(mocks.create.mock.calls[0][0]).toEqual({
       repuestoIds: ['r1', 'r2'],
-      tipoRequisicionId: 't1',
-      areaId: 'a2',
+      titulo: 'Requisición de 2 repuestos',
       prioridad: 'Urgente',
       enviar: false,
       lineas: [
-        { repuestoId: 'r1', cantidad: 3, precioEstimado: 50, descripcion: 'Filtro' },
-        { repuestoId: 'r2', cantidad: 1, precioEstimado: 0, descripcion: 'Bomba' },
+        { repuestoId: 'r1', cantidad: 3, descripcion: 'Filtro' },
+        { repuestoId: 'r2', cantidad: 1, descripcion: 'Bomba' },
       ],
     });
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/requisiciones/new1'));
@@ -127,7 +124,6 @@ describe('HacerRequisicionModal', () => {
 
   it('requires the justification to create and send, then sends', async () => {
     renderModal();
-    await waitFor(() => expect(screen.getByRole('combobox', { name: /Tipo \*/ })).toHaveValue('t1'));
     await userEvent.click(screen.getByRole('button', { name: 'Crear y enviar a aprobación' }));
     expect(await screen.findByText('La justificación es obligatoria para enviar')).toBeInTheDocument();
     expect(mocks.create).not.toHaveBeenCalled();
@@ -160,7 +156,6 @@ describe('HacerRequisicionModal', () => {
   it('shows the server warnings as toasts', async () => {
     mocks.create.mockResolvedValue({ data: { requisicion: { _id: 'new1' }, advertencias: [{ repuestoId: 'r1', campo: 'cantidad', valorOriginal: '2 und', mensaje: 'Cantidad de «Bomba» ajustada a 1' }] } });
     renderModal();
-    await waitFor(() => expect(screen.getByRole('combobox', { name: /Tipo \*/ })).toHaveValue('t1'));
     await userEvent.click(screen.getByRole('button', { name: 'Crear borrador' }));
     await waitFor(() => expect(toast.warning).toHaveBeenCalledWith('Cantidad de «Bomba» ajustada a 1', expect.anything()));
   });
@@ -168,7 +163,6 @@ describe('HacerRequisicionModal', () => {
   it('shows the Spanish message of SOLICITUD_YA_VINCULADA and stays open', async () => {
     mocks.create.mockRejectedValue({ response: { data: { error: { code: 'SOLICITUD_YA_VINCULADA' } } } });
     renderModal();
-    await waitFor(() => expect(screen.getByRole('combobox', { name: /Tipo \*/ })).toHaveValue('t1'));
     await userEvent.click(screen.getByRole('button', { name: 'Crear borrador' }));
     expect(await screen.findByText('Alguna de las solicitudes ya pertenece a otra requisición.')).toBeInTheDocument();
     expect(mocks.navigate).not.toHaveBeenCalled();

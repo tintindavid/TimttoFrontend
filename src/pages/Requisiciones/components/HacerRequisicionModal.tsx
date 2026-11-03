@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner, Table } from 'react-bootstrap';
 import { useFieldArray, useForm, type Resolver } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -11,10 +11,9 @@ import { PERMISSIONS } from '@/constants/permissions';
 import { useGetAreas } from '@/hooks/useAreas';
 import { useCurrentUserPermissions } from '@/hooks/usePermission';
 import { useCreateRequisicionFromSolicitudes } from '@/hooks/useRepuestos';
-import { useGetTiposRequisicion } from '@/hooks/useTiposRequisicion';
 import { REQUISICION_PRIORIDADES, type RequisicionPrioridad } from '@/types/requisicion.types';
 import { getApiErrorCode, getRequisicionErrorMessage } from '@/utils/requisicionErrors';
-import { computeMontoTotal, formatMoney, refId } from '@/utils/requisicion.utils';
+import { formatMoney, refId } from '@/utils/requisicion.utils';
 import ReqHelp from '../help/ReqHelp';
 
 /** The fields of a spare-part request that the modal needs. */
@@ -38,13 +37,14 @@ interface LineaValues {
   repuestoId: string;
   nombre: string;
   cantidad: number;
-  precioEstimado: number;
+  /** Read-only reference price taken from the request (0 = unknown). */
+  precioReferencia: number;
   descripcion: string;
 }
 
 interface FormValues {
   titulo: string;
-  tipoRequisicionId: string;
+  /** Only used when the user has no active area. */
   areaId: string;
   prioridad: string;
   fechaRequerida?: string;
@@ -54,6 +54,9 @@ interface FormValues {
 
 type SubmitMode = 'draft' | 'send';
 
+const SIN_REGLAS_MESSAGE =
+  'No hay una regla de aprobación que aplique a una requisición sin precio estimado. Guárdala como borrador y pide al administrador que configure una regla de aprobación que empiece en $0.';
+
 const lineaSchema = yup.object({
   repuestoId: yup.string().required(),
   nombre: yup.string(),
@@ -62,18 +65,13 @@ const lineaSchema = yup.object({
     .typeError('Ingresa una cantidad')
     .moreThan(0, 'La cantidad debe ser mayor que cero')
     .required('Ingresa una cantidad'),
-  precioEstimado: yup
-    .number()
-    .typeError('Ingresa un precio')
-    .min(0, 'El precio no puede ser negativo')
-    .required('Ingresa un precio'),
+  precioReferencia: yup.number(),
   descripcion: yup.string().trim().required('La descripción es obligatoria').max(300, 'Máximo 300 caracteres'),
 });
 
 const baseShape = {
   titulo: yup.string().trim().required('El título es obligatorio').max(200, 'Máximo 200 caracteres'),
-  tipoRequisicionId: yup.string().required('Selecciona un tipo'),
-  areaId: yup.string().required('Selecciona un área'),
+  areaId: yup.string(),
   prioridad: yup.string().oneOf(REQUISICION_PRIORIDADES).required(),
   fechaRequerida: yup.string(),
   lineas: yup.array().of(lineaSchema).min(1, 'Agrega al menos una línea').required(),
@@ -115,7 +113,6 @@ const buildDefaults = (solicitudes: SolicitudParaRequisicion[]): FormValues => (
     solicitudes.length === 1
       ? `Requisición: ${solicitudes[0].nombre}`.slice(0, 200)
       : `Requisición de ${solicitudes.length} repuestos`,
-  tipoRequisicionId: '',
   areaId: '',
   prioridad: highestPrioridad(solicitudes),
   fechaRequerida: '',
@@ -124,7 +121,7 @@ const buildDefaults = (solicitudes: SolicitudParaRequisicion[]): FormValues => (
     repuestoId: s._id,
     nombre: s.nombre,
     cantidad: parseCantidad(s.Cantidad),
-    precioEstimado: typeof s.PrecioRepuesto === 'number' && s.PrecioRepuesto >= 0 ? s.PrecioRepuesto : 0,
+    precioReferencia: typeof s.PrecioRepuesto === 'number' && s.PrecioRepuesto > 0 ? s.PrecioRepuesto : 0,
     descripcion: s.nombre,
   })),
 });
@@ -138,11 +135,15 @@ const HacerRequisicionModal: React.FC<Props> = ({ show, onHide, solicitudes, onC
   const canSend = has(PERMISSIONS.REQUISICIONES_SEND);
 
   const { data: areasResponse } = useGetAreas({ limit: 100 }, show);
-  const { data: tiposResponse } = useGetTiposRequisicion({ limit: 100 }, show);
   const createMutation = useCreateRequisicionFromSolicitudes();
 
   const areas = useMemo(() => (areasResponse?.data ?? []).filter((a) => a.activa), [areasResponse]);
-  const tipos = useMemo(() => (tiposResponse?.data ?? []).filter((t) => t.activo), [tiposResponse]);
+  const ownAreaId = refId(user?.areaId as string | { _id: string } | null | undefined);
+  const ownArea = areas.find((a) => a._id === ownAreaId);
+  // The selector appears only when the user has no area at all, or after the server asked for one.
+  // It never depends on the areas query (loading, empty or failed must not block the user).
+  const [forceArea, setForceArea] = useState(false);
+  const needsArea = !ownAreaId || forceArea;
 
   const modeRef = useRef<SubmitMode>('draft');
   const [serverError, setServerError] = useState<string | null>(null);
@@ -159,9 +160,7 @@ const HacerRequisicionModal: React.FC<Props> = ({ show, onHide, solicitudes, onC
     control,
     handleSubmit,
     reset,
-    getValues,
-    setValue,
-    watch,
+    setError,
     formState: { errors },
   } = useForm<FormValues>({ resolver, defaultValues: buildDefaults(solicitudes) });
   const { fields } = useFieldArray({ control, name: 'lineas' });
@@ -172,43 +171,31 @@ const HacerRequisicionModal: React.FC<Props> = ({ show, onHide, solicitudes, onC
     if (show) {
       reset(buildDefaults(solicitudes));
       setServerError(null);
+      setForceArea(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show, solicitudesKey]);
 
-  // Default the type to REPUESTO and the area to the user's own, once the catalogs arrive.
-  useEffect(() => {
-    if (!show) return;
-    if (!getValues('tipoRequisicionId') && tipos.length > 0) {
-      const repuesto = tipos.find((t) => t.codigo?.toUpperCase() === 'REPUESTO' || /repuesto/i.test(t.nombre));
-      if (repuesto) setValue('tipoRequisicionId', repuesto._id);
-    }
-    if (!getValues('areaId') && areas.length > 0) {
-      const ownArea = refId(user?.areaId as string | { _id: string } | null | undefined);
-      if (ownArea && areas.some((a) => a._id === ownArea)) setValue('areaId', ownArea);
-    }
-  }, [show, tipos, areas, user, getValues, setValue]);
-
-  const lineas = watch('lineas');
-  const total = computeMontoTotal((lineas ?? []).map((l) => ({ cantidadSolicitada: Number(l.cantidad), precioEstimado: Number(l.precioEstimado) })));
   const nonNumeric = solicitudes.filter((s) => !isNumericCantidad(s.Cantidad));
 
   const onValid = async (values: FormValues) => {
     setServerError(null);
+    if (needsArea && !values.areaId) {
+      setError('areaId', { type: 'required', message: 'Selecciona un área' });
+      return;
+    }
     const enviar = modeRef.current === 'send';
     try {
       const result = await createMutation.mutateAsync({
         repuestoIds: values.lineas.map((l) => l.repuestoId),
         titulo: values.titulo.trim(),
-        tipoRequisicionId: values.tipoRequisicionId,
-        areaId: values.areaId,
+        ...(needsArea ? { areaId: values.areaId } : {}),
         prioridad: values.prioridad as RequisicionPrioridad,
         ...(values.fechaRequerida ? { fechaRequerida: values.fechaRequerida } : {}),
         ...(values.justificacion?.trim() ? { justificacion: values.justificacion.trim() } : {}),
         lineas: values.lineas.map((l) => ({
           repuestoId: l.repuestoId,
           cantidad: Number(l.cantidad),
-          precioEstimado: Number(l.precioEstimado),
           descripcion: l.descripcion.trim(),
         })),
         enviar,
@@ -222,7 +209,13 @@ const HacerRequisicionModal: React.FC<Props> = ({ show, onHide, solicitudes, onC
       onHide();
       if (requisicion?._id) navigate(`/requisiciones/${requisicion._id}`);
     } catch (err) {
-      setServerError(getRequisicionErrorMessage(err, 'No fue posible crear la requisición.'));
+      const code = getApiErrorCode(err) ?? '';
+      if (['AREA_REQUERIDA', 'AREA_INVALIDA'].includes(code)) setForceArea(true);
+      setServerError(
+        code === 'SIN_REGLAS_APROBACION'
+          ? SIN_REGLAS_MESSAGE
+          : getRequisicionErrorMessage(err, 'No fue posible crear la requisición.')
+      );
       // The selection is stale when someone else already linked a request: reload the list.
       if (['SOLICITUD_YA_VINCULADA', 'CAPABILITY_DISABLED'].includes(getApiErrorCode(err) ?? '')) {
         queryClient.invalidateQueries(['repuestos']);
@@ -283,35 +276,33 @@ const HacerRequisicionModal: React.FC<Props> = ({ show, onHide, solicitudes, onC
             <Col md={4}>
               <Form.Group controlId="hr-tipo">
                 <Form.Label>
-                  Tipo *
+                  Tipo
                   <ReqHelp id="form.tipo" />
                 </Form.Label>
-                <Form.Select {...register('tipoRequisicionId')} isInvalid={!!errors.tipoRequisicionId}>
-                  <option value="">Selecciona un tipo</option>
-                  {tipos.map((t) => (
-                    <option key={t._id} value={t._id}>
-                      {t.nombre}
-                    </option>
-                  ))}
-                </Form.Select>
-                <Form.Control.Feedback type="invalid">{errors.tipoRequisicionId?.message}</Form.Control.Feedback>
+                <Form.Control readOnly plaintext value="Repuestos" />
               </Form.Group>
             </Col>
             <Col md={4}>
               <Form.Group controlId="hr-area">
                 <Form.Label>
-                  Área *
+                  {needsArea ? 'Área *' : 'Área'}
                   <ReqHelp id="form.area" />
                 </Form.Label>
-                <Form.Select {...register('areaId')} isInvalid={!!errors.areaId}>
-                  <option value="">Selecciona un área</option>
-                  {areas.map((a) => (
-                    <option key={a._id} value={a._id}>
-                      {a.nombre}
-                    </option>
-                  ))}
-                </Form.Select>
-                <Form.Control.Feedback type="invalid">{errors.areaId?.message}</Form.Control.Feedback>
+                {needsArea ? (
+                  <>
+                    <Form.Select {...register('areaId')} isInvalid={!!errors.areaId}>
+                      <option value="">Selecciona un área</option>
+                      {areas.map((a) => (
+                        <option key={a._id} value={a._id}>
+                          {a.nombre}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    <Form.Control.Feedback type="invalid">{errors.areaId?.message}</Form.Control.Feedback>
+                  </>
+                ) : (
+                  <Form.Control readOnly plaintext value={ownArea?.nombre ?? 'Tu área asignada'} />
+                )}
               </Form.Group>
             </Col>
             <Col md={4}>
@@ -348,7 +339,7 @@ const HacerRequisicionModal: React.FC<Props> = ({ show, onHide, solicitudes, onC
                   <th>Repuesto</th>
                   <th style={{ minWidth: 220 }}>Descripción</th>
                   <th style={{ width: 120 }}>Cantidad</th>
-                  <th style={{ width: 150 }}>Precio estimado</th>
+                  <th style={{ width: 170 }}>Precio de referencia</th>
                 </tr>
               </thead>
               <tbody>
@@ -376,31 +367,17 @@ const HacerRequisicionModal: React.FC<Props> = ({ show, onHide, solicitudes, onC
                       />
                       <Form.Control.Feedback type="invalid">{errors.lineas?.[index]?.cantidad?.message}</Form.Control.Feedback>
                     </td>
-                    <td>
-                      <Form.Control
-                        size="sm"
-                        type="number"
-                        step="any"
-                        min={0}
-                        aria-label={`Precio estimado de ${field.nombre}`}
-                        {...register(`lineas.${index}.precioEstimado`, { valueAsNumber: true })}
-                        isInvalid={!!errors.lineas?.[index]?.precioEstimado}
-                      />
-                      <Form.Control.Feedback type="invalid">{errors.lineas?.[index]?.precioEstimado?.message}</Form.Control.Feedback>
+                    <td data-testid={`hr-precio-${index}`}>
+                      {field.precioReferencia > 0 ? formatMoney(field.precioReferencia) : <Badge bg="secondary">Sin estimar</Badge>}
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr>
-                  <th colSpan={3} className="text-end">
-                    Monto estimado
-                  </th>
-                  <th data-testid="hr-total">{formatMoney(total)}</th>
-                </tr>
-              </tfoot>
             </Table>
           </div>
+          <p className="text-muted small mb-0">
+            El valor real lo definen las cotizaciones de los proveedores; el personal de compras lo registrará.
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <ReqHelp id="hacerReq.crear" placement="top" className="me-auto" />
