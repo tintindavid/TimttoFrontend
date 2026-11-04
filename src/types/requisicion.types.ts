@@ -595,6 +595,9 @@ export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   CONFIRMACIONES_PENDIENTES: 'La línea aún tiene entregas por confirmar; confírmalas antes de cerrarla.',
   RECEPCION_NOT_FOUND: 'No se encontró la recepción indicada.',
   STOCK_MOVIMIENTO_FALLIDO: 'No se pudo registrar el movimiento de inventario; la confirmación no se aplicó.',
+  TIPO_REPUESTO_NO_CONFIGURADO:
+    'Tu organización aún no tiene el tipo de requisición «Repuestos». Pide al administrador que ejecute la siembra de datos por defecto.',
+  AREA_REQUERIDA: 'Tu usuario no tiene un área asignada. Selecciona el área de la requisición.',
   SOLICITUD_YA_VINCULADA: 'Alguna de las solicitudes ya pertenece a otra requisición.',
   SOLICITUD_EN_REQUISICION: 'La solicitud está en una requisición y aún no está disponible.',
   SOLICITUD_NO_DISPONIBLE: 'Alguna solicitud seleccionada aún no está disponible: su requisición no ha sido confirmada.',

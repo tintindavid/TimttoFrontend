@@ -105,7 +105,6 @@ export type RepuestoRequisicionFiltro = '' | 'sin' | 'con' | RepuestoDisponibili
 export interface RequisicionLineaSolicitudInput {
   repuestoId: string;
   cantidad?: number;
-  precioEstimado?: number;
   descripcion?: string;
 }
 
@@ -113,8 +112,8 @@ export interface RequisicionLineaSolicitudInput {
 export interface CreateRequisicionFromSolicitudesDto {
   repuestoIds: string[];
   titulo?: string;
-  tipoRequisicionId: string;
-  areaId: string;
+  /** Only when the user has no active area; the server ignores it otherwise. */
+  areaId?: string;
   prioridad?: 'Baja' | 'Media' | 'Alta' | 'Urgente';
   fechaRequerida?: string;
   justificacion?: string;
