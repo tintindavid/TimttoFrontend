@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.33.0...v1.34.0) (2026-11-04)
+
+
+### Features
+
+* **requisiciones:** fix type and area server-side and drop price entry when creating from requests ([af59751](https://github.com/tintindavid/TimttoFrontend/commit/af5975100828b11eb1bb6c2d38652c6aca794c0c))
+
 # [1.33.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.32.0...v1.33.0) (2026-11-02)
 
 
