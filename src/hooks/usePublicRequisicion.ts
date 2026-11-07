@@ -22,6 +22,19 @@ export const useResponderInvitacion = (token: string) => {
   });
 };
 
+export const useDescargarOrdenCompraPublica = (token: string) =>
+  useMutation({
+    mutationFn: () => publicRequisicionService.descargarOrdenCompraPdf(token),
+  });
+
+export const useSubirEntregablesPublicos = (token: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (archivos: File[]) => publicRequisicionService.subirEntregables(token, archivos),
+    onSuccess: () => queryClient.invalidateQueries([KEY, token]),
+  });
+};
+
 export const useEnviarCotizacionPublica = (token: string) => {
   const queryClient = useQueryClient();
   return useMutation({

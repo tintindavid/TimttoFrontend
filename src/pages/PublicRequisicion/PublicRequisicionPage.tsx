@@ -5,6 +5,7 @@ import { Alert, Button, Card, Col, Container, Row, Spinner, Table } from 'react-
 import { useEnviarCotizacionPublica, useGetPublicRequisicion, useResponderInvitacion } from '@/hooks/usePublicRequisicion';
 import { LICITACION_ERROR_MESSAGES, type RegistrarCotizacionDto } from '@/types/licitacion.types';
 import PublicCotizacionForm from './PublicCotizacionForm';
+import PublicOrdenCompra from './PublicOrdenCompra';
 
 interface ApiErrorLike {
   response?: { status?: number; data?: { error?: { code?: string } } };
@@ -102,6 +103,20 @@ const PublicRequisicionPage: React.FC = () => {
 
   const requisicion = data?.data;
   if (!requisicion) return <Courtesy message={COURTESY.invalid} />;
+  // The winner sees the purchase order (with its PDF and deliverables) once it was sent.
+  if (requisicion.estadoEnvio === 'Ganador' && requisicion.ordenCompra) {
+    return (
+      <Shell>
+        <PublicOrdenCompra
+          token={token}
+          tenantNombre={requisicion.tenantNombre}
+          consecutivo={requisicion.consecutivo}
+          titulo={requisicion.titulo}
+          orden={requisicion.ordenCompra}
+        />
+      </Shell>
+    );
+  }
   if (requisicion.estadoEnvio === 'Ganador') {
     return <Courtesy message="¡Felicitaciones! Tu propuesta fue seleccionada. El equipo de compras se pondrá en contacto contigo." />;
   }

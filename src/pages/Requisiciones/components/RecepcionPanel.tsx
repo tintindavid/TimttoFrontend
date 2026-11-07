@@ -11,6 +11,7 @@ import {
 } from '@/types/requisicion.types';
 import {
   LICITACION_ABIERTA_ESTADOS,
+  OC_ESTADOS,
   RECEIVABLE_ESTADOS,
   canCerrarLinea,
   cantidadPendienteRecepcion,
@@ -48,6 +49,8 @@ const RecepcionPanel: React.FC<Props> = ({ requisicion }) => {
 
   const receivable = RECEIVABLE_ESTADOS.includes(requisicion.estado);
   const licitacionAbierta = LICITACION_ABIERTA_ESTADOS.includes(requisicion.estado);
+  // From the winner on, reception waits for the purchase order to be approved and sent (backend 409 OC_REQUERIDA).
+  const ocPendiente = requisicion.estado === 'Adjudicada' || (OC_ESTADOS.includes(requisicion.estado) && requisicion.estado !== 'OC_Enviada');
   const hasPending = requisicion.lineas.some((l) => cantidadPendienteRecepcion(l) > 0);
   const canRegistrar = receivable && canReceive && hasPending;
   const recepciones = [...(requisicion.recepciones ?? [])].sort(
@@ -78,6 +81,12 @@ const RecepcionPanel: React.FC<Props> = ({ requisicion }) => {
           <Alert variant="info" className="py-2" data-testid="recepcion-licitacion-abierta">
             La requisición tiene una licitación en curso: no se puede registrar recepción hasta seleccionar un ganador.
             <ReqHelp id="recepcion.licitacionAbierta" />
+          </Alert>
+        )}
+        {ocPendiente && (
+          <Alert variant="info" className="py-2" data-testid="recepcion-oc-requerida">
+            Para registrar la recepción, la orden de compra debe estar aprobada y enviada al proveedor.
+            <ReqHelp id="recepcion.ocRequerida" />
           </Alert>
         )}
         <div className="text-muted small text-uppercase mb-2">

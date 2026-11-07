@@ -1,6 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 import { ApiResponse } from '@/types/api.types';
+import { rethrowDecodingBlobError } from '@/utils/saveBlob';
 import type { CotizacionProveedor, EstadoEnvioProveedor, RegistrarCotizacionDto } from '@/types/licitacion.types';
+import type { EntregaEstado, EntregableArchivo } from '@/types/ordenCompra.types';
 
 /**
  * Supplier portal service (`/public/requisiciones/:token`). Deliberately NOT built on the shared `api`
@@ -23,6 +25,19 @@ export interface PublicRequisicionItem {
   especificacion?: string | null;
 }
 
+/** Purchase order of the winner (E4); built field by field by the backend, from OC_Enviada on. */
+export interface PublicOrdenCompra {
+  numero: string;
+  version: number;
+  lineas: Array<{ descripcion: string; cantidad: number; precioUnitario: number; subtotal: number }>;
+  total: number;
+  moneda?: string;
+  condiciones?: string | null;
+  fechaEntrega?: string | null;
+  requiereEntregables: boolean;
+  entrega?: { estado: EntregaEstado; archivos?: EntregableArchivo[]; ultimaObservacion?: string | null } | null;
+}
+
 export interface PublicRequisicion {
   tenantNombre: string;
   consecutivo: string;
@@ -34,6 +49,8 @@ export interface PublicRequisicion {
   estadoEnvio: EstadoEnvioProveedor;
   cotizacion: CotizacionProveedor | null;
   cerrada: boolean;
+  /** Only for the winner once the OC was sent. */
+  ordenCompra?: PublicOrdenCompra | null;
 }
 
 /**
@@ -82,6 +99,25 @@ export const publicRequisicionService = {
 
   enviarCotizacion: async (token: string, data: RegistrarCotizacionDto) => {
     const response = await publicApi.patch<ApiResponse<PublicRequisicion>>(`${path(token)}/respuesta`, buildForm(data), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).catch(sanitize);
+    return response.data;
+  },
+
+  /** The PDF of the winner's purchase order; the caller turns the blob into a download. */
+  descargarOrdenCompraPdf: async (token: string): Promise<Blob> => {
+    const response = await publicApi
+      .get<Blob>(`${path(token)}/orden-compra/pdf`, { responseType: 'blob' })
+      .catch(rethrowDecodingBlobError)
+      .catch(sanitize);
+    return response.data;
+  },
+
+  /** Multipart: the support files under `archivos`. */
+  subirEntregables: async (token: string, archivos: File[]) => {
+    const form = new FormData();
+    archivos.forEach((file) => form.append('archivos', file));
+    const response = await publicApi.post<ApiResponse<PublicRequisicion>>(`${path(token)}/entregables`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).catch(sanitize);
     return response.data;

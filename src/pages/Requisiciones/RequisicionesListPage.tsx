@@ -34,6 +34,7 @@ import {
 } from '@/types/requisicion.types';
 import { catalogName, formatDate, formatMoney, userRefName } from '@/utils/requisicion.utils';
 import { miActividadLabel } from '@/utils/requisicionHistorial.utils';
+import OcPorAprobarTab from './components/OcPorAprobarTab';
 import RequisicionEstadoBadge from './components/RequisicionEstadoBadge';
 import ReqHelp from './help/ReqHelp';
 import GuiaModal from './help/GuiaModal';
@@ -43,7 +44,7 @@ const PAGE_SIZE = 20;
 type SortDirection = 'asc' | 'desc';
 
 interface Props {
-  /** `mias`: created by the user; `por-aprobar`: approver inbox; `por-recibir` / `por-confirmar`: reception inboxes. */
+  /** `mias`: created by the user; `por-aprobar`: approver inbox; `oc-por-aprobar`: purchase orders to decide; `por-recibir` / `por-confirmar`: reception inboxes. */
   vista: RequisicionVista;
 }
 
@@ -53,6 +54,7 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
   const hasReceive = useHasPermission(PERMISSIONS.REQUISICIONES_RECEIVE);
   const hasManageAll = useHasPermission(PERMISSIONS.REQUISICIONES_MANAGE_ALL);
   const canReceive = hasReceive || hasManageAll;
+  const canApprovePo = useHasPermission(PERMISSIONS.REQUISICIONES_APPROVE_PO);
 
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -153,6 +155,8 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
       ? 'Aún no hay requisiciones en las que hayas actuado.'
       : vista === 'por-aprobar'
       ? 'No tienes requisiciones pendientes por aprobar.'
+      : vista === 'oc-por-aprobar'
+        ? 'No tienes órdenes de compra pendientes por aprobar.'
       : vista === 'por-recibir'
         ? 'No hay requisiciones pendientes de recibir.'
         : vista === 'por-confirmar'
@@ -169,6 +173,8 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
               id={
                 vista === 'por-aprobar'
                   ? 'pagina.porAprobar'
+                  : vista === 'oc-por-aprobar'
+                    ? 'pagina.ocPorAprobar'
                   : vista === 'por-recibir'
                     ? 'pagina.porRecibir'
                     : vista === 'por-confirmar'
@@ -218,6 +224,7 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
             <ReqHelp id="pagina.porAprobar" className="ms-0 me-2" />
           </Nav.Item>
         )}
+        {canApprovePo && <OcPorAprobarTab onSelect={() => navigate('/requisiciones/oc-por-aprobar')} />}
         {canReceive && (
           <Nav.Item className="d-flex align-items-center">
             <Nav.Link eventKey="por-recibir" onClick={() => navigate('/requisiciones/por-recibir')}>
