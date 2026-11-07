@@ -48,9 +48,25 @@ describe('RecepcionPanel with a licitacion', () => {
     expect(screen.queryByRole('button', { name: 'Registrar recepción' })).not.toBeInTheDocument();
   });
 
-  it('allows reception once the requisicion is Adjudicada', () => {
-    renderPanel('Adjudicada');
-    expect(screen.queryByTestId('recepcion-licitacion-abierta')).not.toBeInTheDocument();
+  it.each(['Adjudicada', 'OC_Emitida', 'OC_En_Reaprobacion', 'OC_Aprobada'] as const)(
+    'needs the purchase order sent before reception in %s',
+    (estado) => {
+      renderPanel(estado);
+      expect(screen.queryByTestId('recepcion-licitacion-abierta')).not.toBeInTheDocument();
+      expect(screen.getByTestId('recepcion-oc-requerida')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Registrar recepción' })).not.toBeInTheDocument();
+    }
+  );
+
+  it('allows reception once the purchase order was sent (OC_Enviada)', () => {
+    renderPanel('OC_Enviada');
+    expect(screen.queryByTestId('recepcion-oc-requerida')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Registrar recepción' })).toBeInTheDocument();
+  });
+
+  it('allows reception in Aprobada (no purchase) without the purchase-order notice', () => {
+    renderPanel('Aprobada');
+    expect(screen.queryByTestId('recepcion-oc-requerida')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Registrar recepción' })).toBeInTheDocument();
   });
 });

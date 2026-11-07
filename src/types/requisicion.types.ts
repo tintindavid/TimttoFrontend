@@ -1,5 +1,6 @@
 import type { QueryParams } from './api.types';
 import { LICITACION_ERROR_MESSAGES, type Licitacion } from './licitacion.types';
+import { ORDEN_COMPRA_ERROR_MESSAGES, type OrdenCompra } from './ordenCompra.types';
 
 // ---------------------------------------------------------------------------
 // Requisiciones (premium module `usesRequisiciones`) - epic E1
@@ -15,12 +16,16 @@ export type RequisicionEstado =
   | 'En_Licitacion'
   | 'Cotizacion_Recibida'
   | 'Adjudicada'
+  | 'OC_Emitida'
+  | 'OC_En_Reaprobacion'
+  | 'OC_Aprobada'
+  | 'OC_Enviada'
   | 'En_Recepcion'
   | 'Cerrada'
   | 'Rechazada'
   | 'Cancelada';
 
-export type RequisicionVista = 'mias' | 'por-aprobar' | 'por-recibir' | 'por-confirmar' | 'mi-historial';
+export type RequisicionVista = 'mias' | 'por-aprobar' | 'por-recibir' | 'por-confirmar' | 'mi-historial' | 'oc-por-aprobar';
 
 /** Filter of the "Mi historial" view: which kind of own action to look for. */
 export type RequisicionAccionHistorial =
@@ -99,6 +104,10 @@ export const REQUISICION_ESTADOS: RequisicionEstado[] = [
   'En_Licitacion',
   'Cotizacion_Recibida',
   'Adjudicada',
+  'OC_Emitida',
+  'OC_En_Reaprobacion',
+  'OC_Aprobada',
+  'OC_Enviada',
   'En_Recepcion',
   'Cerrada',
   'Rechazada',
@@ -114,6 +123,10 @@ export const REQUISICION_ESTADO_LABELS: Record<RequisicionEstado, string> = {
   En_Licitacion: 'En licitación',
   Cotizacion_Recibida: 'Cotización recibida',
   Adjudicada: 'Adjudicada',
+  OC_Emitida: 'OC emitida',
+  OC_En_Reaprobacion: 'OC en reaprobación',
+  OC_Aprobada: 'OC aprobada',
+  OC_Enviada: 'OC enviada',
   En_Recepcion: 'En recepción',
   Cerrada: 'Cerrada',
   Rechazada: 'Rechazada',
@@ -321,6 +334,8 @@ export interface Requisicion {
   recepciones?: Recepcion[];
   /** Purchasing block (E3): suppliers, deadline and winner. Absent when the requisicion never went to purchasing. */
   licitacion?: Licitacion | null;
+  /** Purchase order (E4); absent until issued. */
+  ordenCompra?: OrdenCompra | null;
   createdAt?: string;
   updatedAt?: string;
   /** Optimistic-concurrency token: approve / reject must send the version of the requisicion that was shown. */
@@ -649,6 +664,7 @@ export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   INELIGIBLE_RESPONSABLES: 'Alguno de los responsables seleccionados no es elegible.',
   INVALID_RESPONSABLE_USER_IDS: 'Alguno de los responsables seleccionados no es válido.',
   ...LICITACION_ERROR_MESSAGES,
+  ...ORDEN_COMPRA_ERROR_MESSAGES,
 };
 
 /** Spanish labels for the conflicts listed by REGLAS_INCONSISTENTES. */

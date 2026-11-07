@@ -23,11 +23,14 @@ import {
   formatDate,
   formatDateTime,
   formatMoney,
+  OC_ESTADOS,
   RECEPTION_PANEL_ESTADOS,
   userRefName,
 } from '@/utils/requisicion.utils';
 import type { RequisicionAdvertenciaItem } from '@/types/requisicion.types';
 import ApprovalPanel from './components/ApprovalPanel';
+import EntregablesPanel from './components/EntregablesPanel';
+import OrdenCompraPanel from './components/OrdenCompraPanel';
 import ReasonModal from './components/ReasonModal';
 import LicitacionPanel from './components/LicitacionPanel';
 import RecepcionPanel from './components/RecepcionPanel';
@@ -112,9 +115,14 @@ const RequisicionDetailPage: React.FC = () => {
   // Purchasing panel (E3): buyers see it once approved; everyone sees it while a licitacion exists or ran.
   const canBuy = has(PERMISSIONS.REQUISICIONES_MANAGE_SUPPLIERS) || has(PERMISSIONS.REQUISICIONES_SELECT_WINNER);
   const showLicitacion =
-    ['En_Licitacion', 'Cotizacion_Recibida', 'Adjudicada'].includes(estado) ||
+    ['En_Licitacion', 'Cotizacion_Recibida', 'Adjudicada', ...OC_ESTADOS].includes(estado) ||
     (estado === 'Aprobada' && canBuy) ||
     (requisicion.licitacion?.proveedores?.length ?? 0) > 0;
+  // Purchase order (E4): the block shows once the winner was chosen for who can issue, and always once an OC exists.
+  const showOrdenCompra =
+    !!requisicion.ordenCompra || OC_ESTADOS.includes(estado) || (estado === 'Adjudicada' && has(PERMISSIONS.REQUISICIONES_ISSUE_PO));
+  const showEntregables =
+    !!requisicion.ordenCompra?.requiereEntregables && ['OC_Enviada', 'En_Recepcion', 'Cerrada'].includes(estado);
   const hasActions = canEdit || canSend || canDelete || canWithdraw || canReopen || canCancel || canDecide;
 
   const run = async (action: () => Promise<unknown>, okMessage: string, errorFallback: string) => {
@@ -374,6 +382,10 @@ const RequisicionDetailPage: React.FC = () => {
           </Card>
 
           {showLicitacion && <LicitacionPanel requisicion={requisicion} />}
+
+          {showOrdenCompra && <OrdenCompraPanel requisicion={requisicion} />}
+
+          {showEntregables && <EntregablesPanel requisicion={requisicion} />}
 
           {RECEPTION_PANEL_ESTADOS.includes(estado) && <RecepcionPanel requisicion={requisicion} />}
 
