@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.35.0...v1.36.0) (2026-11-10)
+
+
+### Features
+
+* **requisiciones:** add pending dashboard, metrics and PDF/Excel exports (E5) ([57558af](https://github.com/tintindavid/TimttoFrontend/commit/57558afcd7489d6e6af1a7f440cc750d22479d7f))
+
 # [1.35.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.34.0...v1.35.0) (2026-11-10)
 
 
