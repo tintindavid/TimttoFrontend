@@ -17,6 +17,12 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
+// E5: the export buttons use mutations; these suites render without a QueryClient.
+vi.mock('@/hooks/useRequisicionReportes', () => ({
+  useExportarListado: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useExportarRequisicion: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useExportarComparativo: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+}));
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({ user: { _id: mocks.userId, email: 'x@y.co', role: 'user', roleId: 'role-1' } }),
 }));

@@ -168,6 +168,7 @@ export const PERMISSIONS = {
   REQUISICIONES_ISSUE_PO: 'requisiciones:issue-po',
   REQUISICIONES_APPROVE_PO: 'requisiciones:approve-po',
   REQUISICIONES_MANAGE_DELIVERABLES: 'requisiciones:manage-deliverables',
+  REQUISICIONES_REPORTS: 'requisiciones:reports',
 
   AREAS_READ: 'areas:read',
   AREAS_CREATE: 'areas:create',

@@ -18,6 +18,8 @@ describe('requisicionService contract with the backend', () => {
       limit: 20,
       vista: 'mi-historial',
       accion: 'aprobe',
+      alcance: 'tenant',
+      filtro: 'sin-movimiento',
       search: 'x',
       estado: 'Aprobada',
       areaId: 'a1',

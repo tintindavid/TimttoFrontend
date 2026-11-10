@@ -67,6 +67,7 @@ const baseMenu: MenuItem[] = [
     subItems: [
       { id: 'requisiciones-list', label: 'Requisiciones', path: '/requisiciones' },
       { id: 'requisiciones-por-aprobar', label: 'Por aprobar', path: '/requisiciones/por-aprobar' },
+      { id: 'requisiciones-reportes', label: 'Reportes', path: '/requisiciones/reportes' },
       {
         id: 'requisiciones-config',
         label: 'Configuración',

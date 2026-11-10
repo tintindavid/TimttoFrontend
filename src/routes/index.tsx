@@ -60,6 +60,7 @@ import InventarioRepuestosPage from '@/pages/Repuestos/InventarioRepuestosPage';
 import RequisicionesListPage from '@/pages/Requisiciones/RequisicionesListPage';
 import RequisicionFormPage from '@/pages/Requisiciones/RequisicionFormPage';
 import RequisicionDetailPage from '@/pages/Requisiciones/RequisicionDetailPage';
+import ReportesPage from '@/pages/Requisiciones/reportes/ReportesPage';
 import AreasPage from '@/pages/Requisiciones/config/AreasPage';
 import TiposRequisicionPage from '@/pages/Requisiciones/config/TiposPage';
 import ReglasAprobacionPage from '@/pages/Requisiciones/config/ReglasPage';
@@ -270,6 +271,7 @@ const AppRoutes: React.FC = () => {
           <Route path="requisiciones/por-recibir" element={<RequisicionesListPage vista="por-recibir" />} />
           <Route path="requisiciones/por-confirmar" element={<RequisicionesListPage vista="por-confirmar" />} />
           <Route path="requisiciones/mi-historial" element={<RequisicionesListPage vista="mi-historial" />} />
+          <Route path="requisiciones/reportes" element={<ReportesPage />} />
           <Route path="requisiciones/new" element={<RequisicionFormPage />} />
           <Route path="requisiciones/configuracion/areas" element={<AreasPage />} />
           <Route path="requisiciones/configuracion/tipos" element={<TiposRequisicionPage />} />

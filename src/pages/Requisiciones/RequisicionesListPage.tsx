@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Alert,
   Button,
@@ -12,24 +13,28 @@ import {
   Row,
   Spinner,
 } from 'react-bootstrap';
-import { FaArrowDown, FaArrowUp, FaBook, FaEye, FaPlus, FaSearch } from 'react-icons/fa';
+import { FaArrowDown, FaArrowUp, FaBook, FaEye, FaFileExcel, FaPlus, FaSearch } from 'react-icons/fa';
 import DataTable from '@/components/common/DataTable';
 import AppPagination from '@/components/common/Pagination';
 import Can from '@/components/common/Can';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useHasPermission } from '@/hooks/usePermission';
 import { useGetRequisiciones } from '@/hooks/useRequisiciones';
+import { useExportarListado } from '@/hooks/useRequisicionReportes';
+import { getRequisicionErrorMessage } from '@/utils/requisicionErrors';
 import { useGetAreas } from '@/hooks/useAreas';
 import { useGetTiposRequisicion } from '@/hooks/useTiposRequisicion';
 import { PERMISSIONS } from '@/constants/permissions';
 import {
   REQUISICION_ACCIONES_HISTORIAL,
+  REQUISICION_FILTROS,
   REQUISICION_ACCION_HISTORIAL_LABELS,
   REQUISICION_ESTADOS,
   REQUISICION_ESTADO_LABELS,
   type Requisicion,
   type RequisicionAccionHistorial,
   type RequisicionEstado,
+  type RequisicionFiltro,
   type RequisicionVista,
 } from '@/types/requisicion.types';
 import { catalogName, formatDate, formatMoney, userRefName } from '@/utils/requisicion.utils';
@@ -66,7 +71,33 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [accion, setAccion] = useState<RequisicionAccionHistorial>('todo');
   const [showGuia, setShowGuia] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const exportar = useExportarListado();
+  // `?alcance=tenant&filtro=...` (organization counters of the dashboard): tenant-wide list, not narrowed to a vista.
+  const alcanceTenant = searchParams.get('alcance') === 'tenant';
+  const filtroParam = searchParams.get('filtro');
+  const filtro = alcanceTenant && (REQUISICION_FILTROS as readonly string[]).includes(filtroParam ?? '') ? (filtroParam as RequisicionFiltro) : undefined;
   const isHistorial = vista === 'mi-historial';
+
+  // Filters coming from a dashboard card link (`?estado=...`): applied whenever the URL carries them.
+  const urlFilters = searchParams.toString();
+  useEffect(() => {
+    const params = new URLSearchParams(urlFilters);
+    const estadoParam = params.get('estado');
+    if (estadoParam && (REQUISICION_ESTADOS as readonly string[]).includes(estadoParam)) {
+      setEstado(estadoParam as RequisicionEstado);
+    }
+    const areaParam = params.get('areaId');
+    if (areaParam) setAreaId(areaParam);
+    const tipoParam = params.get('tipoRequisicionId');
+    if (tipoParam) setTipoId(tipoParam);
+    const desdeParam = params.get('fechaDesde');
+    if (desdeParam) setFechaDesde(desdeParam);
+    const hastaParam = params.get('fechaHasta');
+    if (hastaParam) setFechaHasta(hastaParam);
+    const searchParam = params.get('search');
+    if (searchParam) setSearchInput(searchParam);
+  }, [urlFilters]);
 
   // Debounce the free-text input so the API isn't hit on every keystroke.
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -80,7 +111,9 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
     () => ({
       page,
       limit: PAGE_SIZE,
-      vista,
+      vista: alcanceTenant ? undefined : vista,
+      alcance: alcanceTenant ? ('tenant' as const) : undefined,
+      filtro,
       accion: isHistorial ? accion : undefined,
       search: debouncedSearch.trim() || undefined,
       estado: estado || undefined,
@@ -91,7 +124,7 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
       sortBy: 'createdAt' as const,
       order: sortDirection,
     }),
-    [page, vista, isHistorial, accion, debouncedSearch, estado, areaId, tipoId, fechaDesde, fechaHasta, sortDirection]
+    [page, vista, alcanceTenant, filtro, isHistorial, accion, debouncedSearch, estado, areaId, tipoId, fechaDesde, fechaHasta, sortDirection]
   );
 
   const { data, isLoading, isFetching, isError } = useGetRequisiciones(queryParams);
@@ -105,6 +138,16 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
   const tipos = tiposResponse?.data ?? [];
 
   const hasActiveFilter = Boolean(debouncedSearch.trim() || estado || areaId || tipoId || fechaDesde || fechaHasta);
+
+  const handleExportar = async () => {
+    // The export takes exactly the list's query (vista, accion, filters, alcance, filtro) minus pagination.
+    const { page: _page, limit: _limit, ...filters } = queryParams;
+    try {
+      await exportar.mutateAsync(filters);
+    } catch (err) {
+      toast.error(getRequisicionErrorMessage(err, 'No fue posible exportar el listado.'));
+    }
+  };
 
   const columns = [
     { key: 'consecutivo', label: 'Consecutivo', render: (r: Requisicion) => <span className="text-nowrap fw-semibold">{r.consecutivo}</span> },
@@ -193,6 +236,17 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
             <FaBook className="me-2" aria-hidden="true" />
             Guía del módulo
           </Button>
+          <Can permission={PERMISSIONS.REQUISICIONES_REPORTS}>
+            <Button variant="outline-success" onClick={handleExportar} disabled={exportar.isLoading}>
+              {exportar.isLoading ? (
+                <Spinner as="span" size="sm" animation="border" className="me-2" />
+              ) : (
+                <FaFileExcel className="me-2" aria-hidden="true" />
+              )}
+              Exportar Excel
+            </Button>
+            <ReqHelp id="accion.exportarListado" placement="bottom" className="ms-0" />
+          </Can>
           <Can permission={PERMISSIONS.REQUISICIONES_CREATE}>
             <Button variant="primary" onClick={() => navigate('/requisiciones/new')}>
               <FaPlus className="me-2" aria-hidden="true" />
@@ -203,7 +257,7 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
         </Col>
       </Row>
 
-      <Nav variant="tabs" className="mb-3" activeKey={vista}>
+      <Nav variant="tabs" className="mb-3" activeKey={alcanceTenant ? undefined : vista}>
         <Nav.Item className="d-flex align-items-center">
           <Nav.Link eventKey="mias" onClick={() => navigate('/requisiciones')}>
             Mis requisiciones
@@ -239,7 +293,22 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
           </Nav.Link>
           <ReqHelp id="pagina.porConfirmar" className="ms-0 me-2" />
         </Nav.Item>
+        <Nav.Item className="d-flex align-items-center">
+          <Nav.Link eventKey="reportes" onClick={() => navigate('/requisiciones/reportes')}>
+            Reportes
+          </Nav.Link>
+          <ReqHelp id="pagina.reportes" className="ms-0 me-2" />
+        </Nav.Item>
       </Nav>
+
+      {alcanceTenant && (
+        <Alert variant="info" className="py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <span>Mostrando las requisiciones de toda la organización, filtradas desde el tablero.</span>
+          <Button size="sm" variant="outline-info" onClick={() => setSearchParams({})}>
+            Quitar este alcance
+          </Button>
+        </Alert>
+      )}
 
       {isHistorial && (
         <div className="d-flex align-items-center gap-1 mb-3">

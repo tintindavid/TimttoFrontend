@@ -571,13 +571,38 @@ const HELP = {
   },
   'pagina.miHistorial': {
     title: 'Mi historial',
-    body: 'Requisiciones en las que ya actuaste (aprobaste, rechazaste, recibiste, confirmaste, creaste o adjudicaste), incluso si ya están cerradas o canceladas.',
+    body: 'Requisiciones en las que ya actuaste (aprobaste, rechazaste, recibiste, confirmaste, creaste, adjudicaste o gestionaste una orden de compra), incluso si ya están cerradas o canceladas.',
     relation: 'La ven todos y se ordena por tu última acción, la más reciente primero. Abre una fila para ver el detalle.',
   },
   'filtro.miHistorial': {
     title: 'Filtrar por tu acción',
-    body: 'Muestra solo las requisiciones donde hiciste esa acción: Aprobé, Rechacé, Recibí, Confirmé, Creé o Adjudiqué. «Todo» las incluye todas.',
+    body: 'Muestra solo las requisiciones donde hiciste esa acción: Aprobé, Rechacé, Recibí, Confirmé, Creé, Adjudiqué, o las órdenes de compra que emitiste o aprobaste/rechazaste. «Todo» las incluye todas.',
     relation: 'Se combina con la búsqueda y los filtros de estado, área, tipo y fechas. Al cambiarlo vuelves a la primera página.',
+  },
+  'pagina.reportes': {
+    title: 'Reportes',
+    body: 'Tablero con los conteos de tus pendientes y, si tienes el permiso de reportes, el de toda la organización y las métricas del módulo.',
+    relation: 'Cada tarjeta con enlace abre el listado ya filtrado con esas mismas requisiciones, así el número y la lista siempre coinciden.',
+  },
+  'reportes.metricas': {
+    title: 'Métricas',
+    body: 'Cifras del periodo elegido: requisiciones por estado, tasa de rechazo, tiempos de ciclo (mediana y P90), valor comprado, estimado contra real y los principales proveedores y áreas.',
+    relation: 'El valor comprado y el estimado contra real se muestran por moneda; nunca se suman monedas distintas. Solo para quien tiene el permiso de reportes.',
+  },
+  'accion.exportarListado': {
+    title: 'Exportar Excel',
+    body: 'Descarga en Excel el listado con los mismos filtros y la misma vista que tienes aplicados, una fila por requisición.',
+    relation: 'Tiene un tope de filas: si el resultado es muy grande, aplica más filtros. Solo para quien tiene el permiso de reportes.',
+  },
+  'accion.exportarDetalle': {
+    title: 'Descargar PDF / Excel',
+    body: 'Genera al momento el PDF o el Excel de esta requisición (resumen, líneas, aprobación, recepciones e historial) según lo que tú puedes ver.',
+    relation: 'Si no tienes acceso a precios u órdenes de compra, esos datos no se incluyen en el archivo.',
+  },
+  'accion.exportarComparativo': {
+    title: 'Exportar comparativo',
+    body: 'Descarga el comparativo de cotizaciones de la licitación en PDF o Excel, sin enlaces ni datos de acceso de los proveedores.',
+    relation: 'Solo para quien gestiona proveedores o selecciona el ganador.',
   },
   'recepcion.panel': {
     title: 'Panel de recepción',

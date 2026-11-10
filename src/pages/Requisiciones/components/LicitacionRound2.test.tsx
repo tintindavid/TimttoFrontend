@@ -8,6 +8,12 @@ import { getRequisicionErrorMessage } from '@/utils/requisicionErrors';
 
 const mocks = vi.hoisted(() => ({ ampliar: vi.fn(), comparativo: [] as unknown[] }));
 
+// E5: the export buttons use mutations; these suites render without a QueryClient.
+vi.mock('@/hooks/useRequisicionReportes', () => ({
+  useExportarListado: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useExportarRequisicion: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useExportarComparativo: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+}));
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: { _id: 'me', email: 'x@y.co', role: 'user', roleId: 'r' } }) }));
 vi.mock('@/hooks/usePermission', () => ({
   useCurrentUserPermissions: () => ({ has: () => true, hasAny: () => true, permissions: [], isSuperadmin: false }),

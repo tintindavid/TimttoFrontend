@@ -10,6 +10,12 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
 }));
 
+// E5: the export buttons use mutations; these suites render without a QueryClient.
+vi.mock('@/hooks/useRequisicionReportes', () => ({
+  useExportarListado: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useExportarRequisicion: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+  useExportarComparativo: () => ({ mutateAsync: vi.fn(), isLoading: false }),
+}));
 vi.mock('@/hooks/useRequisiciones', () => ({ useGetRequisiciones: mocks.useGetRequisiciones }));
 vi.mock('@/hooks/useAreas', () => ({ useGetAreas: () => ({ data: { data: [] } }) }));
 vi.mock('@/hooks/useTiposRequisicion', () => ({ useGetTiposRequisicion: () => ({ data: { data: [] } }) }));
