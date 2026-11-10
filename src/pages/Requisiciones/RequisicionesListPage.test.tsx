@@ -161,7 +161,7 @@ describe('RequisicionesListPage help hints', () => {
     fireEvent.click(screen.getByRole('button', { name: /Guía del módulo/ }));
     expect(screen.getByRole('dialog')).toHaveTextContent('Guía del módulo de requisiciones');
     expect(screen.getByRole('heading', { name: '1. Creación' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '9. Próximas fases' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '9. Orden de compra y entregables' })).toBeInTheDocument();
   });
 
   it('shows the title hint of the approver inbox in the "por-aprobar" view', () => {

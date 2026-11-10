@@ -395,7 +395,7 @@ const HELP = {
   },
   'estado.Aprobada': {
     title: 'Aprobada',
-    body: 'Todos los niveles aprobaron. Ahora se espera que llegue lo pedido para registrar la recepción; el resto del proceso de compra llega en fases posteriores.',
+    body: 'Todos los niveles aprobaron. Ahora se espera que llegue lo pedido para registrar la recepción, o se pasa a la compra (licitación o compra directa).',
   },
   'estado.Rechazada': {
     title: 'Rechazada',
@@ -420,11 +420,28 @@ const HELP = {
   },
   'estado.Adjudicada': {
     title: 'Adjudicada',
-    body: 'Ya hay un proveedor ganador (por licitación o compra directa). Desde aquí se registra la recepción.',
+    body: 'Ya hay un proveedor ganador (por licitación o compra directa). Desde aquí se emite la orden de compra; la recepción espera a que la orden esté enviada.',
   },
   'estado.Cerrada': {
     title: 'Cerrada',
     body: 'Todo lo pedido fue confirmado o cancelado: la entrega se dio por satisfecha. Es un estado final.',
+  },
+
+  'estado.OC_Emitida': {
+    title: 'OC emitida',
+    body: 'Se emitió la orden de compra con los precios reales y espera la decisión de un aprobador distinto del emisor. Mientras tanto el emisor puede editarla.',
+  },
+  'estado.OC_En_Reaprobacion': {
+    title: 'OC en reaprobación',
+    body: 'El total real superó el estimado más el margen (o no había estimado): la orden pasa por los niveles de aprobación que correspondan al monto real.',
+  },
+  'estado.OC_Aprobada': {
+    title: 'OC aprobada',
+    body: 'La orden de compra fue aprobada y ya no se puede modificar. Falta enviarla al proveedor ganador.',
+  },
+  'estado.OC_Enviada': {
+    title: 'OC enviada',
+    body: 'El proveedor ganador recibió la orden con el enlace de su portal. Desde aquí se registra la recepción y, si se exigen, se revisan los entregables.',
   },
 
   // ---------------------------------------------------------------- Timeline events
@@ -483,6 +500,19 @@ const HELP = {
   'evento.PROVEEDOR_SELECCIONADO': { title: 'Proveedor seleccionado', body: 'Se eligió al ganador de la licitación. La decisión es irreversible.' },
   'evento.PROVEEDOR_DESCARTADO': { title: 'Proveedor descartado', body: 'Al elegir ganador, los demás proveedores quedaron descartados.' },
   'evento.COMPRA_DIRECTA_JUSTIFICADA': { title: 'Compra directa justificada', body: 'Se adjudicó a un proveedor sin licitar, con una justificación registrada.' },
+
+  'evento.OC_EMITIDA': { title: 'Orden de compra emitida', body: 'Se emitió la orden de compra al proveedor ganador con los precios reales.' },
+  'evento.OC_EDITADA': { title: 'Orden de compra editada', body: 'El emisor modificó la orden mientras seguía pendiente de aprobación; la versión aumentó.' },
+  'evento.OC_REAPROBACION_REQUERIDA': { title: 'Reaprobación por exceso', body: 'El total real superó el estimado más el margen: la orden requiere aprobación de más niveles.' },
+  'evento.OC_APROBADA': { title: 'Orden de compra aprobada', body: 'La orden quedó aprobada y es inmodificable.' },
+  'evento.OC_RECHAZADA': { title: 'Orden de compra rechazada', body: 'Un aprobador rechazó la orden con una observación; hay que corregirla y volver a emitirla.' },
+  'evento.OC_ENVIADA': { title: 'Orden de compra enviada', body: 'Se envió al proveedor ganador el correo con el enlace de su portal.' },
+  'evento.OC_REENVIADA': { title: 'Orden de compra reenviada', body: 'Se reenvió el correo con la orden al proveedor ganador.' },
+  'evento.ENTREGABLES_RECIBIDOS': { title: 'Entregables recibidos', body: 'El proveedor (o un usuario en su nombre) entregó soportes, o se marcaron como recibidos.' },
+  'evento.PASO_REVISION_ENTREGA': { title: 'Entregables en revisión', body: 'Quien gestiona entregables empezó a revisar los soportes.' },
+  'evento.DEVUELTA': { title: 'Entregables devueltos', body: 'Los soportes se devolvieron al proveedor con una observación para que los corrija.' },
+  'evento.ENTREGABLES_ACEPTADOS': { title: 'Entregables aceptados', body: 'Los soportes fueron aceptados; ya no frenan el cierre de la requisición.' },
+  'evento.RECORDATORIO_ENVIADO': { title: 'Recordatorio enviado', body: 'El sistema recordó una devolución sin re-entrega o una entrega sin confirmar.' },
 
   // ---------------------------------------------------------------- E2: solicitudes de repuestos
   'solicitudes.hacerRequisicion': {
@@ -624,7 +654,7 @@ const HELP = {
   },
   'guia.recepcion': {
     title: '6. Recepción',
-    body: 'Cuando la requisición está aprobada y llega el material, quien tiene permiso de recibir registra la recepción: cantidades por línea, documento y evidencias. Puede ser parcial.',
+    body: 'Cuando llega el material (requisición aprobada sin compra, u orden de compra enviada), quien tiene permiso de recibir registra la recepción: cantidades por línea, documento y evidencias. Puede ser parcial.',
     relation: 'La primera recepción pasa la requisición a «En recepción» y avisa a los solicitantes.',
   },
   'guia.confirmacion': {
@@ -638,14 +668,14 @@ const HELP = {
     relation: 'Si algo ya estaba confirmado, esa cantidad queda disponible; si no, la solicitud se libera para hacer otra requisición.',
   },
   'guia.fases': {
-    title: '9. Próximas fases',
-    body: 'La licitación con proveedores ya está disponible. Después vendrán almacén y vales de salida, orden de compra y reportes.',
-    relation: 'Almacén y órdenes de compra aún no están disponibles.',
+    title: '9. Orden de compra y entregables',
+    body: 'Tras adjudicar se emite la orden de compra con los precios reales; otra persona la aprueba (y reaprueba si excede el estimado) y se envía al proveedor, que sube sus soportes por el portal.',
+    relation: 'La recepción se habilita con la orden enviada. Almacén vendrá en fases posteriores.',
   },
   'licitacion.panel': {
     title: 'Compras y licitación',
     body: 'Aquí el comprador asigna proveedores, los invita a cotizar por correo, compara ofertas y elige al ganador.',
-    relation: 'Es opcional: una requisición aprobada también puede ir directo a recepción o a compra directa. La adjudicación habilita la recepción.',
+    relation: 'Es opcional: una requisición aprobada también puede ir directo a recepción o a compra directa. La adjudicación habilita la orden de compra.',
   },
   'licitacion.proveedores': {
     title: 'Proveedores de la licitación',
@@ -675,7 +705,7 @@ const HELP = {
   'accion.seleccionarGanador': {
     title: 'Seleccionar ganador',
     body: 'Adjudica la requisición al proveedor elegido y descarta a los demás. No se puede deshacer.',
-    relation: 'Requiere el permiso de seleccionar ganador. Después se puede registrar la recepción.',
+    relation: 'Requiere el permiso de seleccionar ganador. Después se emite la orden de compra.',
   },
   'accion.compraDirecta': {
     title: 'Compra directa',
@@ -685,6 +715,56 @@ const HELP = {
   'recepcion.licitacionAbierta': {
     title: 'Recepción bloqueada',
     body: 'Mientras la licitación esté abierta no se puede registrar recepción; primero hay que seleccionar un ganador.',
+  },
+  'pagina.ocPorAprobar': {
+    title: 'OC por aprobar',
+    body: 'Bandeja de órdenes de compra que puedes decidir: las emitidas por otra persona y las que están en reaprobación en un nivel que te corresponde.',
+    relation: 'Solo aparece con el permiso de aprobar órdenes de compra. El número junto a la pestaña es cuántas esperan tu decisión.',
+  },
+  'oc.panel': {
+    title: 'Orden de compra',
+    body: 'Documento que formaliza la compra al proveedor ganador con los precios reales. Muestra versión, estado, total frente al estimado y el historial de la orden.',
+    relation: 'Se emite desde Adjudicada, la aprueba otra persona y se envía al proveedor; solo entonces se puede registrar la recepción.',
+  },
+  'oc.exceso': {
+    title: 'Reaprobación por exceso',
+    body: 'Si el total real supera el estimado más el margen (10 % por defecto) o la requisición no tenía estimado, la orden se aprueba también en los niveles que corresponden al monto real.',
+    relation: 'Cierra el riesgo de las líneas «Sin estimar», que contaban 0 en la aprobación original.',
+  },
+  'accion.emitirOc': {
+    title: 'Emitir orden de compra',
+    body: 'Registra el precio unitario real de cada línea, las condiciones, la fecha de entrega y si se exigen entregables. El total lo calcula el sistema.',
+    relation: 'Pasa la requisición a OC emitida. Quien la emite no puede aprobarla (separación de funciones).',
+  },
+  'accion.aprobarOc': {
+    title: 'Aprobar orden de compra',
+    body: 'Aprueba la orden; si requería reaprobación, decide tu nivel. Debe hacerlo una persona distinta del emisor.',
+    relation: 'Con todos los niveles aprobados la orden queda aprobada y lista para enviarse.',
+  },
+  'accion.rechazarOc': {
+    title: 'Rechazar orden de compra',
+    body: 'Devuelve la orden con una observación obligatoria para que se corrija y se vuelva a emitir (la versión aumenta).',
+    relation: 'Queda registrado en el historial de la orden.',
+  },
+  'accion.enviarOc': {
+    title: 'Enviar al proveedor',
+    body: 'Envía al proveedor ganador el correo con el enlace de su portal, donde descarga la orden en PDF y sube sus soportes.',
+    relation: 'Si el correo falla la orden queda enviada igualmente; usa «Reenviar correo». No se puede enviar sin correo activo en el entorno.',
+  },
+  'entregables.panel': {
+    title: 'Entregables del proveedor',
+    body: 'Soportes que el proveedor sube por el portal (o un usuario en su nombre). Se revisan: se aceptan o se devuelven con una observación, tantas veces como haga falta.',
+    relation: 'Si la orden los exige, la requisición no se cierra hasta que los entregables estén aceptados.',
+  },
+  'accion.devolverEntregables': {
+    title: 'Devolver entregables',
+    body: 'Devuelve los soportes al proveedor con una observación obligatoria; el proveedor la ve en su portal y puede volver a subirlos.',
+    relation: 'Al re-entregar, la entrega vuelve a Recibidos para una nueva revisión.',
+  },
+  'recepcion.ocRequerida': {
+    title: 'Recepción y orden de compra',
+    body: 'Tras adjudicar, la recepción se habilita cuando la orden de compra está aprobada y enviada al proveedor.',
+    relation: 'Las requisiciones sin compra (por ejemplo de almacén) siguen recibiéndose desde Aprobada.',
   },
   'modulo.permisos': {
     title: 'Quién puede hacer qué',
@@ -745,6 +825,10 @@ export const ESTADO_HELP_IDS: HelpId[] = [
   'estado.En_Licitacion',
   'estado.Cotizacion_Recibida',
   'estado.Adjudicada',
+  'estado.OC_Emitida',
+  'estado.OC_En_Reaprobacion',
+  'estado.OC_Aprobada',
+  'estado.OC_Enviada',
   'estado.En_Recepcion',
   'estado.Cerrada',
   'estado.Rechazada',

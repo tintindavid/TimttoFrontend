@@ -13,7 +13,7 @@ import {
   type ProveedorLicitacion,
 } from '@/types/licitacion.types';
 import type { Requisicion } from '@/types/requisicion.types';
-import { formatDateTime, formatMoney, isCreator } from '@/utils/requisicion.utils';
+import { OC_ESTADOS, formatDateTime, formatMoney, isCreator } from '@/utils/requisicion.utils';
 import { getRequisicionErrorMessage } from '@/utils/requisicionErrors';
 import ReqHelp from '../help/ReqHelp';
 import AbrirLicitacionModal from './AbrirLicitacionModal';
@@ -57,7 +57,7 @@ const LicitacionPanel: React.FC<Props> = ({ requisicion }) => {
   const aprobada = estado === 'Aprobada';
   const enLicitacion = estado === 'En_Licitacion';
   // The comparativo endpoint answers 403 without purchasing permissions, so the card is not even mounted.
-  const showComparativo = (canManage || canWinner) && estado === 'Cotizacion_Recibida' || estado === 'Adjudicada' || (estado === 'En_Recepcion' && !!licitacion?.ganadorId);
+  const showComparativo = (canManage || canWinner) && estado === 'Cotizacion_Recibida' || estado === 'Adjudicada' || OC_ESTADOS.includes(estado) || (estado === 'En_Recepcion' && !!licitacion?.ganadorId);
   const compraDirecta = !!licitacion?.compraDirecta;
 
   const run = async (action: () => Promise<unknown>, ok: string, fallback: string) => {

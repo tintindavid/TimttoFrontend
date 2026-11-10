@@ -52,6 +52,10 @@ export const ESTADO_VARIANT: Record<RequisicionEstado, BadgeVariant> = {
   En_Licitacion: 'info',
   Cotizacion_Recibida: 'primary',
   Adjudicada: 'success',
+  OC_Emitida: 'info',
+  OC_En_Reaprobacion: 'warning',
+  OC_Aprobada: 'success',
+  OC_Enviada: 'primary',
   En_Recepcion: 'primary',
   Cerrada: 'dark',
   Rechazada: 'danger',
@@ -104,6 +108,18 @@ export const EVENT_META: Record<string, EventMeta> = {
   PROVEEDOR_SELECCIONADO: { label: 'Proveedor seleccionado', icon: FaTrophy, variant: 'success' },
   PROVEEDOR_DESCARTADO: { label: 'Proveedor descartado', icon: FaTimes, variant: 'dark' },
   COMPRA_DIRECTA_JUSTIFICADA: { label: 'Compra directa justificada', icon: FaHandshake, variant: 'warning' },
+  OC_EMITIDA: { label: 'Orden de compra emitida', icon: FaFileInvoiceDollar, variant: 'info' },
+  OC_EDITADA: { label: 'Orden de compra editada', icon: FaEdit, variant: 'secondary' },
+  OC_REAPROBACION_REQUERIDA: { label: 'Reaprobación por exceso', icon: FaExclamationTriangle, variant: 'warning' },
+  OC_APROBADA: { label: 'Orden de compra aprobada', icon: FaCheckCircle, variant: 'success' },
+  OC_RECHAZADA: { label: 'Orden de compra rechazada', icon: FaTimesCircle, variant: 'danger' },
+  OC_ENVIADA: { label: 'Orden de compra enviada', icon: FaPaperPlane, variant: 'primary' },
+  OC_REENVIADA: { label: 'Orden de compra reenviada', icon: FaEnvelope, variant: 'info' },
+  ENTREGABLES_RECIBIDOS: { label: 'Entregables recibidos', icon: FaBoxOpen, variant: 'primary' },
+  PASO_REVISION_ENTREGA: { label: 'Entregables en revisión', icon: FaClipboardCheck, variant: 'warning' },
+  DEVUELTA: { label: 'Entregables devueltos', icon: FaUndo, variant: 'danger' },
+  ENTREGABLES_ACEPTADOS: { label: 'Entregables aceptados', icon: FaCheckCircle, variant: 'success' },
+  RECORDATORIO_ENVIADO: { label: 'Recordatorio enviado', icon: FaUserClock, variant: 'secondary' },
 };
 
 export const getEventMeta = (tipo: string): EventMeta =>
@@ -118,6 +134,13 @@ export const formatDate = (value?: string | null): string => {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-CO');
+};
+
+/** Calendar date of a date-only value (e.g. a delivery date), read in UTC so the day never shifts with the time zone. */
+export const formatDateUtc = (value?: string | null): string => {
+  if (!value) return '—';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-CO', { timeZone: 'UTC' });
 };
 
 export const formatDateTime = (value?: string | null): string => {
@@ -218,6 +241,25 @@ export const canDecideCurrentLevel = (req: Requisicion, user: User | null | unde
   return listed || byRole;
 };
 
+/**
+ * Whether the user could decide the current reapproval level of the purchase order. Same rules as the E1 levels
+ * (eligible for the level, not the issuer, has not decided another level); the issuer takes the creator's place.
+ */
+export const canDecideOcLevel = (req: Requisicion, user: User | null | undefined): boolean => {
+  const aprobacion = req.ordenCompra?.aprobacion;
+  if (!aprobacion) return false;
+  return canDecideCurrentLevel(
+    {
+      ...req,
+      estado: 'En_Aprobacion',
+      creadaPor: req.ordenCompra?.emitidaPor?.usuarioId ?? '',
+      solicitanteId: undefined,
+      aprobacion: { nivelActual: aprobacion.nivelActual ?? null, niveles: aprobacion.niveles ?? [] },
+    },
+    user
+  );
+};
+
 /** Budget period candidates for a date: the month `YYYY-MM` and the year `YYYY`. */
 export const budgetPeriods = (date: Date = new Date()): { mes: string; anio: string } => {
   const anio = String(date.getFullYear());
@@ -277,6 +319,10 @@ export const RECEPTION_PANEL_ESTADOS: RequisicionEstado[] = [
   'En_Licitacion',
   'Cotizacion_Recibida',
   'Adjudicada',
+  'OC_Emitida',
+  'OC_En_Reaprobacion',
+  'OC_Aprobada',
+  'OC_Enviada',
   'En_Recepcion',
   'Cerrada',
 ];
@@ -285,7 +331,10 @@ export const RECEPTION_PANEL_ESTADOS: RequisicionEstado[] = [
 export const LICITACION_ABIERTA_ESTADOS: RequisicionEstado[] = ['En_Licitacion', 'Cotizacion_Recibida'];
 
 /** States in which a reception can still be registered. */
-export const RECEIVABLE_ESTADOS: RequisicionEstado[] = ['Aprobada', 'Adjudicada', 'En_Recepcion'];
+export const RECEIVABLE_ESTADOS: RequisicionEstado[] = ['Aprobada', 'OC_Enviada', 'En_Recepcion'];
+
+/** Estados of the purchase-order phase (E4). */
+export const OC_ESTADOS: RequisicionEstado[] = ['OC_Emitida', 'OC_En_Reaprobacion', 'OC_Aprobada', 'OC_Enviada'];
 
 export const lineaEstadoOf = (l: Pick<RequisicionLinea, 'estadoLinea'>): string => l.estadoLinea || 'Pendiente';
 
