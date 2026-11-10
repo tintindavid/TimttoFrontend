@@ -29,6 +29,7 @@ import {
 } from '@/utils/requisicion.utils';
 import type { RequisicionAdvertenciaItem } from '@/types/requisicion.types';
 import ApprovalPanel from './components/ApprovalPanel';
+import ExportButtons from './components/ExportButtons';
 import EntregablesPanel from './components/EntregablesPanel';
 import OrdenCompraPanel from './components/OrdenCompraPanel';
 import ReasonModal from './components/ReasonModal';
@@ -210,6 +211,9 @@ const RequisicionDetailPage: React.FC = () => {
           </h1>
           <RequisicionEstadoBadge estado={estado} />
           <ReqHelp id="estados.leyenda" />
+        </Col>
+        <Col xs="auto" className="d-flex justify-content-end">
+          <ExportButtons kind="requisicion" requisicionId={requisicion._id} consecutivo={requisicion.consecutivo} />
         </Col>
         {hasActions && (
           <Col xs="auto" className="d-flex flex-wrap gap-2 justify-content-end">

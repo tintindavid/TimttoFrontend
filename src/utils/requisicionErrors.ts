@@ -1,3 +1,4 @@
+import { EXPORT_DEMASIADAS_FILAS, exportDemasiadasFilasMessage } from '@/types/requisicionReportes.types';
 import {
   REGLA_CONFLICTO_LABELS,
   REQUISICION_ERROR_MESSAGES,
@@ -6,7 +7,7 @@ import {
 
 interface ApiErrorLike {
   response?: {
-    data?: { message?: string; error?: { code?: string; details?: { conflicts?: Array<{ tipo?: string; orden?: number }> } } };
+    data?: { message?: string; error?: { code?: string; details?: { total?: number; conflicts?: Array<{ tipo?: string; orden?: number }> } } };
   };
 }
 
@@ -20,6 +21,9 @@ export const getRequisicionErrorMessage = (
   fallback = 'Ocurrió un error. Inténtalo de nuevo.'
 ): string => {
   const code = getApiErrorCode(err);
+  if (code === EXPORT_DEMASIADAS_FILAS) {
+    return exportDemasiadasFilasMessage((err as ApiErrorLike)?.response?.data?.error?.details?.total);
+  }
   if (code && REQUISICION_ERROR_MESSAGES[code]) return REQUISICION_ERROR_MESSAGES[code];
   return (err as ApiErrorLike)?.response?.data?.message || fallback;
 };

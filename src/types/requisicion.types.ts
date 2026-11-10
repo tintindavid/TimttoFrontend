@@ -1,6 +1,7 @@
 import type { QueryParams } from './api.types';
 import { LICITACION_ERROR_MESSAGES, type Licitacion } from './licitacion.types';
 import { ORDEN_COMPRA_ERROR_MESSAGES, type OrdenCompra } from './ordenCompra.types';
+import { REPORTE_ERROR_MESSAGES } from './requisicionReportes.types';
 
 // ---------------------------------------------------------------------------
 // Requisiciones (premium module `usesRequisiciones`) - epic E1
@@ -35,7 +36,9 @@ export type RequisicionAccionHistorial =
   | 'recibi'
   | 'confirme'
   | 'cree'
-  | 'adjudique';
+  | 'adjudique'
+  | 'emiti'
+  | 'aprobe-oc';
 
 export const REQUISICION_ACCIONES_HISTORIAL: RequisicionAccionHistorial[] = [
   'todo',
@@ -45,6 +48,8 @@ export const REQUISICION_ACCIONES_HISTORIAL: RequisicionAccionHistorial[] = [
   'confirme',
   'cree',
   'adjudique',
+  'emiti',
+  'aprobe-oc',
 ];
 
 export const REQUISICION_ACCION_HISTORIAL_LABELS: Record<RequisicionAccionHistorial, string> = {
@@ -55,6 +60,8 @@ export const REQUISICION_ACCION_HISTORIAL_LABELS: Record<RequisicionAccionHistor
   confirme: 'Confirmé',
   cree: 'Creé',
   adjudique: 'Adjudiqué',
+  emiti: 'Órdenes de compra que emití',
+  'aprobe-oc': 'Órdenes de compra que aprobé/rechacé',
 };
 
 /** One of the caller's own timeline events, as returned by the "Mi historial" view (newest first, max 5). */
@@ -372,9 +379,24 @@ export const REQUISICION_QUERY_KEYS = [
   'search',
   'vista',
   'accion',
+  'alcance',
+  'filtro',
   'sortBy',
   'order',
 ] as const;
+
+/** Tenant-wide list filters (needs `requisiciones:reports`), used by the dashboard's organization counters. */
+export const REQUISICION_FILTROS = [
+  'licitaciones-abiertas',
+  'licitaciones-por-vencer',
+  'licitaciones-vencidas',
+  'oc-por-aprobar',
+  'por-recibir',
+  'por-confirmar',
+  'entregables-pendientes',
+  'sin-movimiento',
+] as const;
+export type RequisicionFiltro = (typeof REQUISICION_FILTROS)[number];
 
 export interface RequisicionQueryParams {
   page?: number;
@@ -391,6 +413,9 @@ export interface RequisicionQueryParams {
   vista?: RequisicionVista;
   /** Only meaningful with `vista='mi-historial'`. */
   accion?: RequisicionAccionHistorial;
+  /** `tenant`: whole organization (requires `requisiciones:reports`). */
+  alcance?: 'tenant';
+  filtro?: RequisicionFiltro;
 }
 
 export interface CancelarRequisicionDto {
@@ -665,6 +690,7 @@ export const REQUISICION_ERROR_MESSAGES: Record<string, string> = {
   INVALID_RESPONSABLE_USER_IDS: 'Alguno de los responsables seleccionados no es válido.',
   ...LICITACION_ERROR_MESSAGES,
   ...ORDEN_COMPRA_ERROR_MESSAGES,
+  ...REPORTE_ERROR_MESSAGES,
 };
 
 /** Spanish labels for the conflicts listed by REGLAS_INCONSISTENTES. */

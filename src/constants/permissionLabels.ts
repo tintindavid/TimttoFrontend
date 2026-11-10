@@ -79,6 +79,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'issue-po': 'Emitir orden de compra',
   'approve-po': 'Aprobar orden de compra',
   'manage-deliverables': 'Gestionar entregables',
+  reports: 'Ver reportería y exportar',
 };
 
 /**

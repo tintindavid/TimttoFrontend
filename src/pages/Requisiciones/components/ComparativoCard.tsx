@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, Badge, Button, Spinner, Table } from 'react-bootstrap';
+import { useCurrentUserPermissions } from '@/hooks/usePermission';
 import { useGetComparativo } from '@/hooks/useLicitacion';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
   ESTADO_ENVIO_LABELS,
   ESTADO_ENVIO_VARIANT,
@@ -9,6 +11,7 @@ import {
 import type { Requisicion } from '@/types/requisicion.types';
 import { formatDateTime, formatMoney, isSafeHttpsUrl } from '@/utils/requisicion.utils';
 import ReqHelp from '../help/ReqHelp';
+import ExportButtons from './ExportButtons';
 import GanadorModal from './GanadorModal';
 
 interface Props {
@@ -23,6 +26,8 @@ const tieneCotizacion = (row: ComparativoProveedor): boolean =>
 /** Read-only side-by-side comparison of the quotations; lets a buyer with permission pick the winner. */
 const ComparativoCard: React.FC<Props> = ({ requisicion, canSelect }) => {
   const { data, isLoading, isError } = useGetComparativo(requisicion._id);
+  const { has } = useCurrentUserPermissions();
+  const canExport = has(PERMISSIONS.REQUISICIONES_MANAGE_SUPPLIERS) || has(PERMISSIONS.REQUISICIONES_SELECT_WINNER);
   const [candidato, setCandidato] = useState<ComparativoProveedor | null>(null);
 
   const comparativo = data?.data;
@@ -43,6 +48,11 @@ const ComparativoCard: React.FC<Props> = ({ requisicion, canSelect }) => {
         <p className="text-muted mb-0">No hay cotizaciones para comparar.</p>
       ) : (
         <>
+          {canExport && (
+            <div className="mb-2">
+              <ExportButtons kind="comparativo" size="sm" requisicionId={requisicion._id} consecutivo={requisicion.consecutivo} />
+            </div>
+          )}
           {!comparativo?.hayComparables && (
             <Alert variant="light" className="py-2 small">
               Las cotizaciones no traen valor en la misma moneda, por eso no se resalta la más económica. Compara los
