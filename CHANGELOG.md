@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.36.0...v1.37.0) (2026-11-11)
+
+
+### Features
+
+* **informes:** add photos, rich-text notes and Excel export to the by-OT report ([89cea18](https://github.com/tintindavid/TimttoFrontend/commit/89cea189e520ae2ae0f5a512492d076cc191e0bb))
+
 # [1.36.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.35.0...v1.36.0) (2026-11-10)
 
 
