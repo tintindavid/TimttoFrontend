@@ -9,9 +9,12 @@ import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { informeService } from '@/services/informe.service';
 import { SelectOtsModal } from '../components/SelectOtsModal';
 import { InformePorOtPreview } from '../components/InformePorOtPreview';
+import { RichTextEditor } from '../components/RichTextEditor';
+import { SelectFotosModal } from '../components/SelectFotosModal';
 import { SignatureRequiredModal } from '../components/SignatureRequiredModal';
-import { InformePorOtPayload } from '@/types/informe.types';
+import { EvidenciaCandidata, InformePorOtPayload, MAX_INFORME_FOTOS, MAX_OBSERVACIONES_HTML } from '@/types/informe.types';
 import { Customer } from '@/types/customer.types';
+import { sanitizeObservacionesForPreview } from '../utils/sanitizeObservaciones';
 
 interface CustomerOption {
   value: string;
@@ -37,7 +40,10 @@ export const InformesPorOtTab: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null);
   const [selectedOtIds, setSelectedOtIds] = useState<string[]>([]);
-  const [observacionGeneral, setObservacionGeneral] = useState('');
+  const [observacionesHtml, setObservacionesHtml] = useState('');
+  const [fotos, setFotos] = useState<EvidenciaCandidata[]>([]);
+  const [showFotosModal, setShowFotosModal] = useState(false);
+  const [downloadingXlsx, setDownloadingXlsx] = useState(false);
 
   const [showOtsModal, setShowOtsModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -77,6 +83,7 @@ export const InformesPorOtTab: React.FC = () => {
   const handleCustomerChange = (opt: SingleValue<CustomerOption>) => {
     setSelectedCustomer(opt ?? null);
     setSelectedOtIds([]);
+    setFotos([]);
     setPayload(null);
     setError(null);
     if (opt) setShowOtsModal(true);
@@ -84,12 +91,40 @@ export const InformesPorOtTab: React.FC = () => {
 
   const handleConfirmOts = (ids: string[]) => {
     setSelectedOtIds(ids);
+    setFotos([]);
     setShowOtsModal(false);
     setPayload(null);
     setError(null);
   };
 
   const canGenerate = !!selectedCustomer && selectedOtIds.length > 0;
+  const htmlTooLong = observacionesHtml.length > MAX_OBSERVACIONES_HTML;
+
+  const handleObservacionesChange = useCallback((html: string) => {
+    setObservacionesHtml(html);
+  }, []);
+
+  // Live preview: the generated payload is overlaid with the current rich text and photo
+  // selection, so editing the notes or removing a photo updates it without regenerating.
+  const livePayload = useMemo<InformePorOtPayload | null>(() => {
+    if (!payload) return null;
+    const chosen = new Set(fotos.map((f) => f.evidenciaId));
+    return {
+      ...payload,
+      observacionesAdicionalesHtml: sanitizeObservacionesForPreview(observacionesHtml),
+      fotos: (payload.fotos ?? []).filter((f) => chosen.has(f.evidenciaId)),
+    };
+  }, [payload, observacionesHtml, fotos]);
+
+  const buildRequest = useCallback(
+    () => ({
+      clienteId: selectedCustomer!.value,
+      otIds: selectedOtIds,
+      ...(observacionesHtml ? { observacionesAdicionalesHtml: observacionesHtml } : {}),
+      ...(fotos.length > 0 ? { fotoIds: fotos.map((f) => f.evidenciaId) } : {}),
+    }),
+    [selectedCustomer, selectedOtIds, observacionesHtml, fotos],
+  );
 
   const withSignatureGate = useCallback(
     (action: () => void) => {
@@ -108,11 +143,7 @@ export const InformesPorOtTab: React.FC = () => {
     setError(null);
     setPayload(null);
     try {
-      const result = await informeService.generateByOt({
-        clienteId: selectedCustomer!.value,
-        otIds: selectedOtIds,
-        observacionGeneral,
-      });
+      const result = await informeService.generateByOt(buildRequest());
       setPayload(result.data);
       setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch (err: any) {
@@ -122,21 +153,17 @@ export const InformesPorOtTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCustomer, selectedOtIds, observacionGeneral]);
+  }, [buildRequest]);
 
   const handleGenerate = useCallback(() => {
-    if (!canGenerate) return;
+    if (!canGenerate || htmlTooLong) return;
     withSignatureGate(doGenerate);
-  }, [canGenerate, withSignatureGate, doGenerate]);
+  }, [canGenerate, htmlTooLong, withSignatureGate, doGenerate]);
 
   const doDownloadPdf = useCallback(async () => {
     setDownloading(true);
     try {
-      await informeService.downloadPdfByOt({
-        clienteId: selectedCustomer!.value,
-        otIds: selectedOtIds,
-        observacionGeneral,
-      });
+      await informeService.downloadPdfByOt(buildRequest());
       toast.success('PDF descargado exitosamente');
     } catch (err: any) {
       const msg = err?.message || 'Error al descargar el PDF';
@@ -144,12 +171,30 @@ export const InformesPorOtTab: React.FC = () => {
     } finally {
       setDownloading(false);
     }
-  }, [selectedCustomer, selectedOtIds, observacionGeneral]);
+  }, [buildRequest]);
 
   const handleDownloadPdf = useCallback(() => {
-    if (!canGenerate) return;
+    if (!canGenerate || htmlTooLong) return;
     withSignatureGate(doDownloadPdf);
-  }, [canGenerate, withSignatureGate, doDownloadPdf]);
+  }, [canGenerate, htmlTooLong, withSignatureGate, doDownloadPdf]);
+
+  const doDownloadXlsx = useCallback(async () => {
+    setDownloadingXlsx(true);
+    try {
+      // The Excel ignores photos and observations; the backend DTO rejects extra fields.
+      await informeService.downloadXlsxByOt({ clienteId: selectedCustomer!.value, otIds: selectedOtIds });
+      toast.success('Excel descargado exitosamente');
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al descargar el Excel');
+    } finally {
+      setDownloadingXlsx(false);
+    }
+  }, [selectedCustomer, selectedOtIds]);
+
+  const handleDownloadXlsx = useCallback(() => {
+    if (!canGenerate) return;
+    withSignatureGate(doDownloadXlsx);
+  }, [canGenerate, withSignatureGate, doDownloadXlsx]);
 
   const handleSignatureSaved = useCallback(() => {
     setShowSignatureModal(false);
@@ -169,7 +214,7 @@ export const InformesPorOtTab: React.FC = () => {
         <Col>
           <h2 className="fw-bold mb-1" style={{ color: '#1a2332' }}>Informe por OT</h2>
           <p className="text-muted mb-0">
-            {managesCustomers ? 'Seleccione un cliente y las OTs' : 'Seleccione las OTs'} a incluir para generar el informe consolidado de cumplimiento.
+            {managesCustomers ? 'Seleccione un cliente y las OTs' : 'Seleccione las OTs'} a incluir para generar el informe consolidado de cumplimiento. Puede añadir observaciones con formato, hasta 10 fotos de evidencia y descargar el listado de equipos en Excel.
           </p>
         </Col>
       </Row>
@@ -215,22 +260,64 @@ export const InformesPorOtTab: React.FC = () => {
 
             <Col xs={12}>
               <Form.Label className="fw-semibold text-muted small text-uppercase">
-                Observación General
+                Observaciones adicionales
               </Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                placeholder="Escriba aquí observaciones generales (opcional)..."
-                value={observacionGeneral}
-                onChange={(e) => setObservacionGeneral(e.target.value)}
-                maxLength={2000}
-                aria-label="Observación general del informe"
+              <RichTextEditor
+                value={observacionesHtml}
+                onChange={handleObservacionesChange}
+                maxLength={MAX_OBSERVACIONES_HTML}
                 disabled={loading}
               />
             </Col>
 
+            <Col xs={12}>
+              <Form.Label className="fw-semibold text-muted small text-uppercase d-block">
+                Evidencia fotográfica
+              </Form.Label>
+              <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
+                <Badge bg={fotos.length > 0 ? 'primary' : 'secondary'}>
+                  {fotos.length} de {MAX_INFORME_FOTOS} fotos
+                </Badge>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => setShowFotosModal(true)}
+                  disabled={!canGenerate || loading}
+                >
+                  {fotos.length > 0 ? 'Editar fotos' : 'Seleccionar fotos'}
+                </Button>
+              </div>
+              {fotos.length > 0 && (
+                <div className="d-flex flex-wrap gap-2">
+                  {fotos.map((f) => (
+                    <div key={f.evidenciaId} className="position-relative">
+                      <img
+                        src={f.url}
+                        alt={f.nombre || 'Foto elegida'}
+                        style={{ width: 64, height: 64, objectFit: 'cover' }}
+                        className="rounded border"
+                      />
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        className="position-absolute top-0 end-0 p-0 lh-1"
+                        style={{ width: 18, height: 18, fontSize: 11 }}
+                        aria-label={`Quitar foto ${f.nombre || f.evidenciaId}`}
+                        onClick={() => {
+                          setFotos((prev) => prev.filter((p) => p.evidenciaId !== f.evidenciaId));
+                        }}
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Col>
+
             <Col xs={12} className="d-flex gap-2">
-              <Button variant="primary" onClick={handleGenerate} disabled={!canGenerate || loading}>
+              <Button variant="primary" onClick={handleGenerate} disabled={!canGenerate || loading || htmlTooLong}>
                 {loading ? (
                   <>
                     <Spinner animation="border" size="sm" className="me-2" />
@@ -240,7 +327,7 @@ export const InformesPorOtTab: React.FC = () => {
                   'Generar Informe'
                 )}
               </Button>
-              <Button variant="danger" onClick={handleDownloadPdf} disabled={!canGenerate || downloading || loading}>
+              <Button variant="danger" onClick={handleDownloadPdf} disabled={!canGenerate || downloading || loading || htmlTooLong}>
                 {downloading ? (
                   <>
                     <Spinner animation="border" size="sm" className="me-2" />
@@ -248,6 +335,20 @@ export const InformesPorOtTab: React.FC = () => {
                   </>
                 ) : (
                   'Descargar PDF'
+                )}
+              </Button>
+              <Button
+                variant="success"
+                onClick={handleDownloadXlsx}
+                disabled={!canGenerate || downloadingXlsx || loading}
+              >
+                {downloadingXlsx ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Descargando...
+                  </>
+                ) : (
+                  'Descargar Excel'
                 )}
               </Button>
             </Col>
@@ -268,22 +369,34 @@ export const InformesPorOtTab: React.FC = () => {
         </div>
       )}
 
-      {payload && !loading && (
+      {livePayload && !loading && (
         <div ref={previewRef}>
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold mb-0" style={{ color: '#1a2332' }}>Vista Previa del Informe</h5>
-            <Button variant="outline-danger" size="sm" onClick={handleDownloadPdf} disabled={downloading}>
-              {downloading ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-1" />
-                  Descargando…
-                </>
-              ) : (
-                'Descargar PDF'
-              )}
-            </Button>
+            <div className="d-flex gap-2">
+              <Button variant="outline-danger" size="sm" onClick={handleDownloadPdf} disabled={downloading}>
+                {downloading ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-1" />
+                    Descargando…
+                  </>
+                ) : (
+                  'Descargar PDF'
+                )}
+              </Button>
+              <Button variant="outline-success" size="sm" onClick={handleDownloadXlsx} disabled={downloadingXlsx}>
+                {downloadingXlsx ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-1" />
+                    Descargando…
+                  </>
+                ) : (
+                  'Descargar Excel'
+                )}
+              </Button>
+            </div>
           </div>
-          <InformePorOtPreview payload={payload} />
+          <InformePorOtPreview payload={livePayload} />
         </div>
       )}
 
@@ -293,6 +406,21 @@ export const InformesPorOtTab: React.FC = () => {
         initialSelected={initialSelectedSet}
         clienteId={selectedCustomer?.value || ''}
         onConfirm={handleConfirmOts}
+      />
+
+      <SelectFotosModal
+        show={showFotosModal}
+        onHide={() => setShowFotosModal(false)}
+        clienteId={selectedCustomer?.value || ''}
+        otIds={selectedOtIds}
+        initialSelected={fotos}
+        onConfirm={(sel) => {
+          setFotos(sel);
+          setShowFotosModal(false);
+          // Added photos need the server to resolve them; a pure subset can be filtered live.
+          const generated = new Set((payload?.fotos ?? []).map((f) => f.evidenciaId));
+          if (!sel.every((f) => generated.has(f.evidenciaId))) setPayload(null);
+        }}
       />
 
       <SignatureRequiredModal

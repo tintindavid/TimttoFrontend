@@ -119,6 +119,59 @@ export interface InformePorOtRequest {
   clienteId: string;
   otIds: string[];
   observacionGeneral?: string;
+  /** Rich text HTML (backend sanitizes it; max 20000 chars). */
+  observacionesAdicionalesHtml?: string;
+  /** Evidence ids chosen for the report (max 10). */
+  fotoIds?: string[];
+}
+
+export const MAX_INFORME_FOTOS = 10;
+export const MAX_OBSERVACIONES_HTML = 20000;
+
+/** Candidate photo returned by POST /informes/por-ot/evidencias. */
+export interface EvidenciaCandidata {
+  evidenciaId: string;
+  url: string;
+  nombre: string;
+  descripcion: string;
+  reporteId: string;
+  reporteConsecutivo: string;
+  equipoNombre: string;
+}
+
+export interface EvidenciaReporteOption {
+  reporteId: string;
+  consecutivo: string;
+  equipoNombre: string;
+}
+
+export interface EvidenciasListRequest {
+  clienteId: string;
+  otIds: string[];
+  reporteId?: string;
+  search?: string;
+  page: number;
+  limit: number;
+}
+
+export interface EvidenciasListResponse {
+  items: EvidenciaCandidata[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+  /** All reports in scope that have photos (not just the current page) — feeds the report filter. */
+  reportes?: EvidenciaReporteOption[];
+}
+
+/** Photo rendered in the "Evidencia fotográfica" section of the payload. */
+export interface InformeFoto {
+  evidenciaId: string;
+  url: string;
+  nombre: string;
+  descripcion: string;
+  reporteConsecutivo: string;
+  equipoNombre: string;
 }
 
 /** Row for the header table of OTs selected for the by-OT informe. */
@@ -222,4 +275,7 @@ export interface InformePorOtPayload {
   secciones: InformeSeccion[];
   observacionesReportes: ObservacionReporte[];
   observacionGeneral: string;
+  /** Sanitized HTML from the backend — the only HTML the UI may render. */
+  observacionesAdicionalesHtml?: string;
+  fotos?: InformeFoto[];
 }

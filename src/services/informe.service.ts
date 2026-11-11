@@ -1,6 +1,13 @@
 import { api } from './api';
 import { ApiResponse } from '@/types/api.types';
-import { GenerateInformeDto, InformePayload, InformePorOtRequest, InformePorOtPayload } from '@/types/informe.types';
+import {
+  EvidenciasListRequest,
+  EvidenciasListResponse,
+  GenerateInformeDto,
+  InformePayload,
+  InformePorOtRequest,
+  InformePorOtPayload,
+} from '@/types/informe.types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -73,7 +80,22 @@ class InformeService {
    * Content-Disposition downloads well here).
    */
   async downloadPdfByOt(dto: InformePorOtRequest): Promise<void> {
-    const response = await fetch(`${API_URL}/informes/por-ot/pdf`, {
+    await this.downloadBlobByOt('pdf', dto, `informe_por_ot_${dto.clienteId}.pdf`);
+  }
+
+  /** Requests the by-OT Excel (flat "Equipos" sheet) and triggers a download. */
+  async downloadXlsxByOt(dto: InformePorOtRequest): Promise<void> {
+    await this.downloadBlobByOt('xlsx', dto, `informe_por_ot_${dto.clienteId}.xlsx`);
+  }
+
+  /** Paged list of candidate photos (evidencias) from the reports in scope. */
+  async listEvidenciasByOt(dto: EvidenciasListRequest): Promise<EvidenciasListResponse> {
+    const response = await api.post<ApiResponse<EvidenciasListResponse>>('/informes/por-ot/evidencias', dto);
+    return response.data.data;
+  }
+
+  private async downloadBlobByOt(kind: 'pdf' | 'xlsx', dto: InformePorOtRequest, fallbackName: string): Promise<void> {
+    const response = await fetch(`${API_URL}/informes/por-ot/${kind}`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(dto),
@@ -96,7 +118,7 @@ class InformeService {
     // Try to get the filename from the Content-Disposition header
     const disposition = response.headers.get('Content-Disposition') || '';
     const match = disposition.match(/filename="([^"]+)"/);
-    a.download = match ? match[1] : `informe_por_ot_${dto.clienteId}.pdf`;
+    a.download = match ? match[1] : fallbackName;
 
     document.body.appendChild(a);
     a.click();

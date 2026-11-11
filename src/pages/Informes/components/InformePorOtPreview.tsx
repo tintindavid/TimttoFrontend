@@ -3,6 +3,7 @@ import { Badge, Card, Col, Row, Table } from 'react-bootstrap';
 
 import {
   InformePorOtPayload,
+  InformeFoto,
   InformeSeccion,
   ObservacionReporte,
   ReporteOtRow,
@@ -307,6 +308,42 @@ const ObservacionesSection: React.FC<{
   </Card>
 );
 
+const FotosSection: React.FC<{ fotos: InformeFoto[] }> = ({ fotos }) => (
+  <Card className="mb-4 shadow-sm">
+    <Card.Body>
+      <SectionTitle>Evidencia fotográfica</SectionTitle>
+      <Row className="g-3">
+        {fotos.map((f) => (
+          <Col xs={12} md={6} key={f.evidenciaId}>
+            <figure className="mb-0">
+              <img
+                src={f.url}
+                alt={f.nombre || `Evidencia ${f.reporteConsecutivo}`}
+                className="img-fluid rounded border"
+                style={{ maxHeight: 280 }}
+              />
+              <figcaption className="small text-muted mt-1">
+                {f.reporteConsecutivo} · {f.equipoNombre}
+                {f.descripcion ? ` — ${f.descripcion}` : ''}
+              </figcaption>
+            </figure>
+          </Col>
+        ))}
+      </Row>
+    </Card.Body>
+  </Card>
+);
+
+/** Renders ONLY the server-sanitized HTML from the payload (never user-typed HTML). */
+const ObservacionesAdicionalesSection: React.FC<{ html: string }> = ({ html }) => (
+  <Card className="mb-4 shadow-sm">
+    <Card.Body>
+      <SectionTitle>Observaciones adicionales</SectionTitle>
+      <div style={{ fontSize: '0.875rem' }} dangerouslySetInnerHTML={{ __html: html }} />
+    </Card.Body>
+  </Card>
+);
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export interface InformePorOtPreviewProps {
@@ -314,7 +351,7 @@ export interface InformePorOtPreviewProps {
 }
 
 export const InformePorOtPreview: React.FC<InformePorOtPreviewProps> = ({ payload }) => {
-  const { meta, kpis, secciones, observacionesReportes, observacionGeneral } = payload;
+  const { meta, kpis, secciones, observacionesReportes, observacionGeneral, observacionesAdicionalesHtml, fotos } = payload;
   // Defensive — spec requires the backend to omit empty sections already.
   const visibleSecciones = sortSecciones(secciones).filter((s) => s.reportes.length > 0);
 
@@ -374,6 +411,12 @@ export const InformePorOtPreview: React.FC<InformePorOtPreviewProps> = ({ payloa
 
       {/* ── Observaciones ── */}
       <ObservacionesSection observacionesReportes={observacionesReportes} observacionGeneral={observacionGeneral} />
+
+      {observacionesAdicionalesHtml && observacionesAdicionalesHtml.trim() !== '' && (
+        <ObservacionesAdicionalesSection html={observacionesAdicionalesHtml} />
+      )}
+
+      {fotos && fotos.length > 0 && <FotosSection fotos={fotos} />}
 
       {/* ── Footer ── */}
       <div className="p-4 rounded bg-light text-center text-muted" style={{ fontSize: '0.8rem' }}>

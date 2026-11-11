@@ -116,6 +116,27 @@ describe('InformePorOtPreview', () => {
     expect(screen.getByText('Todo en orden en general.')).toBeInTheDocument();
   });
 
+  it('renders the photo section and the sanitized additional observations from the payload', () => {
+    const payload = basePayload({
+      observacionesAdicionalesHtml: '<h2>Resumen</h2><p><strong>Importante</strong></p>',
+      fotos: [
+        { evidenciaId: 'e1', url: 'https://x/1.jpg', nombre: 'f1', descripcion: 'Placa', reporteConsecutivo: 'R000001', equipoNombre: 'Ventilador' },
+      ],
+    });
+    render(<InformePorOtPreview payload={payload} />);
+    expect(screen.getByText('Evidencia fotográfica')).toBeInTheDocument();
+    expect(screen.getByText('Observaciones adicionales')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Resumen' })).toBeInTheDocument();
+    expect(screen.getByText('Importante').tagName).toBe('STRONG');
+    expect(screen.getByAltText('f1')).toHaveAttribute('src', 'https://x/1.jpg');
+  });
+
+  it('omits the photo and additional observation sections when empty', () => {
+    render(<InformePorOtPreview payload={basePayload({ observacionesAdicionalesHtml: '', fotos: [] })} />);
+    expect(screen.queryByText('Evidencia fotográfica')).not.toBeInTheDocument();
+    expect(screen.queryByText('Observaciones adicionales')).not.toBeInTheDocument();
+  });
+
   it('does not render a section that has zero reportes', () => {
     const payload = basePayload({
       secciones: [
