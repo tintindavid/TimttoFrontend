@@ -1,3 +1,16 @@
+# [1.38.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.37.0...v1.38.0) (2026-11-13)
+
+
+### Bug Fixes
+
+* **auth:** load the full profile right after login ([297105e](https://github.com/tintindavid/TimttoFrontend/commit/297105edfcb64d3f65da0b15eec5b59262494659))
+* **ots:** wait for the save before closing the cancel-report modal ([8345e0e](https://github.com/tintindavid/TimttoFrontend/commit/8345e0ece51bd632ec70473918596eb4b7f532b1))
+
+
+### Features
+
+* **roles:** only offer permissions of modules the tenant has enabled ([6718eb9](https://github.com/tintindavid/TimttoFrontend/commit/6718eb94ac6f4a732f9bdaed3d7e7ef7b01bc4a1))
+
 # [1.37.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.36.0...v1.37.0) (2026-11-11)
 
 
