@@ -28,7 +28,7 @@ import Swal from 'sweetalert2';
 interface ReportDetailProps {
   reporte: Reporte;
   onBack: () => void;
-  onSave: (reporte: Reporte) => void;
+  onSave: (reporte: Reporte) => void | Promise<void>;
   onMarkAsProcessed: (reporte: Reporte) => void; // Debe usar endpoint: PUT /api/v1/reportes/:reporteId/procesar
   onRefreshData?: () => void; // Callback para refrescar datos del OtDetailPage
 }
@@ -730,7 +730,8 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       };
 
       // Guardar el reporte cancelado
-      onSave(reporteCancelado);
+      // Await so a failed PUT keeps the modal open (the parent already shows the error).
+      await onSave(reporteCancelado);
 
       
       // Refrescar datos si se proporciona el callback
@@ -741,10 +742,9 @@ const ReportDetail: React.FC<ReportDetailProps> = ({
       setShowCancelModal(false);
       setMotivoCancelacion('');
       
-      alert('Reporte cancelado exitosamente');
     } catch (error) {
+      // The parent's save handler already surfaced the error; keep the modal open.
       console.error('Error al cancelar reporte:', error);
-      alert('Error al cancelar el reporte. Inténtelo de nuevo.');
     }
   };
 

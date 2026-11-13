@@ -157,6 +157,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('tenantId', tid);
       setTenant(tid);
     }
+    // The login response carries no `permissions` (only GET /auth/me does), so
+    // permission-gated UI (tabs, buttons) stayed hidden until a page reload.
+    // Load the full profile right away; on failure keep the login user.
+    try {
+      const me = await authService.me();
+      if (me?.data) setUser(me.data);
+    } catch (e) {
+      logger.debug('login: authService.me() failed, keeping login user', e);
+    }
     // Return mustChangePassword flag so LoginPage can redirect
     return { mustChangePassword: res.data.mustChangePassword };
   };
