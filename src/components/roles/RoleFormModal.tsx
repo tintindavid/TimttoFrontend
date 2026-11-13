@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { CreateRoleDto, PermissionsCatalog, Role, UpdateRoleDto } from '@/types/role.types';
 import { formatPermission, RESOURCE_LABELS } from '@/constants/permissionLabels';
+import { isPermissionEnabledForTenant } from '@/constants/permissionCapabilities';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 
 type RoleFormValues = CreateRoleDto;
 
@@ -76,7 +78,19 @@ const RoleFormModal: React.FC<RoleFormModalProps> = ({ show, onHide, onSubmit, r
   // they know they were dropped.
   const [droppedPermissions, setDroppedPermissions] = useState<string[]>([]);
 
-  const groupedPermissions = useMemo(() => groupPermissions(permissions), [permissions]);
+  const { can } = useTenantCapabilities();
+
+  // Only offer permissions of modules the tenant has enabled. Hidden ones are NOT
+  // dropped: they stay in `selectedPermissions` (the allowlist below uses the full
+  // catalog), so saving the role keeps them if the module is enabled later.
+  const groupedPermissions = useMemo(() => {
+    const result: Record<string, string[]> = {};
+    Object.entries(groupPermissions(permissions)).forEach(([group, list]) => {
+      const visible = list.filter((permission) => isPermissionEnabledForTenant(permission, can));
+      if (visible.length > 0) result[group] = visible;
+    });
+    return result;
+  }, [permissions, can]);
 
   // Full set of permission strings the backend currently accepts, derived from
   // the catalog the server sent for this session. If the catalog hasn't loaded
