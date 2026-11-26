@@ -1,0 +1,79 @@
+/* Desktop: takes the free room between the brand and the user menu without pushing it to a second line. */
+.global-search {
+  flex: 1 1 0;
+  min-width: 180px;
+  max-width: 460px;
+}
+
+.buscador {
+  position: relative;
+  color: var(--tt-text);
+  text-align: left;
+}
+
+.buscador-campo {
+  position: relative;
+}
+
+.buscador-campo .form-control {
+  padding-left: 2.25rem;
+  text-overflow: ellipsis;
+}
+
+.buscador-lupa {
+  position: absolute;
+  top: 50%;
+  left: 0.8rem;
+  transform: translateY(-50%);
+  color: var(--tt-text-muted);
+  pointer-events: none;
+}
+
+.buscador-desplegable .buscador-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: max(100%, 420px);
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  background: var(--tt-card);
+  border: 1px solid var(--tt-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 12px 32px rgba(33, 37, 41, 0.18);
+  z-index: 1045;
+}
+
+/* Full-screen modal: the list scrolls and the input stays on top. */
+.buscador-completo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.buscador-completo .buscador-panel {
+  flex: 1;
+  min-height: 0;
+  margin-top: 0.5rem;
+  overflow-y: auto;
+}
+
+.buscador-estado {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.875rem;
+}
+
+.buscador-opcion {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--tt-border);
+  cursor: pointer;
+}
+
+.buscador-opcion:last-child {
+  border-bottom: 0;
+}
+
+.buscador-opcion.activa {
+  background: #eef4ff;
+}

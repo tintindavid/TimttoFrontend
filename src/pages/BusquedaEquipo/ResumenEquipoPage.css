@@ -1,0 +1,122 @@
+/* Phone first: photo on top, one column of data. */
+.resumen-encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.resumen-foto {
+  width: 100%;
+  height: 200px;
+  flex-shrink: 0;
+  object-fit: contain;
+  background: var(--tt-bg);
+  border: 1px solid var(--tt-border);
+  border-radius: 0.5rem;
+}
+
+.resumen-foto-vacia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 120px;
+  color: var(--tt-text-muted);
+}
+
+.resumen-contenido {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.resumen-grupos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.resumen-grupo-titulo {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--tt-border);
+  color: var(--tt-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.resumen-datos {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.resumen-datos > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.15rem 0;
+}
+
+.resumen-datos dt {
+  color: var(--tt-text-muted);
+  font-weight: 400;
+}
+
+.resumen-datos dd {
+  margin: 0;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.resumen-acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Tabs stay on one line and scroll sideways on narrow screens. */
+.resumen-pestanas {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.resumen-fila {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.resumen-enlace-secundario {
+  color: inherit;
+  text-decoration: underline;
+}
+
+@media (min-width: 576px) {
+  .resumen-acciones {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 768px) {
+  .resumen-encabezado {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .resumen-foto {
+    width: 220px;
+    height: 220px;
+  }
+
+  .resumen-foto-vacia {
+    height: 180px;
+  }
+}
