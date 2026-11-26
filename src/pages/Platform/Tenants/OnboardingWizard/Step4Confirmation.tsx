@@ -48,7 +48,8 @@ const Step4Confirmation: React.FC<Step4Props> = ({
 
       <p className="mb-3">
         Tipo de organización:{' '}
-        <strong>{isDemo ? 'Cuenta de demostración (con límites y datos de ejemplo)' : TENANT_TYPE_PRESETS[type].label}</strong>
+        <strong>{TENANT_TYPE_PRESETS[type].label}</strong>
+        {isDemo && ' — cuenta de demostración (con límites y datos de ejemplo)'}
       </p>
 
       <Row className="g-3 mb-4">

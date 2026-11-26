@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
 import { Alert } from 'react-bootstrap';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { DEMO_STATUS_KEY, useDemoStatus } from '@/hooks/useDemoStatus';
 
 /** Strip with the limits and current usage of a demo account. Renders nothing for regular tenants. */
 const DemoBanner: React.FC = () => {
   const { isDemo, limits, usage } = useDemoStatus();
+  const { can } = useTenantCapabilities();
   const queryClient = useQueryClient();
 
   // Any successful change may create or remove users, clients or equipment: refresh the counters.
@@ -23,7 +25,9 @@ const DemoBanner: React.FC = () => {
   return (
     <Alert variant="info" className="py-2 small" role="status">
       <strong>Cuenta de demostración.</strong>{' '}
-      Usuarios {usage.users}/{limits.users} · Clientes {usage.customers}/{limits.customers} · Equipos{' '}
+      Usuarios {usage.users}/{limits.users} ·{' '}
+      {/* An organization that does not manage customers has a single one: its limit does not apply. */}
+      {can('managesCustomers') && `Clientes ${usage.customers}/${limits.customers} · `}Equipos{' '}
       {usage.equipos}/{limits.equipos}. Cada documento se puede descargar {limits.pdfPerDocument} veces en PDF, con
       marca de agua; máximo {limits.reportsPerOt ?? 5} reportes de
       servicio por orden de trabajo.

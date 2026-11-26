@@ -8,6 +8,10 @@ import { DemoService } from '@/services/demo.service';
 import { getDemoErrorMessage } from '@/utils/demo';
 
 vi.unmock('@/hooks/useDemoStatus');
+const capabilities = { managesCustomers: true };
+vi.mock('@/context/TenantCapabilitiesContext', () => ({
+  useTenantCapabilities: () => ({ can: () => capabilities.managesCustomers }),
+}));
 vi.mock('@/services/demo.service', () => ({ DemoService: { getStatus: vi.fn() } }));
 
 const demo = {
@@ -25,6 +29,7 @@ const renderWithClient = (ui: React.ReactElement) => render(
 describe('demo account UI', () => {
   beforeEach(() => {
     localStorage.setItem('tenantId', 'demo-1');
+    capabilities.managesCustomers = true;
     vi.mocked(DemoService.getStatus).mockReset();
   });
 
@@ -32,6 +37,13 @@ describe('demo account UI', () => {
     vi.mocked(DemoService.getStatus).mockResolvedValue(demo);
     renderWithClient(<DemoBanner />);
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Usuarios 1/2 · Clientes 1/3 · Equipos 15/50'));
+  });
+
+  it('omits the customer limit when the organization does not manage customers', async () => {
+    capabilities.managesCustomers = false;
+    vi.mocked(DemoService.getStatus).mockResolvedValue(demo);
+    renderWithClient(<DemoBanner />);
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Usuarios 1/2 · Equipos 15/50'));
   });
 
   it('renders nothing for a regular tenant', async () => {
