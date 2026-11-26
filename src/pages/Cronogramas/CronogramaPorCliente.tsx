@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Row, Col, Form, Card, Alert, Spinner } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Select from 'react-select';
 import Swal from 'sweetalert2';
 import { toast } from 'react-toastify';
@@ -54,8 +54,13 @@ export const CronogramaPorCliente: React.FC<CronogramaPorClienteProps> = ({ clie
   const navigate = useNavigate();
   const createOtMutation = useCreateOt();
 
-  // Estado del cliente seleccionado
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<string>(clienteFijoId ?? '');
+  // Estado del cliente seleccionado. `?cliente=` preselects it on entry, but never overrides a fixed client.
+  const [searchParams] = useSearchParams();
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<string>(() => {
+    if (clienteFijoId) return clienteFijoId;
+    const deLaUrl = searchParams.get('cliente') ?? '';
+    return /^[a-f\d]{24}$/i.test(deLaUrl) ? deLaUrl : '';
+  });
 
   // Year used to decide which scheduled months are already done (default: the current year)
   const anioActual = new Date().getUTCFullYear();

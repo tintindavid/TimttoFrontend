@@ -27,3 +27,4 @@ export * from './dashboard.types';
 export * from './notification.types';
 export * from './tenantCapabilities.types';
 export * from './requisicion.types';
+export * from './busquedaEquipo.types';

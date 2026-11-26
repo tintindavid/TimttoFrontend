@@ -281,3 +281,26 @@ describe('CronogramaPorCliente - selection checkboxes only for tenants that can 
     expect(screen.getByRole('button', { name: /imprimir visible/i })).toBeInTheDocument();
   });
 });
+
+describe('CronogramaPorCliente - deep link ?cliente=', () => {
+  const ID = '0123456789abcdef01234567';
+  const renderEn = (url: string, props: React.ComponentProps<typeof CronogramaPorCliente> = {}) =>
+    render(<MemoryRouter initialEntries={[url]}><CronogramaPorCliente {...props} /></MemoryRouter>);
+
+  it('preselects the client of the URL', () => {
+    renderEn(`/cronogramas?cliente=${ID}`);
+    expect(equiposHook).toHaveBeenCalledWith(expect.objectContaining({ ClienteId: ID }));
+    expect(screen.queryByText('Seleccione un Cliente')).toBeNull();
+  });
+
+  it('never overrides a fixed client', () => {
+    renderEn(`/cronogramas?cliente=${ID}`, { clienteFijoId: 'org1' });
+    expect(equiposHook).toHaveBeenCalledWith(expect.objectContaining({ ClienteId: 'org1' }));
+    expect(equiposHook).not.toHaveBeenCalledWith(expect.objectContaining({ ClienteId: ID }));
+  });
+
+  it('ignores a value that is not an id', () => {
+    renderEn('/cronogramas?cliente=abc');
+    expect(screen.getByText('Seleccione un Cliente')).toBeInTheDocument();
+  });
+});

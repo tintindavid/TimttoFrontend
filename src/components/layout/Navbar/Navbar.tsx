@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaBars, FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 import { useAuth } from '../../../context/AuthContext';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import GlobalSearch from '@/components/busqueda/GlobalSearch';
 import logoExtended from '@/img/logo-extended.png';
 import logoSimplified from '@/img/logo-simplified.png';
 import './Navbar.css';
@@ -69,6 +70,9 @@ const Navbar: React.FC<NavbarProps> = ({ onToggleMobileSidebar, sidebarCompacto 
             {sidebarCompacto ? <FaAngleDoubleRight size={22} /> : <FaAngleDoubleLeft size={22} />}
           </Button>
         )}
+
+        {/* Equipment search: outside the collapse so it is reachable on small screens without opening the menu. */}
+        <GlobalSearch />
 
         <BSNavbar.Toggle />
         <BSNavbar.Collapse className="justify-content-end">

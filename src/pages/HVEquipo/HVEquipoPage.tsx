@@ -3,7 +3,7 @@ import {
   Container, Row, Col, Card, Spinner, Alert, Badge, Table,
   Tab, Tabs, Button, Nav, Form
 } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   FaFileAlt, FaHistory, FaExchangeAlt, FaTools, FaCog,
   FaPrint, FaEdit, FaSave, FaCheck, FaTimes, FaClipboardList, FaMagic, FaPlus
@@ -41,6 +41,11 @@ import { useCurrentUserData } from '@/context/userContext';
 import { EstadoOperativoSourceLabels, EstadoOperativoSource } from '@/constants/estadoOperativo';
 import { USO_EQUIPO_OPTIONS, isMonths, formatMonths } from '@/constants/usoEquipo';
 
+/** Tabs every tenant has; "actividades-externas" depends on the premium module. */
+const PESTANAS_BASE = [
+  'hoja-vida', 'preventivos', 'timeline', 'correctivos', 'repuestos', 'guia-rapida', 'verification-trends',
+];
+
 /**
  * True when a value should be rendered in view mode: not null/undefined,
  * not an empty string, not the legacy 'N/A' placeholder and not an empty array.
@@ -68,7 +73,14 @@ const HVEquipoPage: React.FC = () => {
 
   
   
-  const [activeTab, setActiveTab] = useState<string>('hoja-vida');
+  // Deep link: `?tab=` opens that tab as long as it exists and is visible.
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(() => searchParams.get('tab') || 'hoja-vida');
+  // Derived on each render: the premium tab appears once the capabilities have loaded.
+  const pestanaVisible =
+    PESTANAS_BASE.includes(activeTab) || (activeTab === 'actividades-externas' && verActividadesExternas)
+      ? activeTab
+      : 'hoja-vida';
   // The VP tab loads its history once; bumping this key reloads it after a third-party service is added or removed.
   const [vpRefreshKey, setVpRefreshKey] = useState(0);
   const [isEditingHV, setIsEditingHV] = useState(false);
@@ -901,7 +913,7 @@ const HVEquipoPage: React.FC = () => {
 
       {/* Tabs Navigation */}
       <Tabs
-        activeKey={activeTab}
+        activeKey={pestanaVisible}
         onSelect={(k) => setActiveTab(k || 'hoja-vida')}
         className="mb-4 hv-tabs"
       >

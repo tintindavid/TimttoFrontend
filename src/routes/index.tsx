@@ -80,6 +80,7 @@ import RemoteSignPage from '@/pages/RemoteSign/RemoteSignPage';
 import PublicRequisicionPage from '@/pages/PublicRequisicion/PublicRequisicionPage';
 import SheetDownloadPage from '@/pages/SheetDownload/SheetDownloadPage';
 import NotificationsPage from '@/pages/Notifications/NotificationsPage';
+import ResumenEquipoPage from '@/pages/BusquedaEquipo/ResumenEquipoPage';
 import NotificationsSettingsPage from '@/pages/Settings/NotificationsSettingsPage';
 
 /**
@@ -171,6 +172,9 @@ const AppRoutes: React.FC = () => {
         <Route path="equipo-items/new" element={<EquipoItemFormPage />} />
         <Route path="equipo-items/:id" element={<EquipoItemDetailPage />} />
         <Route path="equipo-items/:id/edit" element={<EquipoItemFormPage />} />
+
+        {/* Equipment summary opened from the navbar search (every plan; the backend enforces equipo-items:read) */}
+        <Route path="buscar/equipo/:id" element={<ResumenEquipoPage />} />
 
         {/* equipment alias routes (sidebar uses /equipment) */}
         <Route path="equipment" element={<EquipoItemsPage />} />

@@ -211,3 +211,36 @@ describe('HVEquipoPage - "Ver" of external services', () => {
     expect(screen.getByTestId('modal-externo').getAttribute('data-meses')).toBe('mar');
   });
 });
+
+describe('HVEquipoPage - deep link ?tab=', () => {
+  const renderEn = (query: string) =>
+    render(
+      <MemoryRouter initialEntries={[`/hv-equipo/equipo-1${query}`]}>
+        <Routes><Route path="/hv-equipo/:equipoId" element={<HVEquipoPage />} /></Routes>
+      </MemoryRouter>,
+    );
+  const activa = () => screen.getAllByRole('tab').filter((t) => t.getAttribute('aria-selected') === 'true');
+
+  it('opens the external activities tab', () => {
+    renderEn('?tab=actividades-externas');
+    expect(activa()).toHaveLength(1);
+    expect(activa()[0]).toHaveTextContent('Actividades externas');
+  });
+
+  it('opens any other existing tab', () => {
+    renderEn('?tab=repuestos');
+    expect(activa()[0]).toHaveTextContent('Rep');
+  });
+
+  it.each(['', '?tab=no-existe'])('falls back to the resume sheet tab (%s)', (query) => {
+    renderEn(query);
+    expect(activa()[0]).toHaveTextContent('HV');
+  });
+
+  it('does not open a tab the tenant cannot see', () => {
+    caps = { registersExternal: false };
+    renderEn('?tab=actividades-externas');
+    expect(activa()).toHaveLength(1);
+    expect(activa()[0]).toHaveTextContent('HV');
+  });
+});
