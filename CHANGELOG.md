@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.38.0...v1.39.0) (2026-11-26)
+
+
+### Features
+
+* **dashboard:** per-tenant dashboard with compliance, activity and time indicators ([ec28bbe](https://github.com/tintindavid/TimttoFrontend/commit/ec28bbea5fc281b8ae3db640718ede718a926476))
+
 # [1.38.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.37.0...v1.38.0) (2026-11-13)
 
 
