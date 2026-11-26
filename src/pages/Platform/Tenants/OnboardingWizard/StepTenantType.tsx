@@ -5,7 +5,7 @@ import { TENANT_TYPE_PRESETS, type TenantType } from '@/types';
 interface StepTenantTypeProps {
   defaultValue?: TenantType;
   defaultDemo?: boolean;
-  /** `isDemo` is only passed for demo accounts. */
+  /** `isDemo` is only passed for demo accounts, which also have a type: it decides their modules and sample data. */
   onNext: (type: TenantType, isDemo?: boolean) => void;
 }
 
@@ -35,8 +35,9 @@ const StepTenantType: React.FC<StepTenantTypeProps> = ({ defaultValue = 'provide
       />
       {isDemo && (
         <Alert variant="info">
-          Incluye todos los módulos y datos de ejemplo. Límites: 2 usuarios, 3 clientes, 50 equipos y 2 descargas
-          en PDF por documento (con marca de agua). Sin exportaciones a Excel ni ZIP.
+          Elige el tipo: la demo tendrá sus módulos, incluidos los adicionales, y datos de ejemplo acordes. Límites:
+          2 usuarios, 3 clientes, 50 equipos, 2 descargas en PDF por documento y 5 reportes de servicio por orden de
+          trabajo, con marca de agua. Sin exportaciones a Excel.
         </Alert>
       )}
 
@@ -48,7 +49,7 @@ const StepTenantType: React.FC<StepTenantTypeProps> = ({ defaultValue = 'provide
             <Col xs={12} md={4} key={type}>
               <Card
                 className={`h-100 ${isSelected ? 'border-primary shadow-sm' : ''}`}
-                onClick={() => { if (!isDemo) setSelected(type); }}
+                onClick={() => setSelected(type)}
               >
                 <Card.Body>
                   <Form.Check
@@ -57,7 +58,6 @@ const StepTenantType: React.FC<StepTenantTypeProps> = ({ defaultValue = 'provide
                     name="tenant-type"
                     label={<strong>{preset.label}</strong>}
                     checked={isSelected}
-                    disabled={isDemo}
                     onChange={() => setSelected(type)}
                   />
                   <p className="text-muted small mt-2">{preset.description}</p>
@@ -86,7 +86,7 @@ const StepTenantType: React.FC<StepTenantTypeProps> = ({ defaultValue = 'provide
       )}
 
       <div className="d-flex justify-content-end mt-4">
-        <Button variant="primary" onClick={() => (isDemo ? onNext('provider', true) : onNext(selected))}>
+        <Button variant="primary" onClick={() => (isDemo ? onNext(selected, true) : onNext(selected))}>
           Siguiente →
         </Button>
       </div>
