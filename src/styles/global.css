@@ -56,17 +56,7 @@ body {
   color: #fff !important;
 }
 
-/* Sidebar */
-.sidebar {
-  width: 260px;
-  background: var(--tt-card);
-  border-right: 1px solid var(--tt-border);
-  padding: 12px;
-  overflow: auto;
-}
-.sidebar .menu-item{ padding: 10px 12px; border-radius:6px }
-.sidebar .menu-item.active, .sidebar .menu-item:hover{ background: rgba(13,110,253,0.06); }
-.sidebar .menu-item .icon{ color: var(--tt-primary); }
+/* Sidebar: its styles live in components/layout/Sidebar/Sidebar.css */
 
 /* Responsive adjustments - sidebar ahora se maneja con transform en Sidebar.css */
 
