@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Modal, Button, Row, Col, Spinner } from 'react-bootstrap';
 import { FaFilePdf, FaFileExcel } from 'react-icons/fa';
+import { useDemoStatus } from '@/hooks/useDemoStatus';
+import { DEMO_BLOCKED_TEXT } from '@/utils/demo';
 
 interface Props {
   show: boolean;
@@ -29,6 +31,7 @@ export const CronogramaDownloadModal: React.FC<Props> = ({
   const isLoadingPDF = loadingPDF || internalLoading === 'pdf';
   const isLoadingExcel = loadingExcel || internalLoading === 'excel';
   const isBusy = isLoadingPDF || isLoadingExcel;
+  const { isDemo } = useDemoStatus();
 
   const handlePDF = async () => {
     setInternalLoading('pdf');
@@ -77,11 +80,11 @@ export const CronogramaDownloadModal: React.FC<Props> = ({
               variant="success"
               className="w-100 py-4 d-flex flex-column align-items-center gap-2"
               onClick={handleExcel}
-              disabled={isBusy}
+              disabled={isBusy || isDemo}
             >
               {isLoadingExcel ? <Spinner animation="border" size="sm" /> : <FaFileExcel size={28} />}
               <span className="fw-bold">Excel</span>
-              <small className="text-white-50">Formato editable</small>
+              <small className="text-white-50">{isDemo ? DEMO_BLOCKED_TEXT : 'Formato editable'}</small>
             </Button>
           </Col>
         </Row>

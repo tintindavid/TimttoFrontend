@@ -19,6 +19,7 @@ import {
   useReactivateTenant,
   useSoftDeleteTenant,
   useUpdateTenantMetadata,
+  useRetryDemoSeed,
 } from '@/hooks/usePlatformTenants';
 import TenantCapabilitiesPanel from './TenantCapabilitiesPanel';
 import type { TenantStatus, UpdateTenantMetadataInput } from '@/types';
@@ -74,6 +75,7 @@ const PlatformTenantDetailPage: React.FC = () => {
   const reactivateMut = useReactivateTenant();
   const deleteMut = useSoftDeleteTenant();
   const updateMut = useUpdateTenantMetadata();
+  const retrySeedMut = useRetryDemoSeed();
 
   // Suspend modal state
   const [showSuspendModal, setShowSuspendModal] = useState(false);
@@ -209,6 +211,9 @@ const PlatformTenantDetailPage: React.FC = () => {
             <Badge bg={STATUS_VARIANTS[tenant.status]} className="ms-2 fs-6">
               {STATUS_LABELS[tenant.status]}
             </Badge>
+            {tenant.demo?.enabled && (
+              <Badge bg="info" className="ms-2 fs-6">Demo</Badge>
+            )}
           </h4>
           <code className="text-muted">{tenant.tenantId}</code>
         </Col>
@@ -244,6 +249,29 @@ const PlatformTenantDetailPage: React.FC = () => {
           </Button>
         </Col>
       </Row>
+
+      {tenant.demo?.enabled && (
+        <Alert
+          variant={tenant.demo.seedStatus === 'ready' ? 'info' : 'warning'}
+          className="d-flex flex-wrap justify-content-between align-items-center gap-2"
+        >
+          <span>
+            Cuenta de demostración: máximo {tenant.demo.limits.users} usuarios, {tenant.demo.limits.customers}{' '}
+            clientes, {tenant.demo.limits.equipos} equipos y {tenant.demo.limits.pdfPerDocument} descargas en PDF por
+            documento. {tenant.demo.seedStatus === 'ready' ? 'Datos de ejemplo cargados.' : 'Faltan datos de ejemplo.'}
+          </span>
+          {tenant.demo.seedStatus !== 'ready' && (
+            <Button
+              variant="outline-dark"
+              size="sm"
+              disabled={retrySeedMut.isLoading}
+              onClick={() => retrySeedMut.mutate(tenant._id)}
+            >
+              {retrySeedMut.isLoading ? 'Cargando…' : 'Reintentar datos de ejemplo'}
+            </Button>
+          )}
+        </Alert>
+      )}
 
       <Row className="g-4">
         {/* Metadata card */}

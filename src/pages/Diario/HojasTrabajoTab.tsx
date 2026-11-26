@@ -28,6 +28,7 @@ import {
 import SignatureCanvas from 'react-signature-canvas';
 import { useAllWorkSheets, useSignWorkSheet } from '@/hooks/useReportes';
 import { useCustomers } from '@/hooks/useCustomers';
+import { getDemoErrorMessage } from '@/utils/demo';
 import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { SheetWork } from '@/types/reporte.types';
 import { sheetworkService } from '@/services/sheetwork.service';
@@ -207,7 +208,7 @@ const HojasTrabajoTab: React.FC = () => {
       console.log('✅ PDF abierto exitosamente');
     } catch (error) {
       console.error('❌ Error al obtener PDF:', error);
-      alert('Error al obtener el PDF del servidor. Intenta nuevamente.');
+      alert(getDemoErrorMessage(error, 'Error al obtener el PDF del servidor. Intenta nuevamente.'));
     } finally {
       setLoadingPdf((prev) => {
         const copy = { ...prev };

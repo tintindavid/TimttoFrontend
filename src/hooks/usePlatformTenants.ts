@@ -52,6 +52,9 @@ export const useCreateTenantWithAdmin = () => {
       onSuccess: (data) => {
         qc.invalidateQueries(['platform-tenants']);
         notifyRequisicionesDefaults(data.requisicionesDefaults);
+        if (data.demoSeed?.status === 'error') {
+          toast.warn('La cuenta demo se creó, pero faltan datos de ejemplo. Reinténtalo desde su detalle.');
+        }
       },
       onError: (err: unknown) => {
         // reason: axios error shape not exposed by tanstack-query generics
@@ -148,6 +151,27 @@ export const useReactivateTenant = () => {
         const message =
           (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
           'Error al reactivar el tenant';
+        toast.error(message);
+      },
+    }
+  );
+};
+
+export const useRetryDemoSeed = () => {
+  const qc = useQueryClient();
+  return useMutation(
+    (id: string) => PlatformTenantService.retryDemoSeed(id),
+    {
+      onSuccess: (result) => {
+        qc.invalidateQueries(['platform-tenants']);
+        if (result.status === 'ready') toast.success('Datos de ejemplo cargados');
+        else toast.error(`No se pudieron cargar los datos de ejemplo: ${result.error ?? ''}`);
+      },
+      onError: (err: unknown) => {
+        // reason: axios error shape not exposed by tanstack-query generics
+        const message =
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+          'Error al cargar los datos de ejemplo';
         toast.error(message);
       },
     }

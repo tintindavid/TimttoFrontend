@@ -9,6 +9,7 @@ import Step2AdminData from './Step2AdminData';
 import Step3Logo from './Step3Logo';
 import Step4Confirmation from './Step4Confirmation';
 import CredentialsShownOnce from '../CredentialsShownOnce';
+import { buildCreatePayload } from './buildCreatePayload';
 
 // ---------------------------------------------------------------------------
 // Step metadata
@@ -54,8 +55,8 @@ const OnboardingWizardPage: React.FC = () => {
   // ---------------------------------------------------------------------------
   // Step handlers
   // ---------------------------------------------------------------------------
-  const handleTypeNext = (type: TenantType) => {
-    setFormData((prev) => ({ ...prev, type }));
+  const handleTypeNext = (type: TenantType, isDemo = false) => {
+    setFormData((prev) => ({ ...prev, type, isDemo }));
     setStep(2);
   };
 
@@ -75,22 +76,7 @@ const OnboardingWizardPage: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    const { type, ...rest } = formData;
-    // A client organization does not execute services: it travels as a preset. Tenants that execute services keep
-    // managing customers (previous behavior), so they travel as explicit flags (the backend accepts `type` OR
-    // `capabilities`, never both); the superadmin can turn "Gestiona clientes" off later for "own maintenance".
-    const payload =
-      type === 'client'
-        ? { ...rest, type }
-        : {
-            ...rest,
-            capabilities: {
-              executesServices: true,
-              registersExternal: type === 'hybrid',
-              managesCustomers: true,
-            },
-          };
-    createMut.mutate(payload, {
+    createMut.mutate(buildCreatePayload(formData), {
       onSuccess: (data) => {
         setCredentials(data);
       },
@@ -148,14 +134,14 @@ const OnboardingWizardPage: React.FC = () => {
       <Card className="shadow-sm">
         <Card.Body className="p-4">
           {step === 1 && (
-            <StepTenantType defaultValue={formData.type} onNext={handleTypeNext} />
+            <StepTenantType defaultValue={formData.type} defaultDemo={formData.isDemo} onNext={handleTypeNext} />
           )}
           {step === 2 && (
             <Step1TenantData
               defaultValues={formData.tenant}
               onNext={handleStep1Next}
               onBack={() => setStep(1)}
-              requireOrgData={formData.type === 'client'}
+              requireOrgData={!formData.isDemo && formData.type === 'client'}
             />
           )}
           {step === 3 && (

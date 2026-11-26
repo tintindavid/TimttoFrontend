@@ -43,6 +43,8 @@ export interface PublicSheetSignData {
   previewHtml?: string;
   pdfUrl?: string | null;
   pdfStatus?: 'pending' | 'ready' | 'error';
+  /** Demo accounts do not offer the signed PDF from this page. */
+  downloadUnavailable?: boolean;
 }
 
 export interface SubmitSignaturePayload {

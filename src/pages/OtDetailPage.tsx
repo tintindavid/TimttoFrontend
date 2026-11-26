@@ -33,6 +33,8 @@ import { useReportes } from '../hooks/useReportes';
 import { reporteService } from '../services/reporte.service';
 import { otService } from '../services/ot.service';
 import { exportOtToXlsx } from '../services/otExport.service';
+import { useDemoStatus } from '@/hooks/useDemoStatus';
+import { DEMO_BLOCKED_TEXT } from '@/utils/demo';
 import { toast } from 'react-toastify';
 import Swal from 'sweetalert2';
 
@@ -42,6 +44,7 @@ import { OT } from '../types/ot.types';
 
 const OtDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { isDemo } = useDemoStatus();
   const [searchParams, setSearchParams] = useSearchParams();
   // `?preview_sheet={sheetId}` — set by NotificationBell when the user
   // clicks a `sheet.signed` notification. We pass it to <WorkSheets> so
@@ -586,7 +589,8 @@ const OtDetailPage: React.FC = () => {
                         toast.error('No fue posible exportar la OT.');
                       }
                     }}
-                    disabled={!ot || reportes.length === 0}
+                    disabled={isDemo || !ot || reportes.length === 0}
+                    title={isDemo ? DEMO_BLOCKED_TEXT : undefined}
                   >
                     <FaFileExport className="me-1" />
                     Exportar

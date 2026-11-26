@@ -158,7 +158,10 @@ const PlatformTenantsPage: React.FC = () => {
                   <td>
                     <code>{tenant.tenantId}</code>
                   </td>
-                  <td>{tenant.name}</td>
+                  <td>
+                    {tenant.name}
+                    {tenant.demo?.enabled && <Badge bg="info" className="ms-2">Demo</Badge>}
+                  </td>
                   <td>{tenant.email ?? '—'}</td>
                   <td>{tenant.plan ?? '—'}</td>
                   <td>

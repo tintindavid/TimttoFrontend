@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Spinner } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { customerService } from '@/services/customer.service';
+import { useDemoStatus } from '@/hooks/useDemoStatus';
+import { DEMO_BLOCKED_TEXT } from '@/utils/demo';
 
 interface DownloadInventarioModalProps {
   show: boolean;
@@ -16,6 +18,9 @@ const DownloadInventarioModal: React.FC<DownloadInventarioModalProps> = ({
 }) => {
   const [formato, setFormato] = useState<'excel' | 'pdf'>('excel');
   const [loading, setLoading] = useState(false);
+  const { isDemo } = useDemoStatus();
+  // Demo accounts only download PDF.
+  const selected = isDemo ? 'pdf' : formato;
 
   // Reset state whenever the modal opens
   useEffect(() => {
@@ -28,7 +33,7 @@ const DownloadInventarioModal: React.FC<DownloadInventarioModalProps> = ({
   const handleDownload = async () => {
     setLoading(true);
     try {
-      await customerService.downloadInventario(customerId, formato);
+      await customerService.downloadInventario(customerId, selected);
       toast.success('Inventario descargado correctamente');
       onHide();
     } catch (err: any) {
@@ -57,21 +62,23 @@ const DownloadInventarioModal: React.FC<DownloadInventarioModalProps> = ({
               id="radio-excel"
               label="Excel (.xlsx)"
               value="excel"
-              checked={formato === 'excel'}
+              checked={selected === 'excel'}
               onChange={() => setFormato('excel')}
-              disabled={loading}
+              disabled={loading || isDemo}
+              title={isDemo ? DEMO_BLOCKED_TEXT : undefined}
             />
             <Form.Check
               type="radio"
               id="radio-pdf"
               label="PDF"
               value="pdf"
-              checked={formato === 'pdf'}
+              checked={selected === 'pdf'}
               onChange={() => setFormato('pdf')}
               disabled={loading}
             />
           </div>
         </Form>
+        {isDemo && <p className="text-muted small mt-2 mb-0">Excel: {DEMO_BLOCKED_TEXT.toLowerCase()}.</p>}
       </Modal.Body>
 
       <Modal.Footer>
