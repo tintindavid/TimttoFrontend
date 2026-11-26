@@ -1,3 +1,10 @@
+# [1.41.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.40.0...v1.41.0) (2026-11-26)
+
+
+### Features
+
+* **demo:** demo account creation, limits banner and restricted exports ([543101a](https://github.com/tintindavid/TimttoFrontend/commit/543101a4b551f6a7f2f81caac5b0169bf5f770ad))
+
 # [1.40.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.39.0...v1.40.0) (2026-11-26)
 
 
