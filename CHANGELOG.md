@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.41.0...v1.42.0) (2026-11-26)
+
+
+### Features
+
+* **demo:** pick the organization type when creating a demo ([52e481f](https://github.com/tintindavid/TimttoFrontend/commit/52e481f3abd179b24a75ed9fdce14777203c9d79))
+
 # [1.41.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.40.0...v1.41.0) (2026-11-26)
 
 
