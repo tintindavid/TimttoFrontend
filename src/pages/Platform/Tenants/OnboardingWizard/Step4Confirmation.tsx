@@ -35,7 +35,7 @@ const Step4Confirmation: React.FC<Step4Props> = ({
   onSubmit,
   isSubmitting,
 }) => {
-  const { tenant, admin, logoFile, type } = formData;
+  const { tenant, admin, logoFile, type, isDemo } = formData;
 
   return (
     <div>
@@ -47,7 +47,8 @@ const Step4Confirmation: React.FC<Step4Props> = ({
       </Alert>
 
       <p className="mb-3">
-        Tipo de organización: <strong>{TENANT_TYPE_PRESETS[type].label}</strong>
+        Tipo de organización:{' '}
+        <strong>{isDemo ? 'Cuenta de demostración (con límites y datos de ejemplo)' : TENANT_TYPE_PRESETS[type].label}</strong>
       </p>
 
       <Row className="g-3 mb-4">

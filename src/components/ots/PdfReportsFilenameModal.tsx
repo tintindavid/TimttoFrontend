@@ -10,6 +10,7 @@ import {
 } from '@/constants/pdfReports.constants';
 import { generateBulkPDF } from '@/services/descargarPdf.service';
 import { useFilenamePreview } from '@/hooks/useFilenamePreview';
+import { useDemoStatus } from '@/hooks/useDemoStatus';
 
 interface Props {
   show: boolean;
@@ -42,6 +43,7 @@ const PdfReportsFilenameModal: React.FC<Props> = ({ show, onHide, sheetworkId, s
   }, [show]);
 
   const preview = useFilenamePreview(selection, sampleReport);
+  const { isDemo, limits } = useDemoStatus();
 
   const isSelected = (token: PdfFilenameToken): boolean => selection.includes(token);
 
@@ -192,6 +194,13 @@ const PdfReportsFilenameModal: React.FC<Props> = ({ show, onHide, sheetworkId, s
             <code data-testid="pdf-filename-preview">{preview}</code>
           )}
         </div>
+
+        {isDemo && (
+          <Alert variant="info" className="mt-3 mb-0">
+            Cuenta de demostración: se pueden descargar máximo {limits.reportsPerOt ?? 5} reportes de
+            cada orden de trabajo, con marca de agua. El ZIP se puede descargar {limits.pdfPerDocument} veces por hoja.
+          </Alert>
+        )}
 
         {error && (
           <Alert variant="danger" className="mt-3 mb-0">

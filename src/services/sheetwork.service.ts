@@ -1,5 +1,6 @@
 import { ApiResponse } from '@/types';
 import { api } from './api';
+import { rethrowDecodingBlobError } from '@/utils/saveBlob';
 import { SheetWork } from '@/types/reporte.types';
 
 /**
@@ -112,7 +113,7 @@ export const sheetworkService = {
   getPDF: async (id: string) => {
     const response = await api.get(`/worksheets/${id}/pdf`, {
       responseType: 'blob',
-    });
+    }).catch(rethrowDecodingBlobError);
     return response.data;
   },
 

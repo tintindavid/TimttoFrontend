@@ -10,7 +10,10 @@ import type {
   PlatformTenant,
   UpdateTenantCapabilitiesInput,
   UpdateTenantCapabilitiesResponse,
+  DemoSeedResult,
 } from '@/types';
+
+const DEMO_SEED_TIMEOUT_MS = 120000;
 
 /**
  * Service for the SuperAdmin platform tenant management API.
@@ -41,6 +44,8 @@ export class PlatformTenantService {
     input: CreateTenantWithAdminInput
   ): Promise<CreateTenantWithAdminResponse> {
     const { logoFile, tenant, admin, type } = input;
+    // A demo account loads its sample data inside the request: the default timeout would hide the one-time password.
+    const config: [] | [{ timeout: number }] = tenant.isDemo ? [{ timeout: DEMO_SEED_TIMEOUT_MS }] : [];
 
     if (logoFile) {
       const formData = new FormData();
@@ -48,11 +53,11 @@ export class PlatformTenantService {
       formData.append('admin', JSON.stringify(admin));
       if (type) formData.append('type', type);
       formData.append('logo', logoFile);
-      const response = await api.post('/platform/tenants', formData);
+      const response = await api.post('/platform/tenants', formData, ...config);
       return response.data.data;
     }
 
-    const response = await api.post('/platform/tenants', type ? { tenant, admin, type } : { tenant, admin });
+    const response = await api.post('/platform/tenants', type ? { tenant, admin, type } : { tenant, admin }, ...config);
     return response.data.data;
   }
 
@@ -98,6 +103,12 @@ export class PlatformTenantService {
 
   static async reactivate(id: string): Promise<PlatformTenant> {
     const response = await api.patch(`/platform/tenants/${id}/reactivate`);
+    return response.data.data;
+  }
+
+  /** Completes the sample data of a demo account (only what is missing). */
+  static async retryDemoSeed(id: string): Promise<DemoSeedResult> {
+    const response = await api.post(`/platform/tenants/${id}/demo/seed`, undefined, { timeout: DEMO_SEED_TIMEOUT_MS });
     return response.data.data;
   }
 

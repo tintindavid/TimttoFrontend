@@ -72,7 +72,7 @@ const RemoteSignPage: React.FC = () => {
     );
   }
 
-  const { status, sheet, tenant, previewHtml, pdfUrl, pdfStatus, expiresAt } = payload;
+  const { status, sheet, tenant, previewHtml, pdfUrl, pdfStatus, expiresAt, downloadUnavailable } = payload;
 
   if (status === 'expired' || status === 'revoked' || status === 'superseded') {
     return (
@@ -115,10 +115,18 @@ const RemoteSignPage: React.FC = () => {
       {status === 'signed' ? (
         <div className="remote-sign-card">
           <Alert variant="success">
-            Firmaste esta hoja de trabajo. Puedes descargarla hasta el{' '}
-            <strong>{formatExpires(expiresAt)}</strong>.
+            Firmaste esta hoja de trabajo.
+            {!downloadUnavailable && (
+              <>
+                {' '}Puedes descargarla hasta el <strong>{formatExpires(expiresAt)}</strong>.
+              </>
+            )}
           </Alert>
-          {pdfStatus === 'ready' && pdfUrl ? (
+          {downloadUnavailable ? (
+            <Alert variant="info">
+              Cuenta de demostración: el PDF firmado no se descarga desde este enlace.
+            </Alert>
+          ) : pdfStatus === 'ready' && pdfUrl ? (
             <div className="remote-sign-download">
               <a href={pdfUrl} target="_blank" rel="noreferrer">
                 <Button variant="success">

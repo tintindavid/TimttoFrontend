@@ -16,6 +16,8 @@ import {
 import { FaArrowDown, FaArrowUp, FaDownload, FaEdit, FaEye, FaPlus, FaSearch, FaTrash } from 'react-icons/fa';
 import { useCustomers, useDeleteCustomer } from '@/hooks/useCustomers';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useDemoStatus } from '@/hooks/useDemoStatus';
+import { DEMO_BLOCKED_TEXT } from '@/utils/demo';
 import DataTable from '@/components/common/DataTable';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -84,6 +86,8 @@ const ThirdPartyList: React.FC<ThirdPartyListProps> = ({ kind }) => {
   const { data, isLoading, isFetching, error } = useCustomers(queryParams);
   const customers: Customer[] = data?.data || [];
   const pagination = data?.pagination;
+
+  const { isDemo } = useDemoStatus();
 
   const handleExportCSV = async () => {
     try {
@@ -155,7 +159,8 @@ const ThirdPartyList: React.FC<ThirdPartyListProps> = ({ kind }) => {
               variant="outline-secondary"
               className="me-2"
               onClick={handleExportCSV}
-              disabled={exporting}
+              disabled={isDemo || exporting}
+              title={isDemo ? DEMO_BLOCKED_TEXT : undefined}
             >
               {exporting
                 ? <><Spinner animation="border" size="sm" className="me-1" /> Exportando...</>

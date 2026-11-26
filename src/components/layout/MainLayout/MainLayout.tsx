@@ -5,6 +5,7 @@ import Sidebar from '../Sidebar/Sidebar';
 import ViewAsBanner, { VIEW_AS_BANNER_HEIGHT } from '@/components/common/ViewAsBanner';
 import { useAuth } from '@/context/AuthContext';
 import { useSidebarModo } from '@/hooks/useSidebarModo';
+import DemoBanner from './DemoBanner';
 import './MainLayout.css';
 
 const MainLayout: React.FC = () => {
@@ -42,6 +43,7 @@ const MainLayout: React.FC = () => {
             onCerrar={sidebarModo.cerrar}
           />
           <main className="app-content" role="main" tabIndex={-1} aria-live="polite">
+            <DemoBanner />
             <Outlet />
           </main>
         </div>

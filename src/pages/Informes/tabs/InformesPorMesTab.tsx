@@ -5,6 +5,8 @@ import { toast } from 'react-toastify';
 
 import { useAuth } from '@/context/AuthContext';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useDemoStatus } from '@/hooks/useDemoStatus';
+import { DEMO_BLOCKED_TEXT } from '@/utils/demo';
 import { useTenantCapabilities } from '@/context/TenantCapabilitiesContext';
 import { informeService } from '@/services/informe.service';
 import { MonthRangeSelect } from '../components/MonthRangeSelect';
@@ -41,6 +43,7 @@ export const InformesPorMesTab: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const { isDemo } = useDemoStatus();
   const [payload, setPayload] = useState<InformePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -242,7 +245,8 @@ export const InformesPorMesTab: React.FC = () => {
               <Button
                 variant="danger"
                 onClick={handleDownloadPdf}
-                disabled={!canGenerate || downloading || loading}
+                title={isDemo ? DEMO_BLOCKED_TEXT : undefined}
+                disabled={isDemo || !canGenerate || downloading || loading}
                 className="w-100"
               >
                 {downloading ? (
@@ -283,7 +287,8 @@ export const InformesPorMesTab: React.FC = () => {
               variant="outline-danger"
               size="sm"
               onClick={handleDownloadPdf}
-              disabled={downloading}
+              title={isDemo ? DEMO_BLOCKED_TEXT : undefined}
+              disabled={isDemo || downloading}
             >
               {downloading ? (
                 <>

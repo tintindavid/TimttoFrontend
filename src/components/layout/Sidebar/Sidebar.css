@@ -1,21 +1,52 @@
+/* Colours: the charcoal of the logo's "T" for the menu, a lighter grey for the submenus and the logo's blues as accent. */
 .sidebar {
+  --sidebar-bg: #2e3137;
+  --sidebar-submenu-bg: #4a4e57;
+  --sidebar-line: rgba(255, 255, 255, 0.12);
+  --sidebar-hover: rgba(255, 255, 255, 0.09);
+  --sidebar-text: #ffffff;
+  --sidebar-text-soft: #c9ced6;
+  --sidebar-accent: #47b5fb;
+
   width: var(--sidebar-width, 260px);
-  background: #ffffff;
-  border-right: 1px solid #eaeaea;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  color-scheme: dark; /* dark scrollbar */
   padding: 12px;
   overflow: auto;
   transition: transform 0.3s ease-in-out;
 }
 
-.sidebar .nav-link{ color: var(--tt-text); }
+.sidebar .nav-link,
+.sidebar .nav-link:hover,
+.sidebar .nav-link:focus { color: var(--sidebar-text); }
 
-.sidebar .menu-item{ display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; border-radius:6px }
-.sidebar .menu-item .icon{ width:22px; font-size:1.05rem }
+.sidebar .menu-item{ display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; border-radius:6px; font-weight:500 }
+.sidebar .menu-item:hover{ background: var(--sidebar-hover); }
+.sidebar .menu-item.active{ background: rgba(13, 110, 253, 0.35); box-shadow: inset 3px 0 0 var(--sidebar-accent); }
+.sidebar .menu-item .icon{ width:22px; font-size:1.05rem; color: var(--sidebar-accent) }
 
 .submenu{ display:none }
 .submenu.open{ display:block }
 
-.nav-link.small{ color:var(--tt-text-muted); }
+/* Submenu: a lighter panel with one line per option, so it reads apart from the main entries. */
+.sidebar .submenu > .nav {
+  background: var(--sidebar-submenu-bg);
+  border-left: 2px solid var(--sidebar-accent);
+  border-radius: 0 6px 6px 0;
+  margin-top: 2px;
+  margin-bottom: 4px;
+  overflow: hidden;
+}
+
+.sidebar .submenu .nav-item { padding-left: 12px; padding-right: 8px; }
+.sidebar .submenu > .nav > .nav-item + .nav-item { border-top: 1px solid var(--sidebar-line); }
+.sidebar .submenu .nav-item:not([role="group"]):hover { background: var(--sidebar-hover); }
+.sidebar .submenu .nav-link.small,
+.sidebar .submenu .nav-link.small:focus { color: #eef0f3; padding: 4px 0; }
+.sidebar .submenu .nav-link.small:hover { color: var(--sidebar-text); }
+/* Group title inside a submenu (e.g. Requisiciones > Configuración). */
+.sidebar .submenu .text-muted { color: var(--sidebar-text-soft) !important; }
 
 /* Botón cerrar para móviles */
 .sidebar-close-btn {
@@ -24,7 +55,7 @@
   right: 12px;
   background: transparent;
   border: none;
-  color: var(--tt-text);
+  color: var(--sidebar-text);
   cursor: pointer;
   padding: 8px;
   border-radius: 4px;
@@ -36,7 +67,7 @@
 }
 
 .sidebar-close-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: var(--sidebar-hover);
 }
 
 /* Backdrop para móviles */

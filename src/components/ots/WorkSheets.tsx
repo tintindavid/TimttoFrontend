@@ -21,6 +21,7 @@ import ResendSignModal from '@/components/ots/ResendSignModal';
 import PdfReportsFilenameModal from '@/components/ots/PdfReportsFilenameModal';
 import SendSignedSheetModal from '@/components/ots/SendSignedSheetModal';
 import { sheetworkService } from '@/services/sheetwork.service';
+import { getDemoErrorMessage } from '@/utils/demo';
 import tenantService from '@/services/tenant.service';
 import { customerService } from '@/services/customer.service';
 
@@ -426,7 +427,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       console.log('✅ PDF abierto exitosamente');
     } catch (error) {
       console.error('❌ Error al obtener PDF:', error);
-      alert('Error al obtener el PDF del servidor. Intenta nuevamente.');
+      alert(getDemoErrorMessage(error, 'Error al obtener el PDF del servidor. Intenta nuevamente.'));
     }
   };
 
@@ -444,6 +445,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
       console.log('PDF de reportes generado:', response);
     } catch (error) {
       console.error('Error al generar el PDF de reportes:', error);
+      alert(error instanceof Error ? error.message : 'No fue posible generar el ZIP de reportes.');
     } finally {
       setLoadingPdfSheets(prev => {
         const copy = { ...prev };
@@ -654,7 +656,7 @@ const WorkSheets: React.FC<WorkSheetsProps> = ({
                               console.log('✅ PDF abierto exitosamente');
                             } catch (error) {
                               console.error('❌ Error al obtener PDF:', error);
-                              alert('Error al obtener el PDF del servidor. Intenta nuevamente.');
+                              alert(getDemoErrorMessage(error, 'Error al obtener el PDF del servidor. Intenta nuevamente.'));
                             } finally {
                               setIsDownloadingPdf(false);
                             }

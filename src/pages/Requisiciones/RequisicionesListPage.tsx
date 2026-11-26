@@ -21,6 +21,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useHasPermission } from '@/hooks/usePermission';
 import { useGetRequisiciones } from '@/hooks/useRequisiciones';
 import { useExportarListado } from '@/hooks/useRequisicionReportes';
+import { useDemoStatus } from '@/hooks/useDemoStatus';
+import { DEMO_BLOCKED_TEXT } from '@/utils/demo';
 import { getRequisicionErrorMessage } from '@/utils/requisicionErrors';
 import { useGetAreas } from '@/hooks/useAreas';
 import { useGetTiposRequisicion } from '@/hooks/useTiposRequisicion';
@@ -73,6 +75,7 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
   const [showGuia, setShowGuia] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const exportar = useExportarListado();
+  const { isDemo } = useDemoStatus();
   // `?alcance=tenant&filtro=...` (organization counters of the dashboard): tenant-wide list, not narrowed to a vista.
   const alcanceTenant = searchParams.get('alcance') === 'tenant';
   const filtroParam = searchParams.get('filtro');
@@ -237,7 +240,7 @@ const RequisicionesListPage: React.FC<Props> = ({ vista }) => {
             Guía del módulo
           </Button>
           <Can permission={PERMISSIONS.REQUISICIONES_REPORTS}>
-            <Button variant="outline-success" onClick={handleExportar} disabled={exportar.isLoading}>
+            <Button variant="outline-success" onClick={handleExportar} disabled={isDemo || exportar.isLoading} title={isDemo ? DEMO_BLOCKED_TEXT : undefined}>
               {exportar.isLoading ? (
                 <Spinner as="span" size="sm" animation="border" className="me-2" />
               ) : (

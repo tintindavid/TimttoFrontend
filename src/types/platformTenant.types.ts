@@ -4,6 +4,24 @@ import type { TenantCapabilities, TenantType } from './tenantCapabilities.types'
 // Status values for a platform-managed tenant
 export type TenantStatus = 'active' | 'suspended' | 'closed';
 
+export type DemoSeedStatus = 'pending' | 'ready' | 'error';
+
+export interface DemoLimits {
+  users: number;
+  customers: number;
+  equipos: number;
+  pdfPerDocument: number;
+  /** Service reports downloadable per work order; demo accounts created before the limit do not store it. */
+  reportsPerOt?: number;
+}
+
+export interface DemoSeedResult {
+  status: 'ready' | 'error';
+  created: number;
+  notes?: string[];
+  error?: string;
+}
+
 // Full tenant shape returned by the platform endpoints
 export interface PlatformTenant {
   _id: string;
@@ -24,6 +42,8 @@ export interface PlatformTenant {
   /** Absent on tenants created before E5: treated as provider. */
   capabilities?: { executesServices: boolean; managesCustomers?: boolean; registersExternal: boolean; usesQrs?: boolean; scheduleQuickLoad?: boolean; usesInventoryBasic?: boolean; usesInventoryAdvanced?: boolean; usesRequisiciones?: boolean };
   organizationCustomerId?: string | null;
+  /** Only demo accounts. */
+  demo?: { enabled: boolean; limits: DemoLimits; seedStatus: DemoSeedStatus };
   status: TenantStatus;
   isDeleted: boolean;
   deletedAt?: string | null;
@@ -59,6 +79,8 @@ export interface CreateTenantWithAdminInput {
     departamento?: string;
     pais?: string;
     website?: string;
+    /** Creates a demo account with limits and sample data. */
+    isDemo?: boolean;
   };
   admin: {
     email: string;
@@ -95,6 +117,8 @@ export interface CreateTenantWithAdminResponse {
   /** True when the backend successfully dispatched the credentials email (E3) */
   emailSent?: boolean;
   requisicionesDefaults?: RequisicionesDefaultsResult;
+  /** Outcome of the sample data of a new demo account. */
+  demoSeed?: DemoSeedResult;
 }
 
 // Payload for the suspend endpoint
@@ -135,6 +159,7 @@ export interface PlatformTenantsPaginatedResponse {
 // Accumulated form data across the 4 wizard steps
 export interface WizardFormData {
   type: TenantType;
+  isDemo?: boolean;
   tenant: CreateTenantWithAdminInput['tenant'];
   admin: CreateTenantWithAdminInput['admin'];
   logoFile?: File;
