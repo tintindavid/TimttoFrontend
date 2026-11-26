@@ -1,3 +1,10 @@
+# [1.40.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.39.0...v1.40.0) (2026-11-26)
+
+
+### Features
+
+* **search:** navbar equipment search with consolidated equipment summary ([f0ee280](https://github.com/tintindavid/TimttoFrontend/commit/f0ee280041516c07f6ca890246b7ed4f18548cbe))
+
 # [1.39.0](https://github.com/tintindavid/TimttoFrontend/compare/v1.38.0...v1.39.0) (2026-11-26)
 
 
